@@ -68,7 +68,7 @@ def gaussian_kernal(size: int, sigma: float) -> np.ndarray:
 
 def gaussian_blur(image: np.ndarray, kernel_dim: int=5, sigma: float=1.0) -> np.ndarray:
     """Apply gaussian blur"""
-    kernel = gaussian_kernal(kernel_dim, sigma)
+    kernel = gaussian_kernal(size=kernel_dim, sigma=sigma)
     return convolve2d(image, kernel, padding='replicate')
 
 def sobel_edges(image: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -118,19 +118,19 @@ if __name__ == '__main__':
     blurred = gaussian_blur(test_image, kernel_dim=kernel_size, sigma=sigma_value)
     print("\nBlurred image:\n", blurred)
 
-    # # Create a sharper test pattern
-    # sharp_img = np.zeros((100, 100))
-    # sharp_img[30:70, 30:70] = 1.0  # White square
-    # sharp_img[45:55, 45:55] = 0.5  # Gray center
-    # blurred_img = gaussian_blur(sharp_img, kernel_size=15, sigma=3.0)
-    #
-    # fig, axes = plt.subplots(1, 2, figsize=(10, 4))
-    # axes[0].imshow(sharp_img, cmap='gray')
-    # axes[0].set_title('Original (Sharp Edges)')
-    # axes[1].imshow(blurred_img, cmap='gray')
-    # axes[1].set_title('Gaussian Blur (σ=3)')
-    # plt.savefig('gaussian_test.png')
-    # print("Saved gaussian_test.png")
+    # Create a sharper test pattern
+    sharp_img = np.zeros((100, 100))
+    sharp_img[30:70, 30:70] = 1.0  # White square
+    sharp_img[45:55, 45:55] = 0.5  # Gray center
+    blurred_img = gaussian_blur(sharp_img, kernel_size=15, sigma=3.0)
+
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+    axes[0].imshow(sharp_img, cmap='gray')
+    axes[0].set_title('Original (Sharp Edges)')
+    axes[1].imshow(blurred_img, cmap='gray')
+    axes[1].set_title('Gaussian Blur (σ=3)')
+    plt.savefig('gaussian_test.png')
+    print("Saved gaussian_test.png")
 
     # Test Sobel on diagonal edge
     edge_img = np.tril(np.ones(shape=(50,50)), k=-1)  # Diagonal edge

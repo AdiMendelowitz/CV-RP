@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from filters import gaussian_blur, sobel_edges
 from pathlib import Path
+import cv2
+
 
 output_dir = Path(__file__).parent / 'outputs'
 output_dir.mkdir(parents=True, exist_ok=True)
@@ -70,6 +72,35 @@ def test_sobel():
         print(f"Saved output_sobel_{name}.png")
         plt.close()
 
+def cv2_comparison():
+    """Compare my results to OpenCV's implementations"""
+    print("\nComparing with OpenCV implementations:\n")
+
+    objects = create_test_patterns()
+    kernel_size, sigma = 15, 3.0
+
+    for obj_name, obj_img in objects.items():
+        print(f"Testing object: {obj_name}")
+        my_blur = gaussian_blur(image=obj_img, kernel_dim=kernel_size, sigma=sigma)
+        cv_blur = cv2.GaussianBlur(src=obj_img, ksize=(kernel_size, kernel_size), sigmaX=sigma)
+        blur_diff = np.abs(my_blur - cv_blur)
+        max_diff = np.max(blur_diff)
+        mean_diff = np.mean(blur_diff)
+
+        print(f"Kernel Size: {kernel_size}x{kernel_size}, Sigma: {sigma}")
+        print(f"\nMax difference: {max_diff:.6f}")
+        print(f"\nMean difference: {mean_diff:.6f}")
+        print(f"\nMax pixel value: {np.max(obj_img):.2f}")
+
+        if max_diff < 0.01:
+            print("Gaussian Blur implementation matches OpenCV closely.\n")
+        else:
+            print(f"Notable difference {max_diff} - check padding / normalization\n")
+
+
+    return my_blur, cv_blur, blur_diff
+
+
 if __name__ == "__main__":
     print("Testing Gaussian Blur\n")
     test_gaussian()
@@ -77,4 +108,7 @@ if __name__ == "__main__":
     print("\nTesting Sobel Edge Detection\n")
     test_sobel()
 
-    print("Tests completed.")
+    print("\nOpenCV Comparison\n")
+    my_blur, cv_blur, blur_diff = cv2_comparison()
+    print("All tests completed.")
+

@@ -50,18 +50,18 @@ Download and save to `../papers/week-01/`:
 **Goal:** Understand fundamentals before deep learning
 
 ### Morning Session (3 hours)
-- [ ] Watch Stanford CS231n Lecture 1 (1 hour)
+- [x] Watch Stanford CS231n Lecture 1 (1 hour)
   - Link: http://cs231n.stanford.edu/
-- [ ] Watch Stanford CS231n Lecture 2 (1 hour)
-- [ ] Read Szeliski Chapter 3: Image Processing (30 min)
+- [x] Watch Stanford CS231n Lecture 2 (1 hour)
+- [x] Read Szeliski Chapter 3: Image Processing (30 min)
   - Link: http://szeliski.org/Book/
-- [ ] **Notes:** Create `notes/day1-classical-cv.md`
+- [x] **Notes:** Create `notes/day1-classical-cv.md`
 
 ### Afternoon Session (3-4 hours)
-- [ ] Create folder: `code/classical_cv/`
-- [ ] **Implement** `filters.py`:
-  - [ ] Gaussian blur (without OpenCV)
-  - [ ] Sobel edge detection
+- [x] Create folder: `code/classical_cv/`
+- [x] **Implement** `filters.py`:
+  - [x] Gaussian blur (without OpenCV)
+  - [x] Sobel edge detection
   - [ ] Canny edge detector
 - [ ] **Implement** `transforms.py`:
   - [ ] Affine transformations
