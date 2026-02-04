@@ -1,0 +1,80 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+
+# PyCharm
+.idea/
+*.iml
+
+# Virtual Environment
+venv/
+.venv/
+ENV/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Data files
+*.h5
+*.hdf5
+*.pkl
+*.pickle
+*.pt
+*.pth
+*.ckpt
+*.weights
+
+# Datasets and Models
+resources/datasets/*
+!resources/datasets/.gitkeep
+resources/models/*
+!resources/models/.gitkeep
+
+# Papers PDFs
+papers/**/*.pdf
+
+# Logs
+*.log
+wandb/
+mlruns/
+tensorboard_logs/
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# Temporary
+*.swp
+*~
+.tmp/
+
+# Output images and videos (regeneratable)
+outputs/
+results/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.tiff
+*.mp4
+*.avi
+
+# VSCode (in case you use it later)
+.vscode/
+
+# macOS (if you collaborate with Mac users)
+.DS_Store
+
+# Large data files
+*.csv
+*.zip
+*.tar.gz
+*.npy
+*.npz
