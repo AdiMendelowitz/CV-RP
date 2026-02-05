@@ -11,3 +11,24 @@
 *   **Convolution as a Weighted Sum:** Mathematically, a linear neighborhood operator determines the value of an output pixel by calculating a **weighted sum of the input pixels** in the vicinity of that location. The "weights" are defined by the **filter coefficients** within the kernel or mask. This operation is **linear shift-invariant (LSI)**, meaning it obeys the superposition principle and behaves the same way at every pixel location.
 *   **Separability for Efficiency:** A 2D convolution kernel of size $K \times K$ normally requires **$K^2$ multiply-add operations** per pixel. If a kernel is **separable**, it can be decomposed into the outer product of a vertical and horizontal kernel ($K = vh^T$), allowing the operation to be performed in **$2K$ operations**,. This optimization significantly increases processing speed and often influences the design of kernels used in computer vision.
 *   **Edge Detection as Taking Derivatives:** Finding edges in an image is mathematically equivalent to **taking derivatives** of the image function. First-order derivatives (like Sobel) identify the **gradient field**, while second-order derivatives (like the **Laplacian**) respond to rapid changes in the gradient, such as corners or lines,. Because differentiation linearly magnifies higher frequencies, it effectively highlights the sharp transitions that define object boundaries.
+
+
+# Day 1 - Canny Edge Detector
+
+## Implementation
+- Location: `code/classical_cv/edge_detection.py`
+- Components:
+  - Gaussian blur (from filters.py)
+  - Sobel gradients (from filters.py)
+  - Non-maximum suppression
+  - Double threshold
+  - Hysteresis
+
+## Key learnings
+- Hysteresis connects weak edges to strong edges
+- Sliding windows for efficient neighbor operations
+- Ratios for adaptive thresholding
+
+## Performance
+- Match rate vs OpenCV: ~XX%
+- Works on test patterns: checkerboard, gradient, circle

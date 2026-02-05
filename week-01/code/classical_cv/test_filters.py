@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from filters import gaussian_blur, sobel_edges
 from pathlib import Path
 import cv2
+from edge_detection import canny_edge_detector
 
 
 output_dir = Path(__file__).parent / 'outputs'
@@ -11,9 +12,8 @@ output_dir.mkdir(parents=True, exist_ok=True)
 def create_test_patterns():
     """Create synthetic test images"""
 
-    checker = np.zeros((200, 200))
-    checker[::20, ::20] = 1
-    checker = np.kron(checker, np.ones((10, 10)))
+    checker = np.indices(dimensions=(200, 200)).sum(axis=0) // 20 % 2
+    checker = checker.astype('float64')
 
     gradient = np.linspace(0, 1, 200)
     gradient = np.tile(gradient, (200, 1))
@@ -100,6 +100,37 @@ def cv2_comparison():
 
     return my_blur, cv_blur, blur_diff
 
+def test_canny():
+    """Compare my Canny edge detector to OpenCV's implementation"""
+    objects = create_test_patterns()
+    for obj_name, obj_img in objects.items():
+        print(f"\nTesting Canny on object: {obj_name}")
+        print(f"Input shape: {obj_img.shape}")
+        my_edges = canny_edge_detector(image=obj_img, low_ratio=0.2, high_ratio=0.8, sigma=1.4)
+
+        #CV2 implementation
+        obj_img_uint8 = (obj_img * 255).astype('uint8')
+        cv_edges = cv2.Canny(image=obj_img_uint8, threshold1=50, threshold2=150)
+
+        #Compare results
+        diff = np.sum(my_edges != cv_edges)
+        total = my_edges.size
+        match_rate = 100*(1 - diff/total)
+
+        print(f"Canny Edge Detection match rate: {match_rate:.2f}% ({total - diff} / {total} pixels match)\n")
+        print(f"My edge: {np.sum(my_edges > 0)} pixels\nCV2 edge: {np.sum(cv_edges > 0)} pixels")
+
+        fig, axes = plt.subplots(1,3, figsize=(15,5))
+        axes[0].imshow(obj_img, cmap='gray')
+        axes[0].set_title(f'Original: {obj_name}')
+        axes[1].imshow(my_edges, cmap='gray')
+        axes[1].set_title('My Canny Edges')
+        axes[2].imshow(cv_edges, cmap='gray')
+        axes[2].set_title('OpenCV Canny Edges')
+        plt.tight_layout()
+        plt.show()
+    return
+
 
 if __name__ == "__main__":
     print("Testing Gaussian Blur\n")
@@ -112,3 +143,4 @@ if __name__ == "__main__":
     my_blur, cv_blur, blur_diff = cv2_comparison()
     print("All tests completed.")
 
+    test_canny()
