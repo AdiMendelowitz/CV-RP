@@ -128,6 +128,7 @@ def test_canny():
         axes[2].imshow(cv_edges, cmap='gray')
         axes[2].set_title('OpenCV Canny Edges')
         plt.tight_layout()
+        plt.savefig(output_dir / f'canny_edge_comparison{obj_name}.png')
         plt.show()
     return
 

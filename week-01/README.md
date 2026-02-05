@@ -62,7 +62,7 @@ Download and save to `../papers/week-01/`:
 - [x] **Implement** `filters.py`:
   - [x] Gaussian blur (without OpenCV)
   - [x] Sobel edge detection
-  - [ ] Canny edge detector
+  - [x] Canny edge detector
 - [ ] **Implement** `transforms.py`:
   - [ ] Affine transformations
   - [ ] Perspective transforms
