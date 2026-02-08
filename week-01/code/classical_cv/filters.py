@@ -3,18 +3,15 @@ from typing import Tuple, Optional, Any
 import matplotlib.pyplot as plt
 
 
-def _pad_image(image: np.ndarray, pad_h: int, pad_w: int, mode: str='zero') \
-        -> np.ndarray[Any, np.dtype[Any]] | None:
-    """Helper function that pads the image according to the specified mode."""
+def _pad_image(image: np.ndarray, pad_h: int, pad_w: int, mode: str='zero') -> np.ndarray:
     if mode == 'zero':
         return np.pad(image, ((pad_h, pad_h), (pad_w, pad_w)), mode='constant', constant_values=0)
     elif mode == 'replicate':
-        padded = np.pad(image, ((pad_h, pad_h), (pad_w, pad_w)), mode='edge')
+        return np.pad(image, ((pad_h, pad_h), (pad_w, pad_w)), mode='edge')
     elif mode == 'mirror':
-        padded = np.pad(image, ((pad_h, pad_h), (pad_w, pad_w)), mode='reflect')
+        return np.pad(image, ((pad_h, pad_h), (pad_w, pad_w)), mode='reflect')
     else:
         raise ValueError(f"Unknown padding mode: {mode}")
-    return None
 
 def correlated2d(image: np.ndarray, kernel: np.ndarray, padding: str='zero') -> np.ndarray:
     """Applies a 2D correlation operation on the input image using the given kernel.
@@ -29,7 +26,6 @@ def correlated2d(image: np.ndarray, kernel: np.ndarray, padding: str='zero') -> 
     if image.ndim == 3: #handle grayscale vs color
         return np.stack([
             correlated2d(image[:,:,c], kernel, padding) for c in range(image.shape[2])
-            for c in range(image.shape[2])
             ], axis=2)
 
     # Dimensions
@@ -38,8 +34,7 @@ def correlated2d(image: np.ndarray, kernel: np.ndarray, padding: str='zero') -> 
     pad_h, pad_w = kh // 2, kw // 2
 
     # Padding
-    padded = _pad_image(image=image, pad_h=pad_h, pad_w=pad_h, mode='zero')
-
+    padded = _pad_image(image=image, pad_h=pad_h, pad_w=pad_h, mode=padding)
     output = np.zeros_like(image, dtype='float32')
 
     # Sliding window correlation
@@ -55,11 +50,11 @@ def convolve2d(image: np.ndarray, kernel: np.ndarray, padding: str='zero') -> np
     flipped_kernel = np.flip(kernel)
     return correlated2d(image, flipped_kernel, padding)
 
-def gaussian_kernal(size: int, sigma: float) -> np.ndarray:
+def gaussian_kernel(size: int, sigma: float) -> np.ndarray:
     """Generates a Gaussian kernel."""
 
     # Coordinate grid centered at zero
-    ax = np.arange(-size // 2 + 1., size // 2 + 1.)
+    ax = np.linspace(-(size // 2), size // 2, size)
     xx, yy = np.meshgrid(ax, ax)
     kernel = np.exp(-(xx ** 2 + yy ** 2) / (2 * sigma ** 2))
 
@@ -68,7 +63,7 @@ def gaussian_kernal(size: int, sigma: float) -> np.ndarray:
 
 def gaussian_blur(image: np.ndarray, kernel_dim: int=5, sigma: float=1.0) -> np.ndarray:
     """Apply gaussian blur"""
-    kernel = gaussian_kernal(size=kernel_dim, sigma=sigma)
+    kernel = gaussian_kernel(size=kernel_dim, sigma=sigma)
     return convolve2d(image, kernel, padding='replicate')
 
 def sobel_edges(image: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -110,7 +105,7 @@ if __name__ == '__main__':
 
     #test gaussian
     kernel_size, sigma_value = 5, 1.0
-    gauss_kernel = gaussian_kernal(size=kernel_size, sigma=sigma_value)
+    gauss_kernel = gaussian_kernel(size=kernel_size, sigma=sigma_value)
     print(f"\nGaussian Kernel {kernel_size}x{kernel_size}, sigma = {sigma_value}\n")
     print(gauss_kernel)
     print('Sum of kernel elements:', np.sum(gauss_kernel))

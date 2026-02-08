@@ -32,3 +32,41 @@
 ## Performance
 - Match rate vs OpenCV: ~XX%
 - Works on test patterns: checkerboard, gradient, circle
+
+# Geometric Transformations
+
+## Implementation
+- Location: `code/classical_cv/transforms.py`
+- Affine: 2x3 matrix, 3 point correspondences
+- Perspective: 3x3 matrix, 4 point correspondences
+- Bilinear interpolation for smooth warping
+
+## Results
+- Affine matrix error: ~5e-14
+- Perspective matrix error: ~1e-12
+- Visual results match OpenCV perfectly
+
+## Key learnings
+- Inverse mapping prevents holes
+- Homogeneous coordinates for projective geometry
+- SVD solves overconstrained systems
+
+# Unit Tests - Week 1
+
+## Coverage
+- ✅ Filters: Gaussian blur, Sobel, Convolution
+- ✅ Edge detection: NMS, thresholding, hysteresis, Canny
+- ✅ Transforms: Affine, perspective, rotation, resize
+
+## Test Results
+- 32 tests pass
+- Edge cases covered:
+  - Shape preservation
+  - Identity transforms
+  - Boundary conditions
+  - Value ranges
+
+## Run tests
+```bash
+pytest test_unit.py -v
+```

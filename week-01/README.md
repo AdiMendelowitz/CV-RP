@@ -63,17 +63,17 @@ Download and save to `../papers/week-01/`:
   - [x] Gaussian blur (without OpenCV)
   - [x] Sobel edge detection
   - [x] Canny edge detector
-- [ ] **Implement** `transforms.py`:
-  - [ ] Affine transformations
-  - [ ] Perspective transforms
-- [ ] Compare your implementations with OpenCV
+- [x] **Implement** `transforms.py`:
+  - [x] Affine transformations
+  - [x] Perspective transforms
+- [x] Compare your implementations with OpenCV
 - [ ] Write unit tests
 
 ### Evening Session (1 hour)
-- [ ] Create Jupyter notebook: `notebooks/01_classical_cv.ipynb`
-- [ ] Visualize: Original → Gaussian → Sobel → Canny pipeline
-- [ ] Add mathematical explanations
-- [ ] **Commit to GitHub**
+- [x] Create Jupyter notebook: `notebooks/01_classical_cv.ipynb`
+- [x] Visualize: Original → Gaussian → Sobel → Canny pipeline
+- [x] Add mathematical explanations
+- [x] **Commit to GitHub**
 
 **Daily Reflection:**
 ```

@@ -224,3 +224,16 @@ def rotate(image: np.ndarray, angle_degrees: float, center: Tuple[float, float],
         [sin_a,  cos_a, -cx*sin_a - cy*cos_a + cy]
     ])
     return warp_affine(image, matrix, output_shape=(h, w))
+
+def resize(image: np.ndarray, scale: float) -> np.ndarray:
+    """Resize image by a scale factor.
+    Args:
+        image: Input image.
+        scale: Scaling factor (>1 enlarges, <1 shrins).
+    Returns:
+        Resized image.
+    """
+    h, w = image.shape[:2]
+    new_h, new_w = int(h*scale), int(w*scale)
+    matrix = np.array([[1/scale, 0, 0], [0, 1/scale, 0]])
+    return warp_affine(image, matrix, output_shape=(new_h, new_w))
