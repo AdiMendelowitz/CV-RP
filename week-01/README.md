@@ -93,35 +93,35 @@ Questions for tomorrow:
 **Goal:** Implement CNN in NumPy to understand internals
 
 ### Morning Session (3 hours)
-- [ ] Read Stanford CS231n notes on CNNs
-- [ ] Watch CS231n Lecture 5: CNNs (1 hour)
-- [ ] Study backpropagation through conv layers
-- [ ] **Derive** forward and backward pass math (pen & paper)
-- [ ] **Notes:** `notes/day2-cnn-math.md`
+- [x] Read Stanford CS231n notes on CNNs
+- [x] Watch CS231n Lecture 5: CNNs (1 hour)
+- [x] Study backpropagation through conv layers
+- [x] **Derive** forward and backward pass math (pen & paper)
+- [x] **Notes:** `notes/day2-cnn-math.md`
 
 ### Afternoon Session (4-5 hours)
-- [ ] Create folder: `code/cnn_scratch/`
+- [x] Create folder: `code/cnn_scratch/`
 - [ ] **Implement** `layers.py`:
-  - [ ] `Conv2D` layer with forward/backward
-  - [ ] `MaxPool2D` layer
-  - [ ] `Dense` layer
-  - [ ] `ReLU`, `Softmax` activations
-- [ ] **Implement** `network.py`:
-  - [ ] CNN class (stacks layers)
-  - [ ] Forward pass
-  - [ ] Backward pass (backpropagation)
-- [ ] **Implement** `train.py`:
-  - [ ] SGD optimizer
-  - [ ] Training loop
-  - [ ] Loss tracking
+  - [x] `Conv2D` layer with forward/backward
+  - [x] `MaxPool2D` layer
+  - [x] `Dense` layer
+  - [x] `ReLU`, `Softmax` activations
+- [x] **Implement** `network.py`:
+  - [x] CNN class (stacks layers)
+  - [x] Forward pass
+  - [x] Backward pass (backpropagation)
+- [x] **Implement** `train.py`:
+  - [x] SGD optimizer
+  - [x] Training loop
+  - [x] Loss tracking
 
 ### Evening Session (1-2 hours)
-- [ ] Test on MNIST dataset
-- [ ] Target: >95% accuracy after 5 epochs
-- [ ] Create notebook: `notebooks/02_cnn_from_scratch.ipynb`
-- [ ] Document: architecture, derivations, results
-- [ ] Visualize: learned filters from first conv layer
-- [ ] **Commit to GitHub**
+- [x] Test on MNIST dataset
+- [x] Target: >95% accuracy after 5 epochs
+- [x] Create notebook: `notebooks/02_cnn_from_scratch.ipynb`
+- [x] Document: architecture, derivations, results
+- [x] Visualize: learned filters from first conv layer
+- [x] **Commit to GitHub**
 
 **Code Quality Check:**
 - [ ] Add docstrings to all functions
