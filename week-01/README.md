@@ -14,7 +14,7 @@
 - Explore self-supervised learning
 
 **Deliverables:**
-- [ ] GitHub repo: `computer-vision-foundations`
+- [] GitHub repo: `computer-vision-foundations`
 - [ ] 5 implementations (classical CV, CNN, ResNet, ViT, SimCLR)
 - [ ] Blog draft: "Vision Transformers vs CNNs"
 - [ ] 8-10 papers read and summarized
@@ -101,7 +101,7 @@ Questions for tomorrow:
 
 ### Afternoon Session (4-5 hours)
 - [x] Create folder: `code/cnn_scratch/`
-- [ ] **Implement** `layers.py`:
+- [x] **Implement** `layers.py`:
   - [x] `Conv2D` layer with forward/backward
   - [x] `MaxPool2D` layer
   - [x] `Dense` layer
@@ -124,9 +124,9 @@ Questions for tomorrow:
 - [x] **Commit to GitHub**
 
 **Code Quality Check:**
-- [ ] Add docstrings to all functions
-- [ ] Add type hints
-- [ ] Run: `black code/cnn_scratch/`
+- [x] Add docstrings to all functions
+- [x] Add type hints
+- [x] Run: `black code/cnn_scratch/`
 
 ---
 
