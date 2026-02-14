@@ -9,8 +9,9 @@ from numpy.ma.extras import average
 
 from network import Network, CrossEntropyLoss
 
+
 class SGD:
-    """ Stochastic Gradient Descent optimizer
+    """Stochastic Gradient Descent optimizer
     Update rule: param -= learning_rate * grad
     """
 
@@ -20,7 +21,7 @@ class SGD:
         self.velocities = {}  # For momentum
 
     def step(self, params: List[Tuple[np.ndarray, np.ndarray]]) -> None:
-        """ Update parameters using their gradients
+        """Update parameters using their gradients
         Args:
             params: List of (parameter, gradient) tuples
         """
@@ -29,22 +30,33 @@ class SGD:
             if grad is None:
                 continue  # Skip if no gradient
 
-            if self.momentum > 0: #initialize velocity if needed
+            if self.momentum > 0:  # initialize velocity if needed
                 if i not in self.velocities:
                     self.velocities[i] = np.zeros_like(param)
-                self.velocities[i] = self.momentum * self.velocities[i] - self.learning_rate * grad
+                self.velocities[i] = (
+                    self.momentum * self.velocities[i] - self.learning_rate * grad
+                )
                 param += self.velocities[i]
             else:
                 param -= self.learning_rate * grad
 
 
-def compute_loss_and_accuracy(model: Network, loss_fn: CrossEntropyLoss, X: np.ndarray, y: np.ndarray,
-                              batch_size: int, num_batches: int, optimizer: Optional[SGD] = None,
-                              train_mode: bool=False) -> Tuple[float, float]:
-    """ Compute loss and accuracy for given data"""
+def compute_loss_and_accuracy(
+    model: Network,
+    loss_fn: CrossEntropyLoss,
+    X: np.ndarray,
+    y: np.ndarray,
+    batch_size: int,
+    num_batches: int,
+    optimizer: Optional[SGD] = None,
+    train_mode: bool = False,
+) -> Tuple[float, float]:
+    """Compute loss and accuracy for given data"""
 
     if train_mode and optimizer is None:
-        raise ValueError("Optimizer must be provided in train mode to update parameters.")
+        raise ValueError(
+            "Optimizer must be provided in train mode to update parameters."
+        )
 
     total_loss, correct = 0.0, 0
 
@@ -70,9 +82,15 @@ def compute_loss_and_accuracy(model: Network, loss_fn: CrossEntropyLoss, X: np.n
     return average_loss, accuracy
 
 
-def train_epoch(model: Network, optimizer: SGD, loss_fn: CrossEntropyLoss, X_train: np.ndarray,
-                y_train: np.ndarray, batch_size: int = 32) -> Tuple[float, float]:
-    """ Train for one epoch
+def train_epoch(
+    model: Network,
+    optimizer: SGD,
+    loss_fn: CrossEntropyLoss,
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    batch_size: int = 32,
+) -> Tuple[float, float]:
+    """Train for one epoch
     Args:
         model: Network to train
         optimizer: Optimizer to update parameters (SGD)
@@ -85,26 +103,43 @@ def train_epoch(model: Network, optimizer: SGD, loss_fn: CrossEntropyLoss, X_tra
         (average_loss, accuracy)
     """
     num_samples: int = X_train.shape[0]
-    if batch_size <=0:
+    if batch_size <= 0:
         raise ValueError(f"Batch size must be positive, got {batch_size}")
     if batch_size > num_samples:
-        raise ValueError(f"Batch size {batch_size} must be smaller than number of samples {num_samples}")
+        raise ValueError(
+            f"Batch size {batch_size} must be smaller than number of samples {num_samples}"
+        )
 
     num_batches = num_samples // batch_size
     if num_batches == 0:
-        raise ValueError(f"Not enough samples ({num_samples}) for batch size {batch_size}. Need at least {batch_size} samples.")
+        raise ValueError(
+            f"Not enough samples ({num_samples}) for batch size {batch_size}. Need at least {batch_size} samples."
+        )
 
     indices = np.random.permutation(num_samples)
 
     average_loss, accuracy = compute_loss_and_accuracy(
-        model=model, loss_fn=loss_fn, X=X_train[indices], y=y_train[indices], batch_size=batch_size,
-        num_batches=num_batches, optimizer=optimizer, train_mode=True)
+        model=model,
+        loss_fn=loss_fn,
+        X=X_train[indices],
+        y=y_train[indices],
+        batch_size=batch_size,
+        num_batches=num_batches,
+        optimizer=optimizer,
+        train_mode=True,
+    )
 
     return average_loss, accuracy
 
-def evaluate(model: Network, loss_fn: CrossEntropyLoss, X_test: np.ndarray, y_test: np.ndarray,
-             batch_size: int = 32) -> Tuple[float, float]:
-    """ Evaluate model on test set
+
+def evaluate(
+    model: Network,
+    loss_fn: CrossEntropyLoss,
+    X_test: np.ndarray,
+    y_test: np.ndarray,
+    batch_size: int = 32,
+) -> Tuple[float, float]:
+    """Evaluate model on test set
     Args:
         model: NN
         loss_fn: Cross-entropy loss function
@@ -116,14 +151,32 @@ def evaluate(model: Network, loss_fn: CrossEntropyLoss, X_test: np.ndarray, y_te
     """
     num_batches: int = X_test.shape[0] // batch_size
     avg_loss, accuracy = compute_loss_and_accuracy(
-        model=model, loss_fn=loss_fn, X=X_test, y=y_test, batch_size=batch_size, num_batches=num_batches,
-        optimizer=None, train_mode=False)
+        model=model,
+        loss_fn=loss_fn,
+        X=X_test,
+        y=y_test,
+        batch_size=batch_size,
+        num_batches=num_batches,
+        optimizer=None,
+        train_mode=False,
+    )
 
     return avg_loss, accuracy
 
-def train(model: Network, optimizer: SGD, loss_fn: CrossEntropyLoss, X_train: np.ndarray, y_train: np.ndarray,
-          X_test: np.ndarray, y_test: np.ndarray, num_epochs: int = 10, batch_size: int = 32, verbose: bool=True) -> dict:
-    """ Full training loop
+
+def train(
+    model: Network,
+    optimizer: SGD,
+    loss_fn: CrossEntropyLoss,
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    X_test: np.ndarray,
+    y_test: np.ndarray,
+    num_epochs: int = 10,
+    batch_size: int = 32,
+    verbose: bool = True,
+) -> dict:
+    """Full training loop
     Args:
         model: NN
         optimizer: Optimizer (SGD)
@@ -138,18 +191,22 @@ def train(model: Network, optimizer: SGD, loss_fn: CrossEntropyLoss, X_train: np
         history: Dictionary with training and test loss/accuracy per epoch
     """
 
-    history = {'train_loss': [], 'train_acc': [], 'test_loss': [], 'test_acc': []}
+    history = {"train_loss": [], "train_acc": [], "test_loss": [], "test_acc": []}
 
     for epoch in range(num_epochs):
-        train_loss, train_acc = train_epoch(model, optimizer, loss_fn, X_train, y_train, batch_size)
+        train_loss, train_acc = train_epoch(
+            model, optimizer, loss_fn, X_train, y_train, batch_size
+        )
         test_loss, test_acc = evaluate(model, loss_fn, X_test, y_test, batch_size)
 
-        history['train_loss'].append(train_loss)
-        history['train_acc'].append(train_acc)
-        history['test_loss'].append(test_loss)
-        history['test_acc'].append(test_acc)
+        history["train_loss"].append(train_loss)
+        history["train_acc"].append(train_acc)
+        history["test_loss"].append(test_loss)
+        history["test_acc"].append(test_acc)
 
         if verbose:
-            print(f"Epoch {epoch+1}/{num_epochs} - Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}, "
-                  f"Test Loss: {test_loss:.4f}, Test Acc: {test_acc:.4f}")
+            print(
+                f"Epoch {epoch+1}/{num_epochs} - Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}, "
+                f"Test Loss: {test_loss:.4f}, Test Acc: {test_acc:.4f}"
+            )
     return history

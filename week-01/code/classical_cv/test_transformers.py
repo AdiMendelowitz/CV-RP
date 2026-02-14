@@ -1,18 +1,25 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
-from transformers import get_affine_transform, get_perspective_transform, warp_affine, warp_perspective, rotate, resize
+from transformers import (
+    get_affine_transform,
+    get_perspective_transform,
+    warp_affine,
+    warp_perspective,
+    rotate,
+    resize,
+)
 
 
 def test_affine():
     """Test affine transformation"""
 
-    img = np.zeros((200, 200), dtype='uint8')
+    img = np.zeros((200, 200), dtype="uint8")
     img[50:150, 50:150] = 255
 
     # Define transormation: rotate square
-    scr_pts = np.array([[50, 50], [150, 50], [150, 150]], dtype='float32')
-    dst_pts = np.array([[75, 50], [150, 75], [50, 150]], dtype='float32')
+    scr_pts = np.array([[50, 50], [150, 50], [150, 150]], dtype="float32")
+    dst_pts = np.array([[75, 50], [150, 75], [50, 150]], dtype="float32")
 
     # Get transformation matrix
     M = get_affine_transform(scr_pts, dst_pts)
@@ -28,25 +35,26 @@ def test_affine():
 
     # Visualize
     fix, axes = plt.subplots(1, 3, figsize=(15, 5))
-    axes[0].imshow(img, cmap='gray')
-    axes[0].set_title('Original')
-    axes[1].imshow(warped, cmap='gray')
-    axes[1].set_title('My Affine Warp')
-    axes[2].imshow(warped_cv, cmap='gray')
-    axes[2].set_title('OpenCV Affine Warp')
+    axes[0].imshow(img, cmap="gray")
+    axes[0].set_title("Original")
+    axes[1].imshow(warped, cmap="gray")
+    axes[1].set_title("My Affine Warp")
+    axes[2].imshow(warped_cv, cmap="gray")
+    axes[2].set_title("OpenCV Affine Warp")
     plt.tight_layout()
-    plt.savefig('affine_test.png')
+    plt.savefig("affine_test.png")
     plt.show()
+
 
 def test_perspective():
     """Test perspective transformation"""
 
-    img = np.zeros((200, 200), dtype='uint8')
+    img = np.zeros((200, 200), dtype="uint8")
     img[50:150, 50:150] = 255
 
     # Define transormation: rotate square
-    scr_pts = np.array([[50, 50], [250, 50], [250, 250], [50, 250]], dtype='float32')
-    dst_pts = np.array([[80, 50], [220, 50], [250, 250], [50, 250]], dtype='float32')
+    scr_pts = np.array([[50, 50], [250, 50], [250, 250], [50, 250]], dtype="float32")
+    dst_pts = np.array([[80, 50], [220, 50], [250, 250], [50, 250]], dtype="float32")
 
     # Get transformation matrix
     H = get_perspective_transform(scr_pts, dst_pts)
@@ -62,20 +70,21 @@ def test_perspective():
 
     # Visualize
     fix, axes = plt.subplots(1, 3, figsize=(15, 5))
-    axes[0].imshow(img, cmap='gray')
-    axes[0].set_title('Original')
-    axes[1].imshow(warped, cmap='gray')
-    axes[1].set_title('My Perspective Warp')
-    axes[2].imshow(warped_cv, cmap='gray')
-    axes[2].set_title('OpenCV Perspective Warp')
+    axes[0].imshow(img, cmap="gray")
+    axes[0].set_title("Original")
+    axes[1].imshow(warped, cmap="gray")
+    axes[1].set_title("My Perspective Warp")
+    axes[2].imshow(warped_cv, cmap="gray")
+    axes[2].set_title("OpenCV Perspective Warp")
     plt.tight_layout()
-    plt.savefig('perspective_test.png')
+    plt.savefig("perspective_test.png")
     plt.show()
+
 
 def test_rotation():
     """Test rotation transformation"""
 
-    img = np.zeros((200, 200), dtype='uint8')
+    img = np.zeros((200, 200), dtype="uint8")
     img[50:150, 50:150] = 255
 
     # Rotate by 45 degrees
@@ -85,17 +94,18 @@ def test_rotation():
 
     # Visualize
     fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-    axes[0].imshow(img, cmap='gray')
-    axes[0].set_title('Original')
-    axes[1].imshow(rotated, cmap='gray')
-    axes[1].set_title('My Rotation')
-    axes[2].imshow(rotated_cv, cmap='gray')
-    axes[2].set_title('OpenCV Rotation')
+    axes[0].imshow(img, cmap="gray")
+    axes[0].set_title("Original")
+    axes[1].imshow(rotated, cmap="gray")
+    axes[1].set_title("My Rotation")
+    axes[2].imshow(rotated_cv, cmap="gray")
+    axes[2].set_title("OpenCV Rotation")
     plt.tight_layout()
-    plt.savefig('rotation_test.png')
+    plt.savefig("rotation_test.png")
     plt.show()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     print("Testing Affine Transformation:")
     test_affine()
 

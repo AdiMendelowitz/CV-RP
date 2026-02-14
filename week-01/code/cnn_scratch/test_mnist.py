@@ -33,7 +33,7 @@ def generate_simple_patterns(num_samples, img_size=28):
         X[i, 0] = img
         y[i] = label
 
-    return X.astype('float32'), y
+    return X.astype("float32"), y
 
 
 # Create dataset with patterns (not random!)
@@ -45,19 +45,21 @@ print(f"Test set:  {X_test.shape}, Labels: {y_test.shape}")
 print(f"Classes: 0=vertical, 1=horizontal, 2=diagonal")
 
 # Build CNN
-model = Network([
-    Conv2D(1, 8, kernel_size=3, padding=1),  # (1,14,14) → (8,14,14)
-    ReLU(),
-    MaxPool2D(pool_size=2),  # (8,14,14) → (8,7,7)
-    Conv2D(8, 16, kernel_size=3, padding=1),  # (8,7,7) → (16,7,7)
-    ReLU(),
-    MaxPool2D(pool_size=2),  # (16,7,7) → (16,3,3)
-    Flatten(),  # (16,3,3) → (144,)
-    Dense(144, 32),  # (144,) → (32,)
-    ReLU(),
-    Dense(32, 3),  # (32,) → (3,)
-    Softmax()
-])
+model = Network(
+    [
+        Conv2D(1, 8, kernel_size=3, padding=1),  # (1,14,14) → (8,14,14)
+        ReLU(),
+        MaxPool2D(pool_size=2),  # (8,14,14) → (8,7,7)
+        Conv2D(8, 16, kernel_size=3, padding=1),  # (8,7,7) → (16,7,7)
+        ReLU(),
+        MaxPool2D(pool_size=2),  # (16,7,7) → (16,3,3)
+        Flatten(),  # (16,3,3) → (144,)
+        Dense(144, 32),  # (144,) → (32,)
+        ReLU(),
+        Dense(32, 3),  # (32,) → (3,)
+        Softmax(),
+    ]
+)
 
 # Setup training
 optimizer = SGD(learning_rate=0.01, momentum=0.9)
@@ -68,12 +70,16 @@ print("=" * 60)
 
 # Train
 history = train(
-    model, optimizer, loss_fn,
-    X_train, y_train,
-    X_test, y_test,
+    model,
+    optimizer,
+    loss_fn,
+    X_train,
+    y_train,
+    X_test,
+    y_test,
     num_epochs=10,
     batch_size=32,
-    verbose=True
+    verbose=True,
 )
 
 print("=" * 60)

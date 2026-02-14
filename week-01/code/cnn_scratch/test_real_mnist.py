@@ -30,8 +30,8 @@ X_train = X_train[:, np.newaxis, :, :]
 X_test = X_test[:, np.newaxis, :, :]
 
 # 2. Normalize to [0, 1]
-X_train = X_train.astype('float32') / 255.0
-X_test = X_test.astype('float32') / 255.0
+X_train = X_train.astype("float32") / 255.0
+X_test = X_test.astype("float32") / 255.0
 
 # 3. Use subset for faster training (optional)
 # Full MNIST: 60,000 train, 10,000 test - takes ~30 min
@@ -54,22 +54,22 @@ print(f"Classes: {np.unique(y_train)} (digits 0-9)")
 
 # Build CNN for MNIST (28x28 images, 10 classes)
 print("\nBuilding CNN...")
-model = Network([
-    # Input: (batch, 1, 28, 28)
-    Conv2D(1, 8, kernel_size=3, padding=1),  # → (batch, 8, 28, 28)
-    ReLU(),
-    MaxPool2D(pool_size=2),  # → (batch, 8, 14, 14)
-
-    Conv2D(8, 16, kernel_size=3, padding=1),  # → (batch, 16, 14, 14)
-    ReLU(),
-    MaxPool2D(pool_size=2),  # → (batch, 16, 7, 7)
-
-    Flatten(),  # → (batch, 784)
-    Dense(16 * 7 * 7, 128),  # → (batch, 128)
-    ReLU(),
-    Dense(128, 10),  # → (batch, 10)
-    Softmax()
-])
+model = Network(
+    [
+        # Input: (batch, 1, 28, 28)
+        Conv2D(1, 8, kernel_size=3, padding=1),  # → (batch, 8, 28, 28)
+        ReLU(),
+        MaxPool2D(pool_size=2),  # → (batch, 8, 14, 14)
+        Conv2D(8, 16, kernel_size=3, padding=1),  # → (batch, 16, 14, 14)
+        ReLU(),
+        MaxPool2D(pool_size=2),  # → (batch, 16, 7, 7)
+        Flatten(),  # → (batch, 784)
+        Dense(16 * 7 * 7, 128),  # → (batch, 128)
+        ReLU(),
+        Dense(128, 10),  # → (batch, 10)
+        Softmax(),
+    ]
+)
 
 print("✓ Model created")
 print("\nArchitecture:")
@@ -87,12 +87,16 @@ print("=" * 70)
 
 # Train
 history = train(
-    model, optimizer, loss_fn,
-    X_train, y_train,
-    X_test, y_test,
+    model,
+    optimizer,
+    loss_fn,
+    X_train,
+    y_train,
+    X_test,
+    y_test,
     num_epochs=5,  # Start with 5 epochs
     batch_size=64,  # Larger batch for MNIST
-    verbose=True
+    verbose=True,
 )
 
 print("=" * 70)
@@ -129,7 +133,9 @@ for i in range(10):
     confidence = y_pred[i, pred_label]
 
     status = "✓" if pred_label == true_label else "✗"
-    print(f"{status} Sample {i + 1}: True={true_label}, Predicted={pred_label}, Confidence={confidence:.4f}")
+    print(
+        f"{status} Sample {i + 1}: True={true_label}, Predicted={pred_label}, Confidence={confidence:.4f}"
+    )
 
 # Compute per-class accuracy (optional)
 print("\n" + "=" * 70)
@@ -152,24 +158,23 @@ import matplotlib.pyplot as plt
 plt.figure(figsize=(12, 4))
 
 plt.subplot(1, 2, 1)
-plt.plot(history['train_loss'], label='Train Loss')
-plt.plot(history['test_loss'], label='Test Loss')
-plt.xlabel('Epoch')
-plt.ylabel('Loss')
+plt.plot(history["train_loss"], label="Train Loss")
+plt.plot(history["test_loss"], label="Test Loss")
+plt.xlabel("Epoch")
+plt.ylabel("Loss")
 plt.legend()
-plt.title('Loss Over Time')
+plt.title("Loss Over Time")
 
 plt.subplot(1, 2, 2)
-plt.plot(history['train_acc'], label='Train Accuracy')
-plt.plot(history['test_acc'], label='Test Accuracy')
-plt.xlabel('Epoch')
-plt.ylabel('Accuracy')
+plt.plot(history["train_acc"], label="Train Accuracy")
+plt.plot(history["test_acc"], label="Test Accuracy")
+plt.xlabel("Epoch")
+plt.ylabel("Accuracy")
 plt.legend()
-plt.title('Accuracy Over Time')
+plt.title("Accuracy Over Time")
 
-plt.savefig('mnist_training.png')
+plt.savefig("mnist_training.png")
 print("✓ Saved plot to mnist_training.png")
-
 
 
 # Find all mistakes
@@ -182,8 +187,8 @@ print(f"\nTotal mistakes: {len(mistakes)}/1000")
 # Visualize first 10 mistakes
 fig, axes = plt.subplots(2, 5, figsize=(15, 6))
 for i, idx in enumerate(mistakes[:10]):
-    ax = axes[i//5, i%5]
-    ax.imshow(X_test[idx, 0], cmap='gray')
+    ax = axes[i // 5, i % 5]
+    ax.imshow(X_test[idx, 0], cmap="gray")
     ax.set_title(f"True: {y_test[idx]}, Pred: {predictions_all[idx]}")
-    ax.axis('off')
-plt.savefig('mistakes.png')
+    ax.axis("off")
+plt.savefig("mistakes.png")

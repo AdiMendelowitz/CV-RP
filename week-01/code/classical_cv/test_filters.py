@@ -5,23 +5,24 @@ from pathlib import Path
 import cv2
 from edge_detection import canny_edge_detector
 
-
-output_dir = Path(__file__).parent / 'outputs'
+output_dir = Path(__file__).parent / "outputs"
 output_dir.mkdir(parents=True, exist_ok=True)
+
 
 def create_test_patterns():
     """Create synthetic test images"""
 
     checker = np.indices(dimensions=(200, 200)).sum(axis=0) // 20 % 2
-    checker = checker.astype('float64')
+    checker = checker.astype("float64")
 
     gradient = np.linspace(0, 1, 200)
     gradient = np.tile(gradient, (200, 1))
 
     y, x = np.ogrid[0:200, :200]
-    circle = ((x-100)**2 + (y-100)**2 < 60**2).astype('float32')
+    circle = ((x - 100) ** 2 + (y - 100) ** 2 < 60**2).astype("float32")
 
-    return {'checkerboard': checker, 'gradient': gradient, 'circle': circle}
+    return {"checkerboard": checker, "gradient": gradient, "circle": circle}
+
 
 def test_gaussian():
     """Test gaussian blur on patterns"""
@@ -31,18 +32,19 @@ def test_gaussian():
         blurred = gaussian_blur(image=img, kernel_dim=15, sigma=3.0)
 
         fix, axes = plt.subplots(1, 2, figsize=(10, 4))
-        axes[0].imshow(img, cmap='gray')
-        axes[0].set_title(f'{name.capitalize()} - Original: {name}')
-        axes[0].axis('off')
+        axes[0].imshow(img, cmap="gray")
+        axes[0].set_title(f"{name.capitalize()} - Original: {name}")
+        axes[0].axis("off")
 
-        axes[1].imshow(blurred, cmap='gray')
-        axes[1].set_title(f'{name.capitalize()} - Blurred')
-        axes[1].axis('off')
+        axes[1].imshow(blurred, cmap="gray")
+        axes[1].set_title(f"{name.capitalize()} - Blurred")
+        axes[1].axis("off")
 
         plt.tight_layout()
-        plt.savefig(output_dir / f'output_{name}.png')
+        plt.savefig(output_dir / f"output_{name}.png")
         print(f"Saved output_{name}.png")
         plt.close()
+
 
 def test_sobel():
     """Test Sobel edge detection on patterns"""
@@ -52,25 +54,26 @@ def test_sobel():
         grad_x, grad_y, grad_mag = sobel_edges(image=img)
 
         fig, axes = plt.subplots(2, 2, figsize=(10, 10))
-        axes[0, 0].imshow(img, cmap='gray')
-        axes[0, 0].set_title(f'{name.capitalize()} - Original')
+        axes[0, 0].imshow(img, cmap="gray")
+        axes[0, 0].set_title(f"{name.capitalize()} - Original")
 
-        axes[0, 1].imshow(grad_mag, cmap='hot')
-        axes[0, 1].set_title('Edge Magnitude')
+        axes[0, 1].imshow(grad_mag, cmap="hot")
+        axes[0, 1].set_title("Edge Magnitude")
 
-        axes[1, 0].imshow(grad_x, cmap='RdBu')
-        axes[1, 0].set_title('Gradient X')
+        axes[1, 0].imshow(grad_x, cmap="RdBu")
+        axes[1, 0].set_title("Gradient X")
 
-        axes[1, 1].imshow(grad_y, cmap='RdBu')
-        axes[1, 1].set_title('Gradient Y')
+        axes[1, 1].imshow(grad_y, cmap="RdBu")
+        axes[1, 1].set_title("Gradient Y")
 
         for ax in axes.flat:
-            ax.axis('off')
+            ax.axis("off")
 
         plt.tight_layout()
-        plt.savefig(output_dir / f'output_sobel_{name}.png')
+        plt.savefig(output_dir / f"output_sobel_{name}.png")
         print(f"Saved output_sobel_{name}.png")
         plt.close()
+
 
 def cv2_comparison():
     """Compare my results to OpenCV's implementations"""
@@ -82,7 +85,9 @@ def cv2_comparison():
     for obj_name, obj_img in objects.items():
         print(f"Testing object: {obj_name}")
         my_blur = gaussian_blur(image=obj_img, kernel_dim=kernel_size, sigma=sigma)
-        cv_blur = cv2.GaussianBlur(src=obj_img, ksize=(kernel_size, kernel_size), sigmaX=sigma)
+        cv_blur = cv2.GaussianBlur(
+            src=obj_img, ksize=(kernel_size, kernel_size), sigmaX=sigma
+        )
         blur_diff = np.abs(my_blur - cv_blur)
         max_diff = np.max(blur_diff)
         mean_diff = np.mean(blur_diff)
@@ -97,8 +102,8 @@ def cv2_comparison():
         else:
             print(f"Notable difference {max_diff} - check padding / normalization\n")
 
-
     return my_blur, cv_blur, blur_diff
+
 
 def test_canny():
     """Compare my Canny edge detector to OpenCV's implementation"""
@@ -106,29 +111,35 @@ def test_canny():
     for obj_name, obj_img in objects.items():
         print(f"\nTesting Canny on object: {obj_name}")
         print(f"Input shape: {obj_img.shape}")
-        my_edges = canny_edge_detector(image=obj_img, low_ratio=0.2, high_ratio=0.8, sigma=1.4)
+        my_edges = canny_edge_detector(
+            image=obj_img, low_ratio=0.2, high_ratio=0.8, sigma=1.4
+        )
 
-        #CV2 implementation
-        obj_img_uint8 = (obj_img * 255).astype('uint8')
+        # CV2 implementation
+        obj_img_uint8 = (obj_img * 255).astype("uint8")
         cv_edges = cv2.Canny(image=obj_img_uint8, threshold1=50, threshold2=150)
 
-        #Compare results
+        # Compare results
         diff = np.sum(my_edges != cv_edges)
         total = my_edges.size
-        match_rate = 100*(1 - diff/total)
+        match_rate = 100 * (1 - diff / total)
 
-        print(f"Canny Edge Detection match rate: {match_rate:.2f}% ({total - diff} / {total} pixels match)\n")
-        print(f"My edge: {np.sum(my_edges > 0)} pixels\nCV2 edge: {np.sum(cv_edges > 0)} pixels")
+        print(
+            f"Canny Edge Detection match rate: {match_rate:.2f}% ({total - diff} / {total} pixels match)\n"
+        )
+        print(
+            f"My edge: {np.sum(my_edges > 0)} pixels\nCV2 edge: {np.sum(cv_edges > 0)} pixels"
+        )
 
-        fig, axes = plt.subplots(1,3, figsize=(15,5))
-        axes[0].imshow(obj_img, cmap='gray')
-        axes[0].set_title(f'Original: {obj_name}')
-        axes[1].imshow(my_edges, cmap='gray')
-        axes[1].set_title('My Canny Edges')
-        axes[2].imshow(cv_edges, cmap='gray')
-        axes[2].set_title('OpenCV Canny Edges')
+        fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+        axes[0].imshow(obj_img, cmap="gray")
+        axes[0].set_title(f"Original: {obj_name}")
+        axes[1].imshow(my_edges, cmap="gray")
+        axes[1].set_title("My Canny Edges")
+        axes[2].imshow(cv_edges, cmap="gray")
+        axes[2].set_title("OpenCV Canny Edges")
         plt.tight_layout()
-        plt.savefig(output_dir / f'canny_edge_comparison{obj_name}.png')
+        plt.savefig(output_dir / f"canny_edge_comparison{obj_name}.png")
         plt.show()
     return
 

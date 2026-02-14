@@ -24,12 +24,12 @@ class Network:
         ])
     """
 
-    def __init__ (self, layers: List[Layer]) -> None:
+    def __init__(self, layers: List[Layer]) -> None:
         """Initialize the network with a list of layers"""
         self.layers = layers
 
-    def forward (self, input: np.ndarray) -> np.ndarray:
-        """ Forward pass through all layers
+    def forward(self, input: np.ndarray) -> np.ndarray:
+        """Forward pass through all layers
         Args:
             input: Input data (batch,...)
         Returns:
@@ -40,8 +40,8 @@ class Network:
             output = layer.forward(output)
         return output
 
-    def backward (self, grad_output: np.ndarray) -> None:
-        """ Backward pass through all layers in reverse order
+    def backward(self, grad_output: np.ndarray) -> None:
+        """Backward pass through all layers in reverse order
         Args:
             grad_output: Gradient from loss function
         Returns:
@@ -53,7 +53,7 @@ class Network:
         return grad
 
     def get_params(self) -> List:
-        """ Get all trainable parameters from all layers
+        """Get all trainable parameters from all layers
         Returns:
               List of (parameter, gradient) tuples
         """
@@ -62,24 +62,25 @@ class Network:
             params.extend(layer.get_params())
         return params
 
-    def __call__ (self, input: np.ndarray) -> np.ndarray:
-        """ Allow network(input) syntax for forward pass """
+    def __call__(self, input: np.ndarray) -> np.ndarray:
+        """Allow network(input) syntax for forward pass"""
         return self.forward(input)
 
+
 class CrossEntropyLoss:
-    """ Cross-entropy loss for classification
+    """Cross-entropy loss for classification
     Combines with softmax for numerical stability
 
     Loss = -sum(y_true * log(y_pred))
     When used with softmax output, gradient simplifies to (y_pred - y_true)
     """
 
-    def __init__ (self) -> None:
+    def __init__(self) -> None:
         self.y_true = None
         self.y_pred = None
 
     def forward(self, y_pred: np.ndarray, y_true: np.ndarray) -> float:
-        """ Compute cross-entropy loss
+        """Compute cross-entropy loss
         Args:
             y_pred: Predicted probabilities (batch, num_classes)
             y_true: True labels (batch, num_classes) one-hot encoded or class indices (batch,)
@@ -105,12 +106,14 @@ class CrossEntropyLoss:
         return loss
 
     def backward(self) -> np.ndarray:
-        """ Compute gradient of loss w.r.t. predictions
+        """Compute gradient of loss w.r.t. predictions
         Returns:
             grad: Gradient (batch, num_classes)
         """
         if self.y_pred is None or self.y_true is None:
-            raise ValueError("Must call forward() before backward() to compute gradients.")
+            raise ValueError(
+                "Must call forward() before backward() to compute gradients."
+            )
 
         batch_size = self.y_pred.shape[0]
         grad = (self.y_pred - self.y_true) / batch_size
@@ -118,7 +121,7 @@ class CrossEntropyLoss:
 
     def summary(self) -> None:
         """Print model architecture summary"""
-        print("="*50)
+        print("=" * 50)
         print(f"{'layer':<30} {'Output shape':<30} {'Params':<10}")
         print("=" * 50)
 
