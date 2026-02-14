@@ -78,3 +78,5 @@ results/
 *.tar.gz
 *.npy
 *.npz
+!/week-01/notebooks/
+

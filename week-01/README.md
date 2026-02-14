@@ -143,9 +143,9 @@ Questions for tomorrow:
 - [ ] **Notes:** `notes/day3-resnet-theory.md`
 
 ### Afternoon Session (4 hours)
-- [ ] Create folder: `code/pytorch_cnn/`
-- [ ] **Rebuild** yesterday's CNN in PyTorch
-  - [ ] Verify it matches NumPy version results
+- [x] Create folder: `code/pytorch_cnn/`
+- [x] **Rebuild** yesterday's CNN in PyTorch
+  - [x] Verify it matches NumPy version results
 - [ ] **Implement** `resnet.py`:
   - [ ] `BasicBlock` (residual block)
   - [ ] `ResNet` class (full architecture)
