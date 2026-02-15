@@ -146,14 +146,14 @@ Questions for tomorrow:
 - [x] Create folder: `code/pytorch_cnn/`
 - [x] **Rebuild** yesterday's CNN in PyTorch
   - [x] Verify it matches NumPy version results
-- [ ] **Implement** `resnet.py`:
-  - [ ] `BasicBlock` (residual block)
-  - [ ] `ResNet` class (full architecture)
-  - [ ] Build ResNet-18 from scratch
-- [ ] **Implement** `train_cifar.py`:
-  - [ ] CIFAR-10 data loading
-  - [ ] Data augmentation (RandomCrop, RandomHorizontalFlip)
-  - [ ] Training loop with logging
+- [x] **Implement** `resnet.py`:
+  - [x] `BasicBlock` (residual block)
+  - [x] `ResNet` class (full architecture)
+  - [x] Build ResNet-18 from scratch
+- [x] **Implement** `train_cifar.py`:
+  - [x] CIFAR-10 data loading
+  - [x] Data augmentation (RandomCrop, RandomHorizontalFlip)
+  - [x] Training loop with logging
 
 ### Evening Session (2 hours)
 - [ ] Set up Weights & Biases (W&B)
