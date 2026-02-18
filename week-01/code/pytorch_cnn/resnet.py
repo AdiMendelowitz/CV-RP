@@ -38,8 +38,7 @@ class BasicBlock(nn.Module):
         self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(out_channels)
 
-        # Skip connection projection.
-        # Identity (not parameters needed) unless:
+        # Skip connection projection. Identity (no parameters needed) unless:
         # 1. stride>1 (spatial dims changes)
         # 2. Channel count change
         self.shortcut = nn.Sequential()
@@ -112,14 +111,10 @@ class ResNet(nn.Module):
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
         # Residual layers - each doubles channels (except for layer1)
-        # layer1: (batch, 64, 56, 56)
-        # layer2: (batch, 128, 28, 28)
-        # layer3: (batch, 256, 14, 14)
-        # layer4: (batch, 512, 7, 7)
-        self.layer1 = self._make_layer(block, 64, layers[0], stride=1)
-        self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
-        self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
-        self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
+        self.layer1 = self._make_layer(block, 64, layers[0], stride=1)  # (batch, 64, 56, 56)
+        self.layer2 = self._make_layer(block, 128, layers[1], stride=2) # (batch, 128, 28, 28)
+        self.layer3 = self._make_layer(block, 256, layers[2], stride=2) # (batch, 256, 14, 14)
+        self.layer4 = self._make_layer(block, 512, layers[3], stride=2) # (batch, 512, 7, 7)
 
         # Global average pooling: (batch, 512, 7, 7) -> (batch, 512, 1, 1)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
@@ -145,10 +140,9 @@ class ResNet(nn.Module):
             Sequential container of blocks
         """
 
-        layers = []
+        layers = [block(self.current_channels, out_channels, stride)]
 
         # First block: downsampling and channel change
-        layers.append(block(self.current_channels, out_channels, stride))
         self.current_channels = out_channels # Update for next block
 
         # Remaining blocks: same channels, no downsampling
@@ -221,7 +215,7 @@ def resnet18(num_classes: int=1000, in_channels: int=3) -> ResNet:
     """
     return ResNet(BasicBlock, [2, 2, 2, 2], num_classes=num_classes, in_channels=in_channels)
 
-def resent34(num_classes: int=1000, in_channels: int=3) -> ResNet:
+def resnet34(num_classes: int=1000, in_channels: int=3) -> ResNet:
     """
     ResNet-34: 34 weight layers
     Config: [3, 4, 6, 3] BasicBlock
@@ -270,7 +264,7 @@ if __name__ == '__main__':
     block_identity = BasicBlock(64, 64, stride=1)
     x_block = torch.randn(2, 64, 56, 56)
     out_block = block_identity(x_block)
-    assert out_block.shape == out_block.shape, f"in block shape: {x_block.shape}, output shape: {out_block.shape}"
+    assert out_block.shape == x_block.shape, f"in block shape: {x_block.shape}, output shape: {out_block.shape}"
     print("Identity block correct")
 
     # Projection shortcut (different channels, stride=2)

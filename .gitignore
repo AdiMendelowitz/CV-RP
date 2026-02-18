@@ -92,3 +92,5 @@ week-01/README.md
 !/START_HERE.md
 START_HERE.md
 PROGRESS.md
+/week-01/code/pytorch_cnn/cnn_resent_pytorch_walkthroughs.md
+!/week-01/code/pytorch_cnn/resnet_cnn_walkthroughs.md

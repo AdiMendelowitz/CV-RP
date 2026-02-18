@@ -7,10 +7,14 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import dataloader, TensorDataset
 import numpy as np
-from tensorflow import keras
+from torchvision import datasets, transforms
 
+# Fix seeds for initializations, makes results reproducible
 torch.manual_seed(42)
 np.random.seed(42)
+
+# If using GPU:
+# torch.backends.cudnn.deterministic = True
 
 
 class CNNPyTorch(nn.Module):
@@ -31,7 +35,7 @@ class CNNPyTorch(nn.Module):
         # Layer 2
         self.conv2 = nn.Conv2d(8, 16, kernel_size=3, padding=1)  # Output: (16, 14, 14)
         self.relu2 = nn.ReLU()
-        self.pool2 = nn.MaxPool2d(kernel_size=2)
+        self.pool2 = nn.MaxPool2d(kernel_size=2)    # Output: (16, 7, 7)
 
         # Layer 3
         self.fc1 = nn.Linear(16 * 7 * 7, 128)
@@ -53,7 +57,7 @@ class CNNPyTorch(nn.Module):
         x = self.pool2(x)  # (batch_size, 16, 14, 14) -> (batch_size, 16, 7, 7)
 
         # Flatten
-        x = x.view(x.size(0), -1)  # (batch_size, 16, 7, 7) -> (batch_size, 16*7*7)
+        x = torch.flatten(x, 1) # (batch_size, 16, 7, 7) -> (batch_size, 16*7*7)
 
         # Dense Layers
         x = self.fc1(x)  # (batch_size, 16*7*7) -> (batch_size, 128)
@@ -78,11 +82,12 @@ def train_pytorch(model, train_loader, test_loader, num_epochs=5, lr=0.01):
         train_correct, train_total = 0, 0
 
         for inputs, labels in train_loader:
+            optimizer.zero_grad() # Clear gradients from previous iterations
+
             outputs = model(inputs)  # Forward pass
             loss = criterion(outputs, labels)
 
-            optimizer.zero_grad()  # Backward pass
-            loss.backward()
+            loss.backward()          # Backward pass
             optimizer.step()
 
             # Statistics
@@ -92,7 +97,7 @@ def train_pytorch(model, train_loader, test_loader, num_epochs=5, lr=0.01):
             train_correct += (predicted == labels).sum().item()
 
         # Training metrics
-        avg_trian_loss = train_loss / len(train_loader)
+        avg_train_loss = train_loss / len(train_loader)
         train_acc = train_correct / train_total
 
         # Evaluation phase
@@ -115,14 +120,14 @@ def train_pytorch(model, train_loader, test_loader, num_epochs=5, lr=0.01):
         test_acc = test_correct / test_total
 
         # Save history
-        history["train_loss"].append(avg_trian_loss)
+        history["train_loss"].append(avg_train_loss)
         history["train_acc"].append(train_acc)
         history["test_loss"].append(avg_test_loss)
         history["test_acc"].append(test_acc)
 
         print(
             f"epoch {epoch+1}/{num_epochs} - "
-            f"train_loss: {avg_trian_loss:.4f}, train_acc: {train_acc:.4f}, "
+            f"train_loss: {avg_train_loss:.4f}, train_acc: {train_acc:.4f}, "
             f"test_loss: {avg_test_loss:.4f}, test_acc: {test_acc:.4f}"
         )
     return history
@@ -134,31 +139,28 @@ def main():
     print("=" * 50)
 
     print("\nLoading MNIST dataset...")
-    (x_train, y_train), (X_test, y_test) = keras.datasets.mnist.load_data()
+    # Define transforms: convers PIL image to tensor and scales to [0,1]
+    transform = transforms.Compose([
+        transforms.ToTensor(),       # Automatically scales to [0, 1] and adds channel dim
+        transforms.Normalize((0.1307,), (0.3081,))  # MNIST mean and std
+    ])
 
-    # Same subset as Numpy version for fair comparison
-    X_train = x_train[:5000]
-    y_train = y_train[:5000]
-    X_test = X_test[:1000]
-    y_test = y_test[:1000]
+    train_dataset_full = datasets.MNIST(
+        root='./data',   # Downloads to specified directory
+        train=True,
+        download=True,      # Downloads if not present
+        transform=transform
+    )
 
-    # Preprocess data
-    X_train = X_train[:, np.newaxis, :, :].astype(np.float32) / 255.0
-    X_test = X_test[:, np.newaxis, :, :].astype(np.float32) / 255.0
+    test_dataset_full = datasets.MNIST(root='./data', train=False, download=True, transform=transform)
 
-    print(f"Train: {X_train.shape}, Test: {X_test.shape}")
+    train_subset = torch.utils.data.Subset(train_dataset_full, range(5000))
+    test_subset = torch.utils.data.Subset(test_dataset_full, range(5000))
 
-    # Create PyTorch datasets and loaders
-    X_train_torch = torch.from_numpy(X_train)
-    y_train_torch = torch.from_numpy(y_train).long()
-    X_test_torch = torch.from_numpy(X_test)
-    y_test_torch = torch.from_numpy(y_test).long()
+    print(f"Train: {len(train_subset)} samples, Test: {len(test_subset)} samples")
 
-    train_dataset = TensorDataset(X_train_torch, y_train_torch)
-    test_dataset = TensorDataset(X_test_torch, y_test_torch)
-
-    train_loader = dataloader.DataLoader(train_dataset, batch_size=64, shuffle=True)
-    test_loader = dataloader.DataLoader(test_dataset, batch_size=64, shuffle=False)
+    train_loader = torch.utils.data.DataLoader(train_subset, batch_size=64, shuffle=True)
+    test_loader = torch.utils.data.DataLoader(test_subset, batch_size=64, shuffle=False)
 
     # Initialize model
     print("\nInitializing PyTorch CNN model...")
@@ -197,9 +199,9 @@ def main():
     model.eval()
     with torch.no_grad():
         # 10 random samples
-        indices = np.random.choice(len(X_test), 10, replace=False)
-        samples = X_test_torch[indices]
-        labels = y_test_torch[indices]
+        indices = np.random.choice(len(test_subset), 10, replace=False)
+        samples = torch.stack([test_subset[i][0] for i in indices])
+        labels = torch.stack([test_subset[i][1] for i in indices])
 
         outputs = model(samples)
         _, predicted = torch.max(outputs.data, 1)
