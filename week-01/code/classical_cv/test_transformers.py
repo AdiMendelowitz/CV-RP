@@ -1,14 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
-from transformers import (
-    get_affine_transform,
-    get_perspective_transform,
-    warp_affine,
-    warp_perspective,
-    rotate,
-    resize,
-)
+from transformers import get_affine_transform,get_perspective_transform, warp_affine, warp_perspective, rotate
+
+from pathlib import Path
+output_dir = Path(__file__).parent / "outputs"
+output_dir.mkdir(parents=True, exist_ok=True)
 
 
 def test_affine():
@@ -42,7 +39,7 @@ def test_affine():
     axes[2].imshow(warped_cv, cmap="gray")
     axes[2].set_title("OpenCV Affine Warp")
     plt.tight_layout()
-    plt.savefig("affine_test.png")
+    plt.savefig(output_dir / "affine_test.png")
     plt.show()
 
 
@@ -77,7 +74,7 @@ def test_perspective():
     axes[2].imshow(warped_cv, cmap="gray")
     axes[2].set_title("OpenCV Perspective Warp")
     plt.tight_layout()
-    plt.savefig("perspective_test.png")
+    plt.savefig(output_dir /"perspective_test.png")
     plt.show()
 
 
@@ -101,7 +98,7 @@ def test_rotation():
     axes[2].imshow(rotated_cv, cmap="gray")
     axes[2].set_title("OpenCV Rotation")
     plt.tight_layout()
-    plt.savefig("rotation_test.png")
+    plt.savefig(output_dir /"rotation_test.png")
     plt.show()
 
 

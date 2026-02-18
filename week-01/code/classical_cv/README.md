@@ -102,7 +102,7 @@ Gaussian blur applied to all three test images as a preprocessing step. The blur
 ---
 
 ### Rotation (45°)
-![Rotation](rotation_test.png)
+![Rotation](outputs/rotation_test.png)
 
 **My result matches OpenCV exactly.**
 
@@ -111,7 +111,7 @@ Rotation implemented via the standard 2D rotation matrix centered at the image m
 ---
 
 ### Affine Warp
-![Affine Warp](affine_test.png)
+![Affine Warp](outputs/affine_test.png)
 
 **My result matches OpenCV with sub-pixel accuracy.**
 
@@ -120,7 +120,7 @@ Affine transformation implemented via inverse mapping with the 2×3 affine matri
 ---
 
 ### Perspective Warp
-![Perspective Warp](perspective_test.png)
+![Perspective Warp](outputs/perspective_test.png)
 
 **My result matches OpenCV.**
 

@@ -2,6 +2,10 @@ import numpy as np
 from typing import Tuple, Optional, Any
 import matplotlib.pyplot as plt
 
+from pathlib import Path
+output_dir = Path(__file__).parent / "outputs"
+output_dir.mkdir(parents=True, exist_ok=True)
+
 
 def _pad_image(
     image: np.ndarray, pad_h: int, pad_w: int, mode: str = "zero"
@@ -146,7 +150,7 @@ if __name__ == "__main__":
     axes[0].set_title("Original (Sharp Edges)")
     axes[1].imshow(blurred_img, cmap="gray")
     axes[1].set_title("Gaussian Blur (σ=3)")
-    plt.savefig("gaussian_test.png")
+    plt.savefig(output_dir /"gaussian_test.png")
     print("Saved gaussian_test.png")
 
     # Test Sobel on diagonal edge
@@ -177,6 +181,6 @@ if __name__ == "__main__":
         ax.axis("off")
 
     plt.tight_layout()
-    plt.savefig("sobel_visualization.png", dpi=150, bbox_inches="tight")
+    plt.savefig(output_dir /"sobel_visualization.png", dpi=150, bbox_inches="tight")
     print("Saved: sobel_visualization.png")
     plt.show()
