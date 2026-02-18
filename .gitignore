@@ -55,9 +55,7 @@ desktop.ini
 .tmp/
 
 # Output images and videos (regeneratable)
-outputs/
 results/
-*.png
 *.jpg
 *.jpeg
 *.gif
