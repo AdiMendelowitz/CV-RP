@@ -249,10 +249,10 @@ class TransformerBlock(nn.Module):
         """
 
         # Attention block with residual
-        x += self.attn(self.norm1(x))
+        x = x + self.attn(self.norm1(x))
 
         # MLP with residual
-        x += self.mlp(self.norm2(x))
+        x = x + self.mlp(self.norm2(x))
 
         return x
 

@@ -2,7 +2,6 @@
 
 [![Python](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-red.svg)](https://pytorch.org/)
-[![Code style: professional](https://img.shields.io/badge/code%20style-professional-black)](https://github.com/psf/black)
 
 Production-grade implementations of CNN architectures in PyTorch: from basic convolutional networks to deep residual learning (ResNet-18). Built from scratch with rigorous testing and verified against established benchmarks.
 

@@ -95,3 +95,4 @@ PROGRESS.md
 /computer-vision-foundations/notebooks/
 notebooks/
 **/notebooks/
+!/computer-vision-foundations/notebooks/
