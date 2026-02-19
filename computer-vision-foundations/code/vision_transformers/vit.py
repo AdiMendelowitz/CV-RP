@@ -9,9 +9,6 @@ Key Innovation: Treat images as sequences of patches, apply standard Transformer
 import torch
 import torch.nn as nn
 from typing import Optional
-import math
-
-from torchvision.prototype.models import depth
 
 
 class PatchEmbedding(nn.Module):

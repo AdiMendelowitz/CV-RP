@@ -45,7 +45,7 @@ def evaluate_model(model, test_loader, device):
 
     with torch.no_grad():
         for inputs, labels in test_loader:
-            intputs, labels = inputs.to(device), labels.to(device)
+            inputs, labels = inputs.to(device), labels.to(device)
 
             outputs = model(inputs)
             _, predicted = outputs.max(1)
@@ -56,7 +56,7 @@ def evaluate_model(model, test_loader, device):
             # Per class accuracy
             for i in range(len(labels)):
                 label = labels[i].item()
-                class_correct[label] += (predicted[i] == labels).item()
+                class_correct[label] += (predicted[i] == labels[i]).item()
                 class_total[label] += 1
 
     overall_accuracy = 100.*sum(class_correct) / sum(class_total)
