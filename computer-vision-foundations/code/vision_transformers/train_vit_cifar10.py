@@ -220,7 +220,7 @@ def train_vit_tiny(num_epochs=100, batch_size=64, lr=0.001, weight_decay=0.05, w
     print("Loading CIFAR-10 dataset...")
     print("=" * 70)
     train_loader, test_loader = get_cifar10_dataloaders(
-        batch_size=batch_size, num_workers=TRAINING_CONFIG['num_workers'], data_dir=TRAINING_CONFIG['data_dir'],
+        batch_size=batch_size, num_workers=DATA_CONFIG['num_workers'], data_dir=DATA_CONFIG['data_dir'],
     )
     print(f"Train samples: {len(train_loader.dataset)}")
     print(f"Test samples: {len(test_loader.dataset)}")
@@ -359,7 +359,7 @@ if __name__ == '__main__':
         num_epochs=TRAINING_CONFIG['num_epochs'],
         batch_size=TRAINING_CONFIG['batch_size'],
         lr=TRAINING_CONFIG['learning_rate'],
-        weight_decay=TRAINING_CONFIG['weight_dect'],
+        weight_decay=TRAINING_CONFIG['weight_decay'],
         warmup_epochs=TRAINING_CONFIG['warmup_epochs'],
         early_stopping_patience=10
     )
