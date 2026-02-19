@@ -3,11 +3,11 @@
 [![Python](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-red.svg)](https://pytorch.org/)
 
-Production-grade implementations of CNN architectures in PyTorch: from basic convolutional networks to deep residual learning (ResNet-18). Built from scratch with rigorous testing and verified against established benchmarks.
+Implementations of CNN architectures in PyTorch: from basic convolutional networks to deep residual learning (ResNet-18). Built from scratch with rigorous testing and verified against established benchmarks.
 
 ## 🎯 Overview
 
-This directory contains clean, professional implementations of:
+This directory implementations of:
 
 1. **Basic CNN** - Foundational convolutional neural network for MNIST
 2. **ResNet-18** - Deep residual learning with skip connections for CIFAR-10
@@ -377,20 +377,6 @@ Demonstrates:
 - High confidence on correct predictions
 - Reasonable uncertainty on mistakes
 - Good visual features learned
-
----
-
-## 🎯 Technical Competencies Demonstrated
-
-This implementation showcases:
-
-1. ✅ **Deep learning fundamentals** - CNNs, residual learning, batch normalization
-2. ✅ **PyTorch proficiency** - Custom modules, training loops, optimization
-3. ✅ **Research implementation** - Translating papers into production code
-4. ✅ **Software engineering** - Clean architecture, testing, documentation
-5. ✅ **Experimental rigor** - Reproducible experiments, proper validation
-6. ✅ **Performance optimization** - Achieving published benchmark results
-7. ✅ **Technical communication** - Clear code, comprehensive documentation
 
 ---
 
