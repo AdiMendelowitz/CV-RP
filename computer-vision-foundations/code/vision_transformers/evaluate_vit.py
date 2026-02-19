@@ -237,7 +237,6 @@ def main():
     ])
 
     test_dataset = datasets.CIFAR10(root='./data', train=False, download=True, transform=test_transform)
-
     test_loader = DataLoader(test_dataset,batch_size=128, shuffle=False, num_workers=0)
 
     print("\nEvaluating model...")
