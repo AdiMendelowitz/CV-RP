@@ -4,7 +4,7 @@
 [![NumPy](https://img.shields.io/badge/NumPy-1.26-green.svg)](https://numpy.org/)
 [![Verified](https://img.shields.io/badge/verified-OpenCV-blue.svg)](https://opencv.org/)
 
-Production-quality implementations of fundamental computer vision algorithms using **NumPy exclusively**, with comprehensive verification against OpenCV reference implementations.
+Fundamental computer vision algorithms using **NumPy exclusively**, with comprehensive verification against OpenCV reference implementations.
 
 **Scope:** Edge detection, image filtering, and geometric transformations built from mathematical first principles.
 
@@ -333,19 +333,6 @@ Forward mapping (map source → destination) can leave holes in output. Inverse 
 
 ### 6. Perspective ≠ Affine
 Affine preserves parallel lines (rotation, scale, shear). Perspective breaks parallelism (simulates 3D viewpoint). This distinction is fundamental in projective geometry.
-
----
-
-## 🎯 Technical Competencies Demonstrated
-
-This implementation showcases:
-
-1. ✅ **Classical CV foundations** — Edge detection, filtering, geometric transformations
-2. ✅ **Mathematical rigor** — Convolution, gradient computation, homogeneous coordinates
-3. ✅ **Numerical methods** — Kernel generation, interpolation, matrix inversion
-4. ✅ **Verification discipline** — Quantitative comparison with OpenCV reference
-5. ✅ **Algorithm analysis** — Understanding failure modes, threshold sensitivity, NMS precision
-6. ✅ **Clean implementation** — Modular code, clear documentation, production patterns
 
 ---
 

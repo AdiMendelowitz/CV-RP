@@ -13,7 +13,7 @@
 *   **Edge Detection as Taking Derivatives:** Finding edges in an image is mathematically equivalent to **taking derivatives** of the image function. First-order derivatives (like Sobel) identify the **gradient field**, while second-order derivatives (like the **Laplacian**) respond to rapid changes in the gradient, such as corners or lines,. Because differentiation linearly magnifies higher frequencies, it effectively highlights the sharp transitions that define object boundaries.
 
 
-# Day 1 - Canny Edge Detector
+# Canny Edge Detector
 
 ## Implementation
 - Location: `code/classical_cv/edge_detection.py`
@@ -51,7 +51,7 @@
 - Homogeneous coordinates for projective geometry
 - SVD solves overconstrained systems
 
-# Unit Tests - Week 1
+# Unit Tests
 
 ## Coverage
 - ✅ Filters: Gaussian blur, Sobel, Convolution

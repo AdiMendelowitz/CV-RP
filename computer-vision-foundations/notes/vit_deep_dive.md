@@ -527,44 +527,6 @@ CNNs have built-in regularization via inductive bias (locality, weight sharing).
 
 ---
 
-## Interview Questions
-
-### Q1: Why do Vision Transformers work despite having no spatial inductive bias?
-
-**Answer:** With sufficient data (>10M images), Transformers can learn spatial relationships that CNNs get for free through convolutions. Self-attention discovers local patterns in early layers and global relationships in later layers. On small datasets, CNNs outperform due to inductive bias, but on large datasets, ViT's flexibility wins.
-
-### Q2: What is the purpose of the CLS token?
-
-**Answer:** The CLS token is a learnable embedding prepended to the sequence. Through self-attention, it aggregates information from all patch tokens. After the final layer, it contains a global representation of the entire image, used for classification. Alternative: average pooling over all patches, but CLS empirically works better.
-
-### Q3: Why scale the attention scores by √d_k?
-
-**Answer:** Dot products grow with dimensionality. For large d_k, unscaled dot products can be very large, pushing softmax into regions with tiny gradients (saturation). Scaling by √d_k normalizes the dot product magnitude, keeping softmax in a range with healthy gradients.
-
-### Q4: What's the complexity of self-attention?
-
-**Answer:** O(n²d) where n is sequence length and d is embedding dimension. For each of n tokens, we compute attention to all n tokens (n² interactions), each requiring d-dimensional operations. This is quadratic in sequence length, which is why ViT uses patches (reducing n from 224² to ~200).
-
-### Q5: Pre-LN vs Post-LN: what's the difference?
-
-**Answer:**  
-**Post-LN:** `x = LayerNorm(x + Attention(x))`  
-**Pre-LN:** `x = x + Attention(LayerNorm(x))`
-
-Pre-LN normalizes before the attention/MLP, making gradients flow more cleanly through residuals. It's more stable for deep models (100+ layers) and is now standard in modern Transformers.
-
-### Q6: Why does ViT need more augmentation than CNNs?
-
-**Answer:** CNNs have built-in regularization through spatial inductive bias (locality, translation equivariance, weight sharing). ViT has no such bias and higher capacity (more parameters), so it overfits easily without heavy augmentation. Techniques like RandAugment, MixUp, CutMix, and strong dropout compensate.
-
-### Q7: How do you choose patch size?
-
-**Answer:**  
-- **Smaller patches (8×8)**: More tokens, finer detail, higher accuracy, but much slower (4× more patches than 16×16)
-- **Larger patches (32×32)**: Fewer tokens, faster, but loses fine-grained information
-- **16×16 is standard**: Good balance between speed and accuracy
-
-**Rule of thumb:** Use 16×16 unless you have specific requirements (speed → 32×32, fine detail → 8×8).
 
 ---
 

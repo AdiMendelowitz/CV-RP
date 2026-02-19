@@ -12,18 +12,6 @@ Every component implemented manually: convolution operations, backpropagation th
 
 ---
 
-## 🎯 Technical Achievement
-
-Most engineers can call `model.fit()`. This implementation demonstrates the ability to build the engine itself.
-
-**Core competencies:**
-- **Mathematical rigor** — Backpropagation and chain rule implemented from first principles
-- **Low-level systems** — Operations typically abstracted by PyTorch/TensorFlow built from scratch
-- **Numerical debugging** — Diagnosing gradient computation errors requires complete mathematical understanding
-- **Verification methodology** — Results validated against PyTorch reference implementation
-
----
-
 ## 📊 Results
 
 ### MNIST Handwritten Digit Classification
@@ -282,19 +270,6 @@ Synthetic pattern data caught gradient bugs before MNIST exposed them. Progressi
 
 ### 6. NumPy is Sufficient for Correctness
 Frameworks add speed and convenience, not mathematical correctness. This implementation proves deep learning is "just" applied calculus and linear algebra.
-
----
-
-## 🎯 Technical Competencies Demonstrated
-
-This implementation showcases:
-
-1. ✅ **Mathematical foundations** — Backpropagation, chain rule, gradient computation from first principles
-2. ✅ **Numerical methods** — Convolution operations, gradient flow, optimization algorithms
-3. ✅ **Systems implementation** — Building framework-level abstractions (layers, networks, optimizers)
-4. ✅ **Verification discipline** — Synthetic validation, PyTorch cross-verification, incremental testing
-5. ✅ **Debugging methodology** — Gradient checking, shape tracking, numerical stability analysis
-6. ✅ **Software architecture** — Modular layer design, clean separation of concerns
 
 ---
 
