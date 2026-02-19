@@ -22,7 +22,7 @@ from typing import Tuple, Optional
 import logging
 from tqdm import tqdm
 from vit import VisionTransformer
-
+from config_vit_cifar10 import MODEL_CONFIG, TRAINING_CONFIG, DATA_CONFIG
 
 CIFAR10_MEAN = (0.4914, 0.4822, 0.4465)
 CIFAR10_STD = (0.2470, 0.2435, 0.2616)
@@ -219,7 +219,9 @@ def train_vit_tiny(num_epochs=100, batch_size=64, lr=0.001, weight_decay=0.05, w
     print("\n" + "=" * 70)
     print("Loading CIFAR-10 dataset...")
     print("=" * 70)
-    train_loader, test_loader = get_cifar10_dataloaders(batch_size=batch_size)
+    train_loader, test_loader = get_cifar10_dataloaders(
+        batch_size=batch_size, num_workers=TRAINING_CONFIG['num_workers'], data_dir=TRAINING_CONFIG['data_dir'],
+    )
     print(f"Train samples: {len(train_loader.dataset)}")
     print(f"Test samples: {len(test_loader.dataset)}")
     print(f"Batch size: {batch_size}")
@@ -354,11 +356,11 @@ if __name__ == '__main__':
 
     # Train ViT-Tiny on CIFAR-10 (CPU-optimized)
     history, model = train_vit_tiny(
-        num_epochs=100,  # Reduced for CPU (50 for quick test, 100 for full run)
-        batch_size=64,  # Reduced for CPU efficiency
-        lr=0.001,  # Peak learning rate
-        weight_decay=0.05,  # Weight decay for regularization
-        warmup_epochs=10,  # Linear warmup
+        num_epochs=TRAINING_CONFIG['num_epochs'],
+        batch_size=TRAINING_CONFIG['batch_size'],
+        lr=TRAINING_CONFIG['learning_rate'],
+        weight_decay=TRAINING_CONFIG['weight_dect'],
+        warmup_epochs=TRAINING_CONFIG['warmup_epochs'],
         early_stopping_patience=10
     )
 
