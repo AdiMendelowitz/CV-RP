@@ -14,6 +14,7 @@
 - [Component 4: VisionTransformer](#component-4-visiontransformer)
 - [Why This Works](#why-this-works)
 - [ViT vs CNNs](#vit-vs-cnns)
+- [ViT vs "Attention Is All You Need"](#vit-vs-attention-is-all-you-need-2017)
 - [Training Considerations](#training-considerations)
 - [Interview Questions](#interview-questions)
 
@@ -444,6 +445,101 @@ ViT is more computationally expensive but often more accurate.
 - ConvNeXt: CNN designed to match ViT performance
 - Swin Transformer: ViT with local windows (more efficient)
 - CoAtNet: Combine conv stem + transformer stages
+
+---
+
+## ViT vs "Attention Is All You Need" (2017)
+
+The original Transformer (Vaswani et al., 2017) was designed for sequence-to-sequence tasks like machine translation. ViT borrows the encoder but drops almost everything else. Understanding what changed and why is essential for reading either paper.
+
+### What the Original Transformer Looks Like
+
+```
+Encoder:                          Decoder:
+Input tokens                      Output tokens (shifted right)
+    ↓                                 ↓
+Positional Encoding               Positional Encoding
+    ↓                                 ↓
+[Multi-Head Self-Attention]       [Masked Multi-Head Self-Attention]
+[Add & Norm]                      [Add & Norm]
+[Feed Forward]                        ↓
+[Add & Norm]                      [Multi-Head Cross-Attention]  ← attends to encoder output
+    ↓ (×N layers)                 [Add & Norm]
+Encoder Output                    [Feed Forward]
+                                  [Add & Norm]
+                                      ↓ (×N layers)
+                                  Linear + Softmax
+                                  Output probabilities
+```
+
+ViT uses **only the encoder stack**. There is no decoder, no cross-attention, no masked attention.
+
+### The Three Types of Attention — and Which ViT Uses
+
+**1. Self-attention** (encoder): every token attends to every other token in the same sequence. This is what ViT uses exclusively.
+
+**2. Masked self-attention** (decoder): same as self-attention but future tokens are masked so the decoder can't "cheat" by looking ahead. Irrelevant for ViT — there's no sequence generation.
+
+**3. Cross-attention** (encoder-decoder bridge): queries come from the decoder, keys and values come from the encoder output. This is how the decoder "reads" the encoded input. ViT drops this entirely because classification doesn't require generating an output sequence.
+
+### Post-LN vs Pre-LN
+
+This is the most architecturally significant difference between the 2017 paper and ViT.
+
+**Original Transformer — Post-LN:**
+```python
+x = LayerNorm(x + Attention(x))
+x = LayerNorm(x + MLP(x))
+```
+
+**ViT — Pre-LN:**
+```python
+x = x + Attention(LayerNorm(x))
+x = x + MLP(LayerNorm(x))
+```
+
+In Post-LN, the residual stream passes through LayerNorm before continuing. The gradient of the loss must flow through the LayerNorm at every layer — and early in training, before the model has converged, this can destabilise the gradient signal. Post-LN requires careful learning rate warmup to avoid divergence.
+
+In Pre-LN, LayerNorm is applied only inside the residual branch. The shortcut path (`x +`) is untouched, so gradients always have a clean direct path back to earlier layers regardless of what happens inside the branches. This is why ViT trains more stably and is less sensitive to warmup length.
+
+### Positional Encoding: Fixed vs Learnable
+
+**Original Transformer — fixed sinusoidal:**
+```python
+PE(pos, 2i)   = sin(pos / 10000^(2i/d_model))
+PE(pos, 2i+1) = cos(pos / 10000^(2i/d_model))
+```
+
+The encoding is deterministic — position 5 always gets the same vector, computed by formula. The motivation was that sinusoids allow the model to extrapolate to sequence lengths not seen during training (you can compute `sin` for any position), and the relative offset between two positions is always a linear function of their encodings.
+
+**ViT — learnable:**
+```python
+self.positional_embedding = nn.Parameter(torch.randn(1, n_patches + 1, embed_dim))
+```
+
+Just a tensor of parameters updated by the optimiser like any other weight. The ViT paper ablated both and found no meaningful accuracy difference. Learnable is simpler to implement and now the default in most vision work. The tradeoff: learnable positional embeddings don't generalise to different input resolutions without interpolation, whereas sinusoidal ones can.
+
+### What ViT Kept Unchanged
+
+Everything inside the attention operation itself is identical to the 2017 paper:
+
+```
+Attention(Q, K, V) = softmax(QK^T / √d_k) V
+```
+
+The multi-head split, the QKV projection, the scaling factor, the output projection, the 4× MLP expansion ratio, dropout placement — all of it is carried over directly. When you read ViT's attention code, you're reading a direct implementation of Section 3.2 of "Attention Is All You Need."
+
+### Summary Table
+
+| | Attention Is All You Need (2017) | ViT (2020) |
+|---|---|---|
+| Architecture | Encoder + Decoder | Encoder only |
+| Attention types | Self + Masked self + Cross | Self only |
+| LayerNorm position | Post-LN | Pre-LN |
+| Positional encoding | Fixed sinusoidal | Learnable |
+| Input | Token embeddings | Patch embeddings |
+| Output | Next-token probabilities | Class logits |
+| Task | Sequence-to-sequence | Classification |
 
 ---
 

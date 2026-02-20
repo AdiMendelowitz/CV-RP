@@ -97,3 +97,4 @@ notebooks/
 **/notebooks/
 !/computer-vision-foundations/notebooks/
 !/computer-vision-foundations/code/vision_transformers/vit_learning_guide.md
+!/computer-vision-foundations/code/vision_transformers/vit_learning_guide.md
