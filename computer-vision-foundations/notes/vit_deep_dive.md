@@ -663,6 +663,3 @@ CNNs have built-in regularization via inductive bias (locality, weight sharing).
 - ViT training recipes and ablations
 
 ---
-
-**Status:** Implementation complete ✅  
-**Next:** Train ViT on CIFAR-10 and compare with ResNet performance

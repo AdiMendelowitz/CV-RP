@@ -290,3 +290,11 @@ If using this for research:
 ---
 
 **Good luck with training!** 🚀
+
+
+---
+## 👤 Author
+
+**Adi Mendelowitz**  
+Machine Learning Engineer  
+Specialization: Computer Vision & Image Processing
