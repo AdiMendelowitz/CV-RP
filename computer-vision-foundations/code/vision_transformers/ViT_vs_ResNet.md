@@ -137,3 +137,11 @@ ResNet's 3×3 convolutions enforce that nearby pixels are related. Every filter 
 ViT starts with no such assumption. The positional embeddings give it the *opportunity* to learn spatial relationships, but learning which of the 65×65 = 4,225 pairwise relationships matter takes a lot of data. On 50K examples distributed across 10 classes, that's only 5K examples per class — not enough for the attention mechanism to fully specialise.
 
 This is why the ViT paper's main claim is specifically about scale: the whole point is that at >10M images, the flexibility of attention produces better representations than the rigidity of convolution. Testing it in exactly the regime where it was predicted to underperform, and it underperforms by the predicted amount.
+
+
+---
+## 👤 Author
+
+**Adi Mendelowitz**  
+Machine Learning Engineer  
+Specialization: Computer Vision & Image Processing

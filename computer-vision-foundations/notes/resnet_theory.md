@@ -183,7 +183,7 @@ Without skip connections, forcing 16 layers to learn exact identity mapping is e
 
 ## Implementation Details
 
-### Basic Residual Block (from your code)
+### Basic Residual Block
 
 ```python
 def forward(self, x):
@@ -390,6 +390,8 @@ Even more gradient highways, but more memory intensive.
 5. Block becomes identity mapping — still useful (network learned this block shouldn't change features)
 
 ---
+## 👤 Author
 
-**Status:** Theory understood ✅  
-**Next:** Implement ResNet-18 from scratch and verify against PyTorch reference
+**Adi Mendelowitz**  
+Machine Learning Engineer  
+Specialization: Computer Vision & Image Processing

@@ -59,3 +59,10 @@ Trained on 5,000 samples, tested on 1,000 samples:
 - Average: 90.94%
 
 Built with **NumPy only** - no deep learning frameworks!
+
+----------------------
+## 👤 Author
+
+**Adi Mendelowitz**  
+Machine Learning Engineer  
+Specialization: Computer Vision & Image Processing
