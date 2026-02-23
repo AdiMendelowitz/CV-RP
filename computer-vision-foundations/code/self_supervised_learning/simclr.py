@@ -115,7 +115,7 @@ class SimCLR(nn.Module):
     def __init__(self, base_encoder: str = 'resent18', out_dim: int = 128) -> None:
         super().__init__()
 
-        encoder = getattr(models, base_encoder)(weight=None)
+        encoder = getattr(models, base_encoder)(weights=None)
         hidden_dim = encoder.fc.in_features
 
         # Remove classification head, keep the feature extractor up to avg pool

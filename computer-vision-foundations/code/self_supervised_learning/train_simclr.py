@@ -131,7 +131,7 @@ def pretrain(args: argparse.Namespace) -> None:
             )
             logger.info(f"Checkpoint saved: {ckpt_path}")
 
-        logger.info("Pretraining complete.")
+    logger.info("Pretraining complete.")
 
 
 # ---------------------------------------------------------------------------
