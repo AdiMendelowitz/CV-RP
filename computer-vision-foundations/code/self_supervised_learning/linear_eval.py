@@ -90,7 +90,7 @@ def load_frozen_encoder(checkpoint_path: str, encoder_name: str, device: torch.d
         raise FileNotFoundError(f"Checkpoint not found: {ckpt_path}")
 
     ckpt = torch.load(ckpt_path, map_location="cpu")
-    model = SimCLR(base_encoder=encoder_name)
+    model = SimCLR(base_encoder=encoder_name, out_dim=512)
     model.load_state_dict(ckpt["model_state_dict"])
 
     encoder = model.encoder
@@ -279,7 +279,7 @@ def linear_eval(args: argparse.Namespace) -> None:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Linear evaluation of SimCLR encoder")
 
-    parser.add_argument("--checkpoint", type=str, required=True, help="Path to SimCLR checkpoint (.pt)")
+    parser.add_argument("--checkpoint", type=str, required=True, help="./checkpoints/simclr/simclr_epoch100.pt")
     parser.add_argument("--data-dir", type=str, default="./data")
     parser.add_argument("--encoder", type=str, default="resnet18", choices=list(ENCODER_DIMS.keys()))
     parser.add_argument("--num-classes", type=int, default=10)
