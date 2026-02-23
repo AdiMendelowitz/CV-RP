@@ -44,7 +44,7 @@ This is what you keep and fine-tune downstream.
 ### 3. Projection Head g(·)
 Small 2-layer MLP mapping `h → z`. Used **only during pretraining**, then discarded.
 
-**Why it helps (non-obvious finding):** The projector absorbs augmentation-specific information, freeing `h` to encode general semantics. Without it, the encoder must satisfy the contrastive objective directly, degrading representation quality.
+**Why it helps:** The projector absorbs augmentation-specific information, freeing `h` to encode general semantics. Without it, the encoder must satisfy the contrastive objective directly, degrading representation quality.
 
 This insight — keeping `h` not `z` — recurs throughout the SSL literature.
 
@@ -103,8 +103,6 @@ Same loss and framework as v1. Three changes:
 - **DINO** — best off-the-shelf ViT features, excellent for downstream tasks
 - **MAE** — scalable, state of the art for pretraining
 - **SimCLR** — study and implement to understand contrastive learning; not for production
-
-**For your portfolio:** SimCLR implementation demonstrates SSL fluency. NT-Xent loss and the projector trick appear in DINO, MoCo v3, and elsewhere — understanding them here pays forward.
 
 ---
 
