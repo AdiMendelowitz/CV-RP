@@ -279,7 +279,10 @@ def linear_eval(args: argparse.Namespace) -> None:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Linear evaluation of SimCLR encoder")
 
-    parser.add_argument("--checkpoint", type=str, required=True, help="./checkpoints/simclr/simclr_epoch100.pt")
+    _SCRIPT_DIR = Path(__file__).parent
+    parser.add_argument("--checkpoint", type=str,
+                        default=str(_SCRIPT_DIR/"checkpoints"/"simclr"/"simclr_epoch100.pt"),
+                        help="Path to SimCLR checkpoint (.pt)")
     parser.add_argument("--data-dir", type=str, default="./data")
     parser.add_argument("--encoder", type=str, default="resnet18", choices=list(ENCODER_DIMS.keys()))
     parser.add_argument("--num-classes", type=int, default=10)
