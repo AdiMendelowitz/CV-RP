@@ -7,7 +7,7 @@ Generates four plots saved to ./plots/:
   3. nearest_neighbours.png      — cosine nearest-neighbour retrieval grid
   4. label_fraction_accuracy.png — linear eval accuracy vs fraction of labeled data
 
-All plots are suitable for direct embedding in README.md.
+All plots are suitable for direct embedding in personal_general_README.md.
 
 Usage:
     python analysis.py --checkpoint checkpoints/simclr/simclr_epoch100.pt
