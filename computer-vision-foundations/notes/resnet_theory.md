@@ -1,6 +1,5 @@
-# Day 3: ResNet Theory - Why Residual Connections Solve Vanishing Gradients
-
-**Date:** February 18, 2026  
+# ResNet Theory - Why Residual Connections Solve Vanishing Gradients
+ 
 **Topic:** The mathematical and practical explanation of how skip connections enable deep network training  
 **Status:** ✅ Completed
 
@@ -370,24 +369,6 @@ Even more gradient highways, but more memory intensive.
 - Highway Networks (Srivastava et al., 2015) — similar idea with learned gates
 - DenseNet (Huang et al., 2017) — concatenate instead of add
 - ResNeXt (Xie et al., 2017) — grouped convolutions with residuals
-
----
-
-## Questions for Self-Check
-
-1. ✅ Why do gradients vanish in deep networks without skip connections?
-2. ✅ How does the skip connection mathematically prevent gradient vanishing?
-3. ✅ When do you need projection shortcuts vs identity shortcuts?
-4. ✅ Why is learning residuals `F(x) = H(x) - x` easier than learning `H(x)` directly?
-5. ✅ What happens if a residual block learns `F(x) ≈ 0`?
-
-**Answers:**
-
-1. Chain rule multiplies many small derivatives (<1) → exponential decay
-2. Gradient has additive term: `∂L/∂x = ∂L/∂y × ∂F/∂x + ∂L/∂y`, the `∂L/∂y` flows directly
-3. Projection when spatial dims or channel count changes, otherwise identity (zero parameters)
-4. Identity mapping is always a valid solution; network can start from "do nothing" and refine
-5. Block becomes identity mapping — still useful (network learned this block shouldn't change features)
 
 ---
 ## 👤 Author
