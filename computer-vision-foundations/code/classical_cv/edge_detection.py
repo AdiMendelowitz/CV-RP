@@ -85,12 +85,12 @@ def canny_edge_detector(image: np.ndarray, low_ratio=0.05, high_ratio=0.15, sigm
     Returns:
         Binary edge map (0 or 255)
     """
-
     blurred = gaussian_blur(image=image, kernel_dim=5, sigma=sigma)
     Gx, Gy, magnitude = sobel_edges(image=blurred)
-    direction = np.arctan2(Gy, Gx)  # Edge direction
+    if magnitude.max() == 0:
+        return np.zeros_like(image, dtype="uint8")
+    direction = np.arctan2(Gy, Gx)
     nms_image = non_max_suppression(magnitude=magnitude, direction=direction)
     thresholded, strong, weak = double_threshold(image=nms_image, low_ratio=low_ratio, high_ratio=high_ratio)
     edges = hysteresis(thresholded, strong, weak)
-
     return edges
