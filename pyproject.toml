@@ -189,6 +189,7 @@ dependencies = [
     "tomlkit==0.13.3",
     "torch==2.7.1",
     "torchaudio==2.7.1",
+    "torchinfo>=1.8.0",
     "torchmetrics==1.8.2",
     "torchvision==0.22.1",
     "tornado==6.5.4",

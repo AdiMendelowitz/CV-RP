@@ -1,5 +1,5 @@
 """
-Efficient implementation from scratch
+EfficientNet implementation from scratch
 
 Reference: "EfficientNet: Rethinking Model Scaling for CNNs" - Tan & Le, 2019
 https://arxiv.org/abs/1905.11946
@@ -18,12 +18,13 @@ from torch import Tensor
 # ---------------------------------------------------------------------------------------------------------------------
 
 def _make_divisible(v: float, divisor: int = 8) -> int:
-    """Round v to the nearest multiple of divisor (HW friendly channel count).
+    """
+    Round v to the nearest multiple of divisor (HW friendly channel count).
     Args:
         v: Raw channel count, typically the result of a scaling step
-        divisor: Traget alignment multiple; 8 suits most GPU tensor cores, but 4 may be used for mobile CPUs
+        divisor: Target alignment multiple; 8 suits most GPU tensor cores, but 4 may be used for mobile CPUs
     Returns:
-        Smallest multiple of divisor such that v <= divisor <= v*0.9
+        Smallest multiple of divisor such that v <= divisor < v*0.9
     """
     new_v = max(divisor, int(v + divisor / 2) // divisor * divisor)
     if new_v < 0.9 * v:
@@ -94,8 +95,8 @@ class MBConv(nn.Module):
     """
     Mobile Inverted Bottleneck Convolution with squeeze and excitation.
 
-    Structure (if expan_ratio >1): [1x1 expand] -> [k*k depthwise] -> [SE] -> [1x1 project]
-    Skip connection is used only when stride=1 and in_channels=out_channels.
+    Structure (if expand_ratio > 1): [1x1 expand] -> [k*k depthwise] -> [SE] -> [1x1 project]
+    Skip connection is used only when stride=1 and in_channels == out_channels.
     Stochastic depth is applied only to the residual branch.
 
     Args:
@@ -144,7 +145,7 @@ class MBConv(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         """
-        Apply MBconv blovk with optional skip connecion.
+        Apply MBconv block with optional skip connection.
 
         Args:
             x: Input feature map of shape (B, in_channels, H, W).
@@ -166,10 +167,10 @@ class MBConv(nn.Module):
 
 class EfficientNet(nn.Module):
     """
-    EfficientNet: uniformly scalable CNN vua compound scaling coefficient.
+    EfficientNet: uniformly scalable CNN via compound scaling coefficient.
 
     B0 baseline is defined by _BASE_BLOCKS. B1-B7 scale width/depth proportionally.
-    Drop-path rates increase linearly acroos all blocks from 0 to _MAX_DROP_PATH_RATE.
+    Drop-path rates increase linearly across all blocks from 0 to _MAX_DROP_PATH_RATE.
 
     Args:
         width_multiplier: Channel width multiplier. >1.0 widen the network, <1.0 narrow it.
@@ -178,7 +179,7 @@ class EfficientNet(nn.Module):
         num_classes: Number of output logits.
     """
 
-    # B0 basline configuration: (expand_ratio, out_channels, repeats, stride, kernel_size)
+    # B0 baseline configuration: (expand_ratio, out_channels, repeats, stride, kernel_size)
     _BASE_BLOCKS: list[tuple[int, int, int, int, int]] = [
         (1, 16, 1, 1, 3),
         (6, 24, 2, 2, 3),
@@ -188,7 +189,7 @@ class EfficientNet(nn.Module):
         (6, 192, 4, 2, 5),
         (6, 320, 1, 1, 3)
     ]
-    _MAX_DROP_PATH_RATE = 0.2
+    _MAX_DROP_PATH_RATE: float = 0.2
 
     def __init__(self, width_multiplier: float = 1.0, depth_multiplier: float = 1.0, dropout: float = 0.2,
                  num_classes: int = 1000) -> None:
@@ -218,7 +219,8 @@ class EfficientNet(nn.Module):
                 # Linear schedule: rate increases 0 -> _MAX_DROP_PATH_RATE
                 drop_path_rate = self._MAX_DROP_PATH_RATE * block_idx / max(total_blocks-1, 1)
                 blocks.append(MBConv(in_channels=in_ch, out_channels=out_ch, kernel_size=kernel_size,
-                                     stride=stride, expand_ratio=expand_ratio, drop_path_rate=drop_path_rate))
+                                     stride=stride if i==0 else 1, expand_ratio=expand_ratio,
+                                     drop_path_rate=drop_path_rate))
                 in_ch = out_ch
                 block_idx += 1
 
@@ -244,7 +246,7 @@ class EfficientNet(nn.Module):
                 if m.bias is not None:
                     nn.init.zeros_(m.bias)
             elif isinstance(m, nn.BatchNorm2d):
-                nn.init.constant_(m.weight, 1)
+                nn.init.ones_(m.weight)
                 nn.init.zeros_(m.bias)
             elif isinstance(m, nn.Linear):
                 nn.init.normal_(m.weight, std=0.01)
@@ -267,7 +269,15 @@ class EfficientNet(nn.Module):
 # Factory functions for EfficientNet variants B0-B7 with different scaling coefficients.
 # ----------------------------------------------------------------------------------------------------------------------
 def efficientnet_b0(num_classes: int = 1000) -> EfficientNet:
-    """EfficientNet-B0: baseline model with compound coefficient 1.0. (~5.3M parameters)"""
+    """
+    EfficientNet-B0: baseline model with compound coefficient 1.0. (~5.3M parameters)
+
+    Args:
+        num_classes: Number of output logits for the classifier head.
+
+    Returns:
+        EfficientNet configured with width_multiplier=1.0 and depth_multiplier=1.0.
+    """
     return EfficientNet(width_multiplier=1.0, depth_multiplier=1.0, dropout=0.2, num_classes=num_classes)
 
 def efficientnet_b1(num_classes: int = 1000) -> EfficientNet:
@@ -291,7 +301,7 @@ if __name__ == "__main__":
     total_params = sum(p.numel() for p in model.parameters())
     print(f"EfficientNet-B0 total parameters: {total_params/1e6:.2f}M, expected ~5.3M")
 
-    summary(model, input_size=(3, 224, 224),
+    summary(model, input_size=(1, 3, 224, 224),
             col_names=["input_size", "output_size", "num_params", "kernel_size"], depth=3)
 
     # Sanity check: forward pass with dummy input
