@@ -17,6 +17,7 @@ from torch import Tensor
 # Utilities
 # ---------------------------------------------------------------------------------------------------------------------
 
+
 def _make_divisible(v: float, divisor: int = 8) -> int:
     """
     Round v to the nearest multiple of divisor (HW friendly channel count).
@@ -30,6 +31,7 @@ def _make_divisible(v: float, divisor: int = 8) -> int:
     if new_v < 0.9 * v:
         new_v += divisor
     return new_v
+
 
 def _drop_path(x: Tensor, drop_prob: float, training: bool) -> Tensor:
     """
@@ -49,14 +51,14 @@ def _drop_path(x: Tensor, drop_prob: float, training: bool) -> Tensor:
         return x
     keep_prob = 1 - drop_prob
     # Shape (B, 1, 1, 1) to broadcast over C, H, W
-    mask  = torch.bernoulli(
-        torch.full((x.shape[0], 1, 1, 1), keep_prob, device=x.device, dtype=x.dtype)
-    )
-    return x * mask/keep_prob
+    mask = torch.bernoulli(torch.full((x.shape[0], 1, 1, 1), keep_prob, device=x.device, dtype=x.dtype))
+    return x * mask / keep_prob
+
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Building Blocks
 # ---------------------------------------------------------------------------------------------------------------------
+
 
 class SqueezeExcitation(nn.Module):
     """
@@ -89,7 +91,8 @@ class SqueezeExcitation(nn.Module):
         scale = self.pool(x)
         scale = self.act(self.reduce(scale))
         scale = torch.sigmoid(self.expand(scale))
-        return x*scale
+        return x * scale
+
 
 class MBConv(nn.Module):
     """
@@ -109,11 +112,19 @@ class MBConv(nn.Module):
         drop_path_rate: Stochastic depth probability for the residual branch.
     """
 
-    def __init__(self, in_channels: int, out_channels: int, kernel_size: int, stride: int, expand_ratio: int,
-                 se_ratio: float = 0.25, drop_path_rate: float = 0.0) -> None:
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int,
+        stride: int,
+        expand_ratio: int,
+        se_ratio: float = 0.25,
+        drop_path_rate: float = 0.0,
+    ) -> None:
         super().__init__()
 
-        self.use_residual = (stride == 1 and in_channels == out_channels)
+        self.use_residual = stride == 1 and in_channels == out_channels
         self.drop_path_rate = drop_path_rate
 
         mid_channels = _make_divisible(in_channels * expand_ratio)
@@ -128,17 +139,25 @@ class MBConv(nn.Module):
             layers += [
                 nn.Conv2d(in_channels, mid_channels, 1, bias=False),
                 nn.BatchNorm2d(mid_channels, momentum=0.01, eps=1e-3),
-                nn.SiLU()
+                nn.SiLU(),
             ]
 
         # Depthwise conv + SE + pointwise projection
         layers += [
-            nn.Conv2d(mid_channels, mid_channels, kernel_size, stride, padding, groups=mid_channels, bias=False),
+            nn.Conv2d(
+                mid_channels,
+                mid_channels,
+                kernel_size,
+                stride,
+                padding,
+                groups=mid_channels,
+                bias=False,
+            ),
             nn.BatchNorm2d(mid_channels, momentum=0.01, eps=1e-3),
             nn.SiLU(),
             SqueezeExcitation(mid_channels, reduced_channels),
             nn.Conv2d(mid_channels, out_channels, 1, bias=False),
-            nn.BatchNorm2d(out_channels, momentum=0.01, eps=1e-3)
+            nn.BatchNorm2d(out_channels, momentum=0.01, eps=1e-3),
         ]
 
         self.block = nn.Sequential(*layers)
@@ -161,9 +180,11 @@ class MBConv(nn.Module):
             out += x
         return out
 
+
 # ---------------------------------------------------------------------------------------------------------------------
 # EfficientNet Architecture
 # ---------------------------------------------------------------------------------------------------------------------
+
 
 class EfficientNet(nn.Module):
     """
@@ -187,12 +208,17 @@ class EfficientNet(nn.Module):
         (6, 80, 3, 2, 3),
         (6, 112, 3, 1, 5),
         (6, 192, 4, 2, 5),
-        (6, 320, 1, 1, 3)
+        (6, 320, 1, 1, 3),
     ]
     _MAX_DROP_PATH_RATE: float = 0.2
 
-    def __init__(self, width_multiplier: float = 1.0, depth_multiplier: float = 1.0, dropout: float = 0.2,
-                 num_classes: int = 1000) -> None:
+    def __init__(
+        self,
+        width_multiplier: float = 1.0,
+        depth_multiplier: float = 1.0,
+        dropout: float = 0.2,
+        num_classes: int = 1000,
+    ) -> None:
         super().__init__()
 
         def scale_ch(c: int) -> int:
@@ -207,7 +233,7 @@ class EfficientNet(nn.Module):
         self.stem = nn.Sequential(
             nn.Conv2d(3, stem_ch, kernel_size=3, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(stem_ch, momentum=0.01, eps=1e-3),
-            nn.SiLU()
+            nn.SiLU(),
         )
 
         blocks: list[nn.Module] = []
@@ -217,10 +243,17 @@ class EfficientNet(nn.Module):
             out_ch = scale_ch(out_ch)
             for i in range(scale_d(repeats)):
                 # Linear schedule: rate increases 0 -> _MAX_DROP_PATH_RATE
-                drop_path_rate = self._MAX_DROP_PATH_RATE * block_idx / max(total_blocks-1, 1)
-                blocks.append(MBConv(in_channels=in_ch, out_channels=out_ch, kernel_size=kernel_size,
-                                     stride=stride if i==0 else 1, expand_ratio=expand_ratio,
-                                     drop_path_rate=drop_path_rate))
+                drop_path_rate = self._MAX_DROP_PATH_RATE * block_idx / max(total_blocks - 1, 1)
+                blocks.append(
+                    MBConv(
+                        in_channels=in_ch,
+                        out_channels=out_ch,
+                        kernel_size=kernel_size,
+                        stride=stride if i == 0 else 1,
+                        expand_ratio=expand_ratio,
+                        drop_path_rate=drop_path_rate,
+                    )
+                )
                 in_ch = out_ch
                 block_idx += 1
 
@@ -234,7 +267,7 @@ class EfficientNet(nn.Module):
             nn.AdaptiveAvgPool2d(1),
             nn.Flatten(),
             nn.Dropout(dropout),
-            nn.Linear(head_ch, num_classes)
+            nn.Linear(head_ch, num_classes),
         )
 
         self._init_weights()
@@ -242,7 +275,7 @@ class EfficientNet(nn.Module):
     def _init_weights(self) -> None:
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out')
+                nn.init.kaiming_normal_(m.weight, mode="fan_out")
                 if m.bias is not None:
                     nn.init.zeros_(m.bias)
             elif isinstance(m, nn.BatchNorm2d):
@@ -280,13 +313,16 @@ def efficientnet_b0(num_classes: int = 1000) -> EfficientNet:
     """
     return EfficientNet(width_multiplier=1.0, depth_multiplier=1.0, dropout=0.2, num_classes=num_classes)
 
+
 def efficientnet_b1(num_classes: int = 1000) -> EfficientNet:
     """EfficientNet-B1: depth-scaled variant (~7.8M parameters)"""
     return EfficientNet(width_multiplier=1.0, depth_multiplier=1.1, dropout=0.2, num_classes=num_classes)
 
+
 def efficientnet_b4(num_classes: int = 1000) -> EfficientNet:
     """EfficientNet-B4: width and depth scaled variant (~19M parameters)"""
     return EfficientNet(width_multiplier=1.4, depth_multiplier=1.8, dropout=0.4, num_classes=num_classes)
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Verification
@@ -301,22 +337,18 @@ if __name__ == "__main__":
     total_params = sum(p.numel() for p in model.parameters())
     print(f"EfficientNet-B0 total parameters: {total_params/1e6:.2f}M, expected ~5.3M")
 
-    summary(model, input_size=(1, 3, 224, 224),
-            col_names=["input_size", "output_size", "num_params", "kernel_size"], depth=3)
+    summary(
+        model,
+        input_size=(1, 3, 224, 224),
+        col_names=["input_size", "output_size", "num_params", "kernel_size"],
+        depth=3,
+    )
 
     # Sanity check: forward pass with dummy input
     dummy_input = torch.randn(2, 3, 224, 224)
     logits = model(dummy_input)
-    assert logits.shape == (2, 1000), f"Expected output shape (2, 1000), got {logits.shape}"
+    assert logits.shape == (
+        2,
+        1000,
+    ), f"Expected output shape (2, 1000), got {logits.shape}"
     print("\nForward pass OK, output shape:", logits.shape)
-
-
-
-
-
-
-
-
-
-
-

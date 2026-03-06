@@ -111,9 +111,7 @@ class CrossEntropyLoss:
             grad: Gradient (batch, num_classes)
         """
         if self.y_pred is None or self.y_true is None:
-            raise ValueError(
-                "Must call forward() before backward() to compute gradients."
-            )
+            raise ValueError("Must call forward() before backward() to compute gradients.")
 
         batch_size = self.y_pred.shape[0]
         grad = (self.y_pred - self.y_true) / batch_size

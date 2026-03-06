@@ -2,18 +2,20 @@
 Compare Numpy and PyTorch implementations
 """
 
+import os
+import sys
+
 import numpy as np
 import torch
 from tensorflow import keras
-import sys
-import os
-from cnn_pytotch import CNNPyTorch, train_pytorch
+from torch.utils.data import DataLoader, TensorDataset
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "cnn_scratch"))
-from layers import Conv2D, MaxPool2D, Flatten, Dense, ReLU, Softmax
-from network import Network, CrossEntropyLoss
-from train import SGD, train as train_numpy
-from torch.utils.data import DataLoader, TensorDataset
+
+from cnn_pytotch import CNNPyTorch, train_pytorch  # noqa: E402
+from layers import Conv2D, Dense, Flatten, MaxPool2D, ReLU, Softmax  # noqa: E402
+from network import CrossEntropyLoss, Network  # noqa: E402
+from train import SGD, train as train_numpy  # noqa: E402
 
 print("=" * 50)
 print("Comparing Numpy and PyTorch CNN Implementations")

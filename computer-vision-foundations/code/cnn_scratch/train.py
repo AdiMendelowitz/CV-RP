@@ -5,8 +5,6 @@ Training utilities: Optimizer and training loop
 import numpy as np
 from typing import List, Tuple, Optional
 
-from numpy.ma.extras import average
-
 from network import Network, CrossEntropyLoss
 
 
@@ -33,9 +31,7 @@ class SGD:
             if self.momentum > 0:  # initialize velocity if needed
                 if i not in self.velocities:
                     self.velocities[i] = np.zeros_like(param)
-                self.velocities[i] = (
-                    self.momentum * self.velocities[i] - self.learning_rate * grad
-                )
+                self.velocities[i] = self.momentum * self.velocities[i] - self.learning_rate * grad
                 param += self.velocities[i]
             else:
                 param -= self.learning_rate * grad
@@ -54,9 +50,7 @@ def compute_loss_and_accuracy(
     """Compute loss and accuracy for given data"""
 
     if train_mode and optimizer is None:
-        raise ValueError(
-            "Optimizer must be provided in train mode to update parameters."
-        )
+        raise ValueError("Optimizer must be provided in train mode to update parameters.")
 
     total_loss, correct = 0.0, 0
 
@@ -106,9 +100,7 @@ def train_epoch(
     if batch_size <= 0:
         raise ValueError(f"Batch size must be positive, got {batch_size}")
     if batch_size > num_samples:
-        raise ValueError(
-            f"Batch size {batch_size} must be smaller than number of samples {num_samples}"
-        )
+        raise ValueError(f"Batch size {batch_size} must be smaller than number of samples {num_samples}")
 
     num_batches = num_samples // batch_size
     if num_batches == 0:
@@ -194,9 +186,7 @@ def train(
     history = {"train_loss": [], "train_acc": [], "test_loss": [], "test_acc": []}
 
     for epoch in range(num_epochs):
-        train_loss, train_acc = train_epoch(
-            model, optimizer, loss_fn, X_train, y_train, batch_size
-        )
+        train_loss, train_acc = train_epoch(model, optimizer, loss_fn, X_train, y_train, batch_size)
         test_loss, test_acc = evaluate(model, loss_fn, X_test, y_test, batch_size)
 
         history["train_loss"].append(train_loss)

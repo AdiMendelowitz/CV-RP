@@ -6,60 +6,60 @@ Modify these parameters to experiment with different settings.
 
 # Model Configuration
 MODEL_CONFIG = {
-    'img_size': 32,  # CIFAR-10 image size
-    'patch_size': 4,  # 4×4 patches → 64 patches for 32×32 image
-    'in_channels': 3,  # RGB
-    'num_classes': 10,  # CIFAR-10 classes
-    'embed_dim': 192,  # ViT-Tiny: 192
-    'depth': 12,  # Number of transformer blocks
-    'num_heads': 3,  # Attention heads (embed_dim must be divisible by num_heads)
-    'mlp_ratio': 4.0,  # MLP expansion ratio
-    'dropout': 0.1,  # Dropout rate
+    "img_size": 32,  # CIFAR-10 image size
+    "patch_size": 4,  # 4×4 patches → 64 patches for 32×32 image
+    "in_channels": 3,  # RGB
+    "num_classes": 10,  # CIFAR-10 classes
+    "embed_dim": 192,  # ViT-Tiny: 192
+    "depth": 12,  # Number of transformer blocks
+    "num_heads": 3,  # Attention heads (embed_dim must be divisible by num_heads)
+    "mlp_ratio": 4.0,  # MLP expansion ratio
+    "dropout": 0.1,  # Dropout rate
 }
 
 # Training Configuration (CPU-optimized)
 TRAINING_CONFIG = {
-    'num_epochs': 50,  # Reduced for CPU (was 200)
-    'batch_size': 32,  # Reduced for CPU efficiency (was 128)
-    'learning_rate': 0.001,  # Peak LR after warmup
-    'weight_decay': 0.05,  # AdamW weight decay
-    'warmup_epochs': 10,  # Linear warmup epochs
-    'label_smoothing': 0.1,  # Label smoothing for regularization
-    'grad_clip': 1.0,  # Gradient clipping norm
+    "num_epochs": 50,  # Reduced for CPU (was 200)
+    "batch_size": 32,  # Reduced for CPU efficiency (was 128)
+    "learning_rate": 0.001,  # Peak LR after warmup
+    "weight_decay": 0.05,  # AdamW weight decay
+    "warmup_epochs": 10,  # Linear warmup epochs
+    "label_smoothing": 0.1,  # Label smoothing for regularization
+    "grad_clip": 1.0,  # Gradient clipping norm
 }
 
 # Data Configuration (CPU-optimized)
 DATA_CONFIG = {
-    'data_dir': './data',
-    'num_workers': 0,  # CPU-optimized (was 4)
-    'pin_memory': False,  # GPU optimization - disabled for CPU
+    "data_dir": "./data",
+    "num_workers": 0,  # CPU-optimized (was 4)
+    "pin_memory": False,  # GPU optimization - disabled for CPU
 }
 
 # Paths
 PATHS = {
-    'save_dir': './checkpoints/vit_tiny_cifar10',
-    'log_dir': './logs/vit_tiny_cifar10',
+    "save_dir": "./checkpoints/vit_tiny_cifar10",
+    "log_dir": "./logs/vit_tiny_cifar10",
 }
 
 # Expected Performance Benchmarks
 # (Based on "An Image is Worth 16x16 Words" paper and follow-up work)
 EXPECTED_PERFORMANCE = {
-    'vit_tiny_cifar10_scratch': {
-        'test_acc': '~75-80%',
-        'note': 'Training from scratch on CIFAR-10 (50K images) - ViT underfits without large data'
+    "vit_tiny_cifar10_scratch": {
+        "test_acc": "~75-80%",
+        "note": "Training from scratch on CIFAR-10 (50K images) - ViT underfits without large data",
     },
-    'vit_tiny_cifar10_with_augmentation': {
-        'test_acc': '~80-85%',
-        'note': 'Heavy augmentation helps, but still below CNN performance'
+    "vit_tiny_cifar10_with_augmentation": {
+        "test_acc": "~80-85%",
+        "note": "Heavy augmentation helps, but still below CNN performance",
     },
-    'resnet18_cifar10': {
-        'test_acc': '~94-95%',
-        'note': 'CNNs perform better on small datasets due to inductive bias'
+    "resnet18_cifar10": {
+        "test_acc": "~94-95%",
+        "note": "CNNs perform better on small datasets due to inductive bias",
     },
-    'vit_base_imagenet_then_cifar10': {
-        'test_acc': '~98-99%',
-        'note': 'ViT pretrained on ImageNet, then finetuned - matches/beats CNNs'
-    }
+    "vit_base_imagenet_then_cifar10": {
+        "test_acc": "~98-99%",
+        "note": "ViT pretrained on ImageNet, then finetuned - matches/beats CNNs",
+    },
 }
 
 # Key Insights for Training ViT
@@ -105,7 +105,7 @@ ViT Training on CIFAR-10 - What to Expect (CPU Version):
 This experiment demonstrates why data scale matters for Transformers!
 """
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("ViT-Tiny CIFAR-10 Configuration")
     print("=" * 70)
     print("\nModel Configuration:")

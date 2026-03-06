@@ -25,8 +25,13 @@ class PatchEmbedding(nn.Module):
         embed_dim: Embedding dimension
     """
 
-    def __init__(self, img_size: int=224, patch_size: int=16,
-                 in_channels: int=3, embed_dim: int=768) -> None:
+    def __init__(
+        self,
+        img_size: int = 224,
+        patch_size: int = 16,
+        in_channels: int = 3,
+        embed_dim: int = 768,
+    ) -> None:
         super(PatchEmbedding, self).__init__()
 
         self.img_size = img_size
@@ -44,7 +49,6 @@ class PatchEmbedding(nn.Module):
         # Positional embeddings: learnable position encodings
         # +1 for [CLS] token
         self.positional_embedding = nn.Parameter(torch.randn(1, self.n_patches + 1, embed_dim))
-
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -64,7 +68,7 @@ class PatchEmbedding(nn.Module):
         # (batch, embed_dim, n_patches_h, n_patches_w) -> (batch, embed_dim, n_patches)
         x = x.flatten(2)
 
-        x = x.transpose(1,2) # (batch, embed_dim, n_patches) -> (batch, n_patches, embed_dim)
+        x = x.transpose(1, 2)  # (batch, embed_dim, n_patches) -> (batch, n_patches, embed_dim)
 
         # Prepend [CLS] token
         # cls_token: (1, 1, embed_dim) -> (batch, 1, embed_dim)
@@ -74,10 +78,10 @@ class PatchEmbedding(nn.Module):
         x = torch.cat([cls_tokens, x], dim=1)
 
         # Add positional embeddings, same dimensions as x
-        return x+self.positional_embedding
+        return x + self.positional_embedding
 
     def __repr__(self) -> str:
-        return(
+        return (
             f"PatchEmbedding(img_size={self.img_size}, patch_size={self.patch_size}, "
             f"n_patches={self.n_patches}, embed_dim={self.positional_embedding.shape[2]})"
         )
@@ -98,7 +102,7 @@ class MultiHeadAttention(nn.Module):
         dropout: dropout probability
     """
 
-    def __init__(self, embed_dim: int=768, num_heads: int=12, dropout: float=0.0) -> None:
+    def __init__(self, embed_dim: int = 768, num_heads: int = 12, dropout: float = 0.0) -> None:
         super(MultiHeadAttention, self).__init__()
 
         assert embed_dim % num_heads == 0, "embed_dim must be divisible by num_heads"
@@ -106,7 +110,7 @@ class MultiHeadAttention(nn.Module):
         self.embed_dim = embed_dim
         self.num_heads = num_heads
         self.head_dim = embed_dim // num_heads
-        self.scale = self.head_dim ** -0.5 # 1/sqrt(head_dim) for scaled dot-product
+        self.scale = self.head_dim**-0.5  # 1/sqrt(head_dim) for scaled dot-product
 
         # Q, K, V projects for all heads
         self.qkv = nn.Linear(embed_dim, embed_dim * 3, bias=False)
@@ -163,10 +167,10 @@ class MultiHeadAttention(nn.Module):
         return self.proj_dropout(x)
 
     def __repr__(self) -> str:
-        return(
-            f"MultiHeadAttention(embed_dim={self.embed_dim}, num_heads={self.num_heads}, "
-            f"head_dim={self.head_dim})"
+        return (
+            f"MultiHeadAttention(embed_dim={self.embed_dim}, num_heads={self.num_heads}, " f"head_dim={self.head_dim})"
         )
+
 
 class MLP(nn.Module):
     """
@@ -182,15 +186,20 @@ class MLP(nn.Module):
         dropout: Dropout probability
     """
 
-    def __init__(self, in_features: int, hidden_features: Optional[int]=None,
-                 out_features: Optional[int] = None, dropout: float = 0.0) -> None:
+    def __init__(
+        self,
+        in_features: int,
+        hidden_features: Optional[int] = None,
+        out_features: Optional[int] = None,
+        dropout: float = 0.0,
+    ) -> None:
         super(MLP, self).__init__()
 
         out_features = out_features or in_features
-        hidden_features = hidden_features or in_features*4
+        hidden_features = hidden_features or in_features * 4
 
         self.fc1 = nn.Linear(in_features, hidden_features)
-        self.act = nn.GELU()    # Used in original ViT (Smoother than ReLU)
+        self.act = nn.GELU()  # Used in original ViT (Smoother than ReLU)
         self.fc2 = nn.Linear(hidden_features, out_features)
         self.dropout = nn.Dropout(dropout)
 
@@ -202,11 +211,12 @@ class MLP(nn.Module):
             output (batch, seq_len, out_features)
         """
 
-        x = self.fc1(x)         # (batch, seq_len, hidden_features)
+        x = self.fc1(x)  # (batch, seq_len, hidden_features)
         x = self.act(x)
         x = self.dropout(x)
-        x = self.fc2(x)         # (batch, seq_len, out_features)
+        x = self.fc2(x)  # (batch, seq_len, out_features)
         return self.dropout(x)
+
 
 class TransformerBlock(nn.Module):
     """
@@ -225,7 +235,13 @@ class TransformerBlock(nn.Module):
         dropout: Dropout probability
     """
 
-    def __init__(self, embed_dim: int=768, num_heads: int=12, mlp_ratio: float = 4.0, dropout: float=0.0) -> None:
+    def __init__(
+        self,
+        embed_dim: int = 768,
+        num_heads: int = 12,
+        mlp_ratio: float = 4.0,
+        dropout: float = 0.0,
+    ) -> None:
         super(TransformerBlock, self).__init__()
 
         self.norm1 = nn.LayerNorm(embed_dim)
@@ -233,7 +249,11 @@ class TransformerBlock(nn.Module):
 
         self.attn = MultiHeadAttention(embed_dim=embed_dim, num_heads=num_heads, dropout=dropout)
 
-        self.mlp = MLP(in_features=embed_dim, hidden_features=int(embed_dim*mlp_ratio),dropout=dropout)
+        self.mlp = MLP(
+            in_features=embed_dim,
+            hidden_features=int(embed_dim * mlp_ratio),
+            dropout=dropout,
+        )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -254,9 +274,8 @@ class TransformerBlock(nn.Module):
         return x
 
     def __repr__(self) -> str:
-        return(
-            f"TransformerBlock(embed_dim={self.norm1.normalized_shape[0]}, num_heads={self.attn.num_heads})"
-        )
+        return f"TransformerBlock(embed_dim={self.norm1.normalized_shape[0]}, num_heads={self.attn.num_heads})"
+
 
 class VisionTransformer(nn.Module):
     """
@@ -279,8 +298,18 @@ class VisionTransformer(nn.Module):
         dropout: Dropout probability
     """
 
-    def __init__(self, img_size: int=224, patch_size: int=16, in_channels: int=3, num_classes: int=1000,
-                 embed_dim: int=768, depth: int=12, num_heads: int=12, mlp_ratio: float=4.0, dropout: float=0.0) -> None:
+    def __init__(
+        self,
+        img_size: int = 224,
+        patch_size: int = 16,
+        in_channels: int = 3,
+        num_classes: int = 1000,
+        embed_dim: int = 768,
+        depth: int = 12,
+        num_heads: int = 12,
+        mlp_ratio: float = 4.0,
+        dropout: float = 0.0,
+    ) -> None:
         super(VisionTransformer, self).__init__()
 
         self.num_classes = num_classes
@@ -288,18 +317,29 @@ class VisionTransformer(nn.Module):
         self.depth = depth
 
         # Patch embedding
-        self.patch_embed = PatchEmbedding(img_size=img_size, patch_size=patch_size,
-                                          in_channels=in_channels, embed_dim=embed_dim)
+        self.patch_embed = PatchEmbedding(
+            img_size=img_size,
+            patch_size=patch_size,
+            in_channels=in_channels,
+            embed_dim=embed_dim,
+        )
 
         # Transformer encoder blocks
-        self.blocks = nn.ModuleList([
-            TransformerBlock(embed_dim=embed_dim, num_heads=num_heads, mlp_ratio=mlp_ratio, dropout=dropout)
-            for _ in range(depth)
-        ])
+        self.blocks = nn.ModuleList(
+            [
+                TransformerBlock(
+                    embed_dim=embed_dim,
+                    num_heads=num_heads,
+                    mlp_ratio=mlp_ratio,
+                    dropout=dropout,
+                )
+                for _ in range(depth)
+            ]
+        )
 
-        self.norm = nn.LayerNorm(embed_dim)             # Final layer norm
-        self.head = nn.Linear(embed_dim, num_classes)   # Classification head
-        self._init_weights()                            # Initializing weights
+        self.norm = nn.LayerNorm(embed_dim)  # Final layer norm
+        self.head = nn.Linear(embed_dim, num_classes)  # Classification head
+        self._init_weights()  # Initializing weights
 
     def _init_weights(self) -> None:
         """
@@ -327,7 +367,7 @@ class VisionTransformer(nn.Module):
         """
 
         # Patch embedding + positional encoding
-        x = self.patch_embed(x)         # -> (batch, n_patches+1, embed_dim)
+        x = self.patch_embed(x)  # -> (batch, n_patches+1, embed_dim)
 
         # Transform encoder
         for block in self.blocks:
@@ -336,7 +376,7 @@ class VisionTransformer(nn.Module):
         x = self.norm(x)
 
         # Extract [CLS] token (first token)
-        cls_token = x[:, 0]     # -> (batch, embed_dim)
+        cls_token = x[:, 0]  # -> (batch, embed_dim)
 
         # Return classification head
         return self.head(cls_token)
@@ -346,7 +386,7 @@ class VisionTransformer(nn.Module):
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
 
     def __repr__(self) -> str:
-        return(
+        return (
             f"VisionTransformer(\n"
             f"  patch_size={self.patch_embed.patch_size},\n  embed_dim={self.embed_dim},\n  depth={self.depth},\n"
             f"  num_heads={self.blocks[0].attn.num_heads},\n  num_classes={self.num_classes}\n)"
@@ -357,38 +397,86 @@ class VisionTransformer(nn.Module):
 # ViT Model Variants
 # ================================================================================================
 
-def _make_vit(embed_dim: int, depth: int, num_heads:int, num_classes: int=1000,
-              img_size: int=224, patch_size: int=16, **kwargs) -> VisionTransformer:
+
+def _make_vit(
+    embed_dim: int,
+    depth: int,
+    num_heads: int,
+    num_classes: int = 1000,
+    img_size: int = 224,
+    patch_size: int = 16,
+    **kwargs,
+) -> VisionTransformer:
     """Internal helper to create Vit Varinats"""
-    return VisionTransformer(img_size=img_size, patch_size=patch_size, num_classes=num_classes,
-                             embed_dim=embed_dim, depth=depth, num_heads=num_heads, mlp_ratio=4.0, **kwargs)
+    return VisionTransformer(
+        img_size=img_size,
+        patch_size=patch_size,
+        num_classes=num_classes,
+        embed_dim=embed_dim,
+        depth=depth,
+        num_heads=num_heads,
+        mlp_ratio=4.0,
+        **kwargs,
+    )
 
-def vit_tiny(num_classes: int=1000, img_size: int=224, patch_size: int=16, **kwargs) -> VisionTransformer:
+
+def vit_tiny(num_classes: int = 1000, img_size: int = 224, patch_size: int = 16, **kwargs) -> VisionTransformer:
     """Vit-Tiny: small model for experiment, ~5.7 million parameters"""
-    return VisionTransformer(embed_dim=192, depth=12, num_heads=3, num_classes=num_classes, img_size=img_size,
-                             patch_size=patch_size, **kwargs)
+    return VisionTransformer(
+        embed_dim=192,
+        depth=12,
+        num_heads=3,
+        num_classes=num_classes,
+        img_size=img_size,
+        patch_size=patch_size,
+        **kwargs,
+    )
 
-def vit_small(num_classes: int=1000, img_size: int=224, patch_size: int=16, **kwargs) -> VisionTransformer:
+
+def vit_small(num_classes: int = 1000, img_size: int = 224, patch_size: int = 16, **kwargs) -> VisionTransformer:
     """Vit-Small: ~22M parameters"""
-    return _make_vit(embed_dim=384, depth=12, num_heads=6, num_classes=num_classes, img_size=img_size,
-                     patch_size=patch_size, **kwargs)
+    return _make_vit(
+        embed_dim=384,
+        depth=12,
+        num_heads=6,
+        num_classes=num_classes,
+        img_size=img_size,
+        patch_size=patch_size,
+        **kwargs,
+    )
 
-def vit_base(num_classes: int=1000, img_size: int=224, patch_size: int=16, **kwargs) -> VisionTransformer:
+
+def vit_base(num_classes: int = 1000, img_size: int = 224, patch_size: int = 16, **kwargs) -> VisionTransformer:
     """ViT-Base: ~86M parameters"""
-    return _make_vit(embed_dim=768, depth=12, num_heads=12, num_classes=num_classes, img_size=img_size,
-                     patch_size=patch_size, **kwargs)
+    return _make_vit(
+        embed_dim=768,
+        depth=12,
+        num_heads=12,
+        num_classes=num_classes,
+        img_size=img_size,
+        patch_size=patch_size,
+        **kwargs,
+    )
 
-def vit_large(num_classes: int=1000, img_size: int=224, patch_size: int=16, **kwargs) -> VisionTransformer:
+
+def vit_large(num_classes: int = 1000, img_size: int = 224, patch_size: int = 16, **kwargs) -> VisionTransformer:
     """ViT-Large: ~307M parameters"""
-    return _make_vit(embed_dim=1024, depth=12, num_heads=16, num_classes=num_classes, img_size=img_size,
-                     patch_size=patch_size, **kwargs)
+    return _make_vit(
+        embed_dim=1024,
+        depth=12,
+        num_heads=16,
+        num_classes=num_classes,
+        img_size=img_size,
+        patch_size=patch_size,
+        **kwargs,
+    )
 
 
 # ======================================================================================
 # Tests
 # ======================================================================================
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("=" * 70)
     print("Vision Transformer (ViT) Implementation Tests")
     print("=" * 70)
@@ -403,8 +491,12 @@ if __name__ == '__main__':
     patches = patch_embed(x)
     print(f"Input shape:  {x.shape}")
     print(f"Output shape: {patches.shape}")
-    print(f"Expected:     (2, 197, 768)  # 196 patches + 1 CLS token")
-    assert patches.shape == (2, 197, 768), f"Expected (2, 197, 768), got {patches.shape}"
+    print("Expected:     (2, 197, 768)  # 196 patches + 1 CLS token")
+    assert patches.shape == (
+        2,
+        197,
+        768,
+    ), f"Expected (2, 197, 768), got {patches.shape}"
     print("✓ PatchEmbedding test passed!")
 
     # Test 2: MultiHeadAttention
@@ -443,12 +535,12 @@ if __name__ == '__main__':
     logits = model(x)
     print(f"\nInput shape:  {x.shape}")
     print(f"Output shape: {logits.shape}")
-    print(f"Expected:     (2, 10)")
+    print("Expected:     (2, 10)")
     assert logits.shape == (2, 10), f"Expected (2, 10), got {logits.shape}"
 
     total_params = model.count_parameters()
     print(f"\nTotal parameters: {total_params:,}")
-    print(f"Expected (ViT-Base/16, 10 classes): ~85.8M")
+    print("Expected (ViT-Base/16, 10 classes): ~85.8M")
     print("✓ VisionTransformer test passed!")
 
     # Test 5: Different model sizes
@@ -456,10 +548,10 @@ if __name__ == '__main__':
     print("-" * 70)
 
     models = {
-        'ViT-Tiny': vit_tiny(num_classes=1000),
-        'ViT-Small': vit_small(num_classes=1000),
-        'ViT-Base': vit_base(num_classes=1000),
-        'ViT-Large': vit_large(num_classes=1000)
+        "ViT-Tiny": vit_tiny(num_classes=1000),
+        "ViT-Small": vit_small(num_classes=1000),
+        "ViT-Base": vit_base(num_classes=1000),
+        "ViT-Large": vit_large(num_classes=1000),
     }
 
     print(f"{'Model':<15} {'Parameters':<15} {'Forward Pass':<15}")
@@ -498,12 +590,10 @@ if __name__ == '__main__':
     # Hook to capture attention weights
     attention_weights = None
 
-
     def hook_fn(module, input, output):
         # This is a simplified version - actual attention weights would need
         # to be returned from the forward pass
         pass
-
 
     print("Attention shape with 12 heads, 197 tokens:")
     print("  Q, K, V: (1, 12, 197, 64)  # 64 = 768 / 12 (head_dim)")

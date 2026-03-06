@@ -38,6 +38,7 @@ ENCODER_DIMS: dict[str, int] = {"resnet18": 512, "resnet50": 2048}
 # Transforms
 # ---------------------------------------------------------------------------
 
+
 def get_transforms(train: bool) -> transforms.Compose:
     """
     Standard CIFAR-10 transforms for linear evaluation.
@@ -51,23 +52,32 @@ def get_transforms(train: bool) -> transforms.Compose:
         train: If True return training transforms, else test transforms.
     """
     if train:
-        return transforms.Compose([
-            transforms.RandomResizedCrop(32, scale=(0.2, 1.0)),
-            transforms.RandomHorizontalFlip(p=0.5),
+        return transforms.Compose(
+            [
+                transforms.RandomResizedCrop(32, scale=(0.2, 1.0)),
+                transforms.RandomHorizontalFlip(p=0.5),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=CIFAR10_MEAN, std=CIFAR10_STD),
+            ]
+        )
+    return transforms.Compose(
+        [
             transforms.ToTensor(),
             transforms.Normalize(mean=CIFAR10_MEAN, std=CIFAR10_STD),
-        ])
-    return transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize(mean=CIFAR10_MEAN, std=CIFAR10_STD),
-    ])
+        ]
+    )
 
 
 # ---------------------------------------------------------------------------
 # Encoder loading
 # ---------------------------------------------------------------------------
 
-def load_frozen_encoder(checkpoint_path: str, encoder_name: str, device: torch.device,) -> nn.Module:
+
+def load_frozen_encoder(
+    checkpoint_path: str,
+    encoder_name: str,
+    device: torch.device,
+) -> nn.Module:
     """
     Loads the SimCLR encoder from a checkpoint and freezes all its parameters.
 
@@ -109,6 +119,7 @@ def load_frozen_encoder(checkpoint_path: str, encoder_name: str, device: torch.d
 # Feature extraction
 # ---------------------------------------------------------------------------
 
+
 @torch.no_grad()
 def extract_features(encoder: nn.Module, loader: DataLoader, device: torch.device) -> tuple[torch.Tensor, torch.Tensor]:
     """
@@ -140,8 +151,14 @@ def extract_features(encoder: nn.Module, loader: DataLoader, device: torch.devic
 # Linear classifier training
 # ---------------------------------------------------------------------------
 
-def train_linear(classifier: nn.Linear, train_features: torch.Tensor, train_labels: torch.Tensor,
-                 args: argparse.Namespace, device: torch.device) -> None:
+
+def train_linear(
+    classifier: nn.Linear,
+    train_features: torch.Tensor,
+    train_labels: torch.Tensor,
+    args: argparse.Namespace,
+    device: torch.device,
+) -> None:
     """
     Trains the linear classifier on pre-extracted features.
 
@@ -165,7 +182,13 @@ def train_linear(classifier: nn.Linear, train_features: torch.Tensor, train_labe
         shuffle=True,
     )
 
-    optimizer = torch.optim.SGD(classifier.parameters(), lr=args.lr, momentum=0.9, nesterov=True, weight_decay=0.0)
+    optimizer = torch.optim.SGD(
+        classifier.parameters(),
+        lr=args.lr,
+        momentum=0.9,
+        nesterov=True,
+        weight_decay=0.0,
+    )
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs, eta_min=1e-4)
     loss_fn = nn.CrossEntropyLoss()
 
@@ -196,9 +219,14 @@ def train_linear(classifier: nn.Linear, train_features: torch.Tensor, train_labe
 # Evaluation
 # ---------------------------------------------------------------------------
 
+
 @torch.no_grad()
-def evaluate(classifier: nn.Linear, test_features: torch.Tensor, test_labels: torch.Tensor,
-             device: torch.device) -> float:
+def evaluate(
+    classifier: nn.Linear,
+    test_features: torch.Tensor,
+    test_labels: torch.Tensor,
+    device: torch.device,
+) -> float:
     """
     Computes top-1 accuracy of the linear classifier on pre-extracted features.
 
@@ -223,6 +251,7 @@ def evaluate(classifier: nn.Linear, test_features: torch.Tensor, test_labels: to
 # Entry point
 # ---------------------------------------------------------------------------
 
+
 def linear_eval(args: argparse.Namespace) -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logger.info(f"Device: {device}")
@@ -231,16 +260,34 @@ def linear_eval(args: argparse.Namespace) -> None:
     encoder = load_frozen_encoder(args.checkpoint, args.encoder, device)
 
     # --- DATA ---
-    train_dataset = datasets.CIFAR10(root=args.data_dir, train=True, download=True,
-                                     transform=get_transforms(train=True))
-    test_dataset = datasets.CIFAR10(root=args.data_dir, train=False, download=True,
-                                    transform=get_transforms(train=False))
+    train_dataset = datasets.CIFAR10(
+        root=args.data_dir,
+        train=True,
+        download=True,
+        transform=get_transforms(train=True),
+    )
+    test_dataset = datasets.CIFAR10(
+        root=args.data_dir,
+        train=False,
+        download=True,
+        transform=get_transforms(train=False),
+    )
 
     # shuffle=False: order is irrelevant for feature extraction
-    train_loader = DataLoader(train_dataset, batch_size=256, shuffle=False,
-                              num_workers=args.num_workers, pin_memory=(device.type == "cuda"))
-    test_loader = DataLoader(test_dataset, batch_size=256, shuffle=False,
-                             num_workers=args.num_workers, pin_memory=(device.type == "cuda"))
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=256,
+        shuffle=False,
+        num_workers=args.num_workers,
+        pin_memory=(device.type == "cuda"),
+    )
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=256,
+        shuffle=False,
+        num_workers=args.num_workers,
+        pin_memory=(device.type == "cuda"),
+    )
 
     # --- FEATURE EXTRACTION ---
     logger.info("Extracting train features...")
@@ -266,8 +313,12 @@ def linear_eval(args: argparse.Namespace) -> None:
     # --- SAVE ---
     save_path = Path(args.checkpoint).parent / "linear_eval_results.pt"
     torch.save(
-        {"accuracy": accuracy, "classifier_state_dict": classifier.state_dict(), "args": vars(args)},
-        save_path
+        {
+            "accuracy": accuracy,
+            "classifier_state_dict": classifier.state_dict(),
+            "args": vars(args),
+        },
+        save_path,
     )
     logger.info(f"Results saved to {save_path}")
 
@@ -276,13 +327,17 @@ def linear_eval(args: argparse.Namespace) -> None:
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Linear evaluation of SimCLR encoder")
 
     _SCRIPT_DIR = Path(__file__).parent
-    parser.add_argument("--checkpoint", type=str,
-                        default=str(_SCRIPT_DIR/"checkpoints"/"simclr"/"simclr_epoch100.pt"),
-                        help="Path to SimCLR checkpoint (.pt)")
+    parser.add_argument(
+        "--checkpoint",
+        type=str,
+        default=str(_SCRIPT_DIR / "checkpoints" / "simclr" / "simclr_epoch100.pt"),
+        help="Path to SimCLR checkpoint (.pt)",
+    )
     parser.add_argument("--data-dir", type=str, default="./data")
     parser.add_argument("--encoder", type=str, default="resnet18", choices=list(ENCODER_DIMS.keys()))
     parser.add_argument("--num-classes", type=int, default=10)

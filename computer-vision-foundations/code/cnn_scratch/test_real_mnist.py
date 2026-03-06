@@ -7,6 +7,8 @@ from layers import Conv2D, ReLU, MaxPool2D, Flatten, Dense, Softmax
 from network import Network, CrossEntropyLoss
 from train import SGD, train
 
+import matplotlib.pyplot as plt
+
 # Download and load MNIST
 print("Loading MNIST dataset...")
 try:
@@ -133,9 +135,7 @@ for i in range(10):
     confidence = y_pred[i, pred_label]
 
     status = "✓" if pred_label == true_label else "✗"
-    print(
-        f"{status} Sample {i + 1}: True={true_label}, Predicted={pred_label}, Confidence={confidence:.4f}"
-    )
+    print(f"{status} Sample {i + 1}: True={true_label}, Predicted={pred_label}, Confidence={confidence:.4f}")
 
 # Compute per-class accuracy (optional)
 print("\n" + "=" * 70)
@@ -151,8 +151,6 @@ for digit in range(10):
         accuracy = (predictions_all[mask] == digit).mean()
         print(f"  Digit {digit}: {accuracy:.4f} ({mask.sum()} samples)")
 
-
-import matplotlib.pyplot as plt
 
 # Plot learning curves
 plt.figure(figsize=(12, 4))

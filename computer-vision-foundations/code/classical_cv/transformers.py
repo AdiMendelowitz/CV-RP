@@ -1,7 +1,7 @@
 """Geomatric Transformers for Classical Computer Vision."""
 
 import numpy as np
-from typing import Tuple, List
+from typing import Tuple
 
 
 def get_affine_transform(src_points: np.ndarray, dst_points: np.ndarray) -> np.ndarray:
@@ -40,9 +40,7 @@ def get_affine_transform(src_points: np.ndarray, dst_points: np.ndarray) -> np.n
     return affine_matrix
 
 
-def get_perspective_transform(
-    src_points: np.ndarray, dst_points: np.ndarray
-) -> np.ndarray:
+def get_perspective_transform(src_points: np.ndarray, dst_points: np.ndarray) -> np.ndarray:
     """Compute the perspective transformation matrix from points correspondences.
     Args:
         src_points: Source points, shape (4,2) - [[x1, y1], [x2, y2], [x3, y3], [x4, y4]]
@@ -79,14 +77,10 @@ def get_perspective_transform(
     h = Vt[-1, :]  # Last row of Vt corresponds to the smallest singular value
     perspective_matrix = h.reshape(3, 3)
 
-    return (
-        perspective_matrix / perspective_matrix[2, 2]
-    )  # Normalize so that bottom-right value is 1
+    return perspective_matrix / perspective_matrix[2, 2]  # Normalize so that bottom-right value is 1
 
 
-def warp_affine(
-    image: np.ndarray, matrix: np.ndarray, output_shape: Tuple[int, int]
-) -> np.ndarray:
+def warp_affine(image: np.ndarray, matrix: np.ndarray, output_shape: Tuple[int, int]) -> np.ndarray:
     """Apply affine transformation to the image.
     Args:
         image: Input image (H, W) or (H, W, C).
@@ -98,9 +92,9 @@ def warp_affine(
     height, width = output_shape
 
     if image.ndim == 2:
-        outout = np.zeros((height, width), dtype=image.dtype)
+        output = np.zeros((height, width), dtype=image.dtype)
     else:
-        outout = np.zeros((height, width, image.shape[2]), dtype=image.dtype)
+        output = np.zeros((height, width, image.shape[2]), dtype=image.dtype)
 
     # Inverse transformaion (destination to source)
     # Add homogeneous coordinate
@@ -109,9 +103,7 @@ def warp_affine(
 
     # Coordinate grid of output image
     y_coords, x_coords = np.mgrid[0:height, 0:width]
-    coords = np.stack(
-        [x_coords.ravel(), y_coords.ravel(), np.ones(height * width)]
-    )  # (3, H*W)
+    coords = np.stack([x_coords.ravel(), y_coords.ravel(), np.ones(height * width)])  # (3, H*W)
 
     src_coords = M_inv @ coords  # (2, H*W)
     src_x = src_coords[0].reshape(height, width)
@@ -123,9 +115,7 @@ def warp_affine(
     return output
 
 
-def warp_perspective(
-    image: np.ndarray, matrix: np.ndarray, output_shape: Tuple[int, int]
-) -> np.ndarray:
+def warp_perspective(image: np.ndarray, matrix: np.ndarray, output_shape: Tuple[int, int]) -> np.ndarray:
     """Apply perspective transformation to the image.
     Args:
         image: Input image (H, W) or (H, W, C).
@@ -137,9 +127,9 @@ def warp_perspective(
     height, width = output_shape
 
     if image.ndim == 2:
-        outout = np.zeros((height, width), dtype=image.dtype)
+        output = np.zeros((height, width), dtype=image.dtype)
     else:
-        outout = np.zeros((height, width, image.shape[2]), dtype=image.dtype)
+        output = np.zeros((height, width, image.shape[2]), dtype=image.dtype)
 
     # Inverse transformaion
     H_inv = np.linalg.inv(matrix)
@@ -158,9 +148,7 @@ def warp_perspective(
     return output
 
 
-def _bilinear_interpolate(
-    image: np.ndarray, x: np.ndarray, y: np.ndarray
-) -> np.ndarray:
+def _bilinear_interpolate(image: np.ndarray, x: np.ndarray, y: np.ndarray) -> np.ndarray:
     """
     Bilinear interpolation for image sampling
     Args:

@@ -214,3 +214,12 @@ dependencies = [
     "werkzeug==3.1.5",
     "yarl==1.22.0",
 ]
+
+[tool.black]
+line-length = 120
+exclude = '(__MACOSX|\.git|\.venv|notebooks)'
+
+[dependency-groups]
+dev = [
+    "flake8>=7.3.0",
+]

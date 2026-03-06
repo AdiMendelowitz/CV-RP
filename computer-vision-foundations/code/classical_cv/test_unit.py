@@ -17,7 +17,6 @@ from transformers import (
     get_affine_transform,
     get_perspective_transform,
     warp_affine,
-    warp_perspective,
     rotate,
     resize,
 )
@@ -227,7 +226,6 @@ class TestCannyEdgeDetector:
 
     def test_circle_detection(self):
         """Should detect circle edge"""
-        img = np.zeros((100, 100), dtype="float32")
         y, x = np.ogrid[:100, :100]
         circle = ((x - 50) ** 2 + (y - 50) ** 2 < 30**2).astype("float32")
 

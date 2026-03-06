@@ -51,9 +51,7 @@ class Conv2D(Layer):
 
         # He initialization of weights for ReLu
         std = np.sqrt(2.0 / (in_channels * kernel_size * kernel_size))
-        self.weights = (
-            np.random.randn(out_channels, in_channels, kernel_size, kernel_size) * std
-        )
+        self.weights = np.random.randn(out_channels, in_channels, kernel_size, kernel_size) * std
         self.bias = np.zeros(out_channels)
 
         # Cache for backward pass
@@ -74,18 +72,14 @@ class Conv2D(Layer):
                 f" got {input.shape}D with shape {input.shape}"
             )
         if input.shape[1] != self.in_channels:
-            raise ValueError(
-                f"Expected input with {self.in_channels} channels, got {input.shape[1]} channels"
-            )
+            raise ValueError(f"Expected input with {self.in_channels} channels, got {input.shape[1]} channels")
 
         self.input = input
         batch_size, in_channels, height_in, width_in = input.shape
 
         input_padded = _pad_input(input, self.padding)
 
-        height_out = (
-            height_in + 2 * self.padding - self.kernel_size
-        ) // self.stride + 1
+        height_out = (height_in + 2 * self.padding - self.kernel_size) // self.stride + 1
         width_out = (width_in + 2 * self.padding - self.kernel_size) // self.stride + 1
         output = np.zeros((batch_size, self.out_channels, height_out, width_out))
 
@@ -104,9 +98,7 @@ class Conv2D(Layer):
 
                         # Convolve: patch shape (in_channels, kernel_size, kernel_size),
                         #          weights shape (out_channels, in_channels, kernel_size, kernel_size)
-                        output[b, oc, ho, wo] = (
-                            np.sum(patch * self.weights[oc]) + self.bias[oc]
-                        )
+                        output[b, oc, ho, wo] = np.sum(patch * self.weights[oc]) + self.bias[oc]
 
         return output
 
@@ -150,15 +142,11 @@ class Conv2D(Layer):
                         self.grad_weights[oc] += grad * patch
 
                         # Gradient w.r.t. input
-                        grad_input_padded[bs, :, h_start:h_end, w_start:w_end] += (
-                            grad * self.weights[oc]
-                        )
+                        grad_input_padded[bs, :, h_start:h_end, w_start:w_end] += grad * self.weights[oc]
 
         # Remove padding from input gradient
         if self.padding > 0:
-            grad_input = grad_input_padded[
-                :, :, self.padding : -self.padding, self.padding : -self.padding
-            ]
+            grad_input = grad_input_padded[:, :, self.padding : -self.padding, self.padding : -self.padding]
         else:
             grad_input = grad_input_padded
         return grad_input
@@ -202,9 +190,7 @@ class MaxPool2D(Layer):
         width_out = (width_in - self.pool_size) // self.stride + 1
         output = np.zeros((batch_size, channels, height_out, width_out))
 
-        self.max_indices = np.zeros(
-            (batch_size, channels, height_out, width_out, 2), dtype=int
-        )
+        self.max_indices = np.zeros((batch_size, channels, height_out, width_out, 2), dtype=int)
 
         # Max pooling operation
         for b in range(0, batch_size):
@@ -248,9 +234,7 @@ class MaxPool2D(Layer):
                 for ho in range(0, height_out):
                     for wo in range(0, width_out):
                         max_pos = self.max_indices[b, c, ho, wo]
-                        grad_input[b, c, max_pos[0], max_pos[1]] += output_gradient[
-                            b, c, ho, wo
-                        ]
+                        grad_input[b, c, max_pos[0], max_pos[1]] += output_gradient[b, c, ho, wo]
         return grad_input
 
 
@@ -339,9 +323,7 @@ class Softmax(Layer):
         Returns:
             output: (batch, num_classes) - probabilities sum to 1
         """
-        exp_input = np.exp(
-            input - np.max(input, axis=1, keepdims=True)
-        )  # for numerical stability
+        exp_input = np.exp(input - np.max(input, axis=1, keepdims=True))  # for numerical stability
         self.output = exp_input / np.sum(exp_input, axis=1, keepdims=True)
         return self.output
 
@@ -363,7 +345,7 @@ class Softmax(Layer):
 
 class Flatten(Layer):
     """
-    Flatten layers: Reshape from (batch, channels, height, width) to (batch, channels*height*width) for fully connected layers
+    Flatten layers: Reshape from (batch, channels, height, width) to (batch, channels*height*width) for FC layers
     """
 
     def __init__(self) -> None:

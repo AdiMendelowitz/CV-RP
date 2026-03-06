@@ -5,7 +5,6 @@ CNN in PyTorch - Matching Numpy Architecture, compare results
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import dataloader, TensorDataset
 import numpy as np
 from torchvision import datasets, transforms
 
@@ -35,7 +34,7 @@ class CNNPyTorch(nn.Module):
         # Layer 2
         self.conv2 = nn.Conv2d(8, 16, kernel_size=3, padding=1)  # Output: (16, 14, 14)
         self.relu2 = nn.ReLU()
-        self.pool2 = nn.MaxPool2d(kernel_size=2)    # Output: (16, 7, 7)
+        self.pool2 = nn.MaxPool2d(kernel_size=2)  # Output: (16, 7, 7)
 
         # Layer 3
         self.fc1 = nn.Linear(16 * 7 * 7, 128)
@@ -57,7 +56,7 @@ class CNNPyTorch(nn.Module):
         x = self.pool2(x)  # (batch_size, 16, 14, 14) -> (batch_size, 16, 7, 7)
 
         # Flatten
-        x = torch.flatten(x, 1) # (batch_size, 16, 7, 7) -> (batch_size, 16*7*7)
+        x = torch.flatten(x, 1)  # (batch_size, 16, 7, 7) -> (batch_size, 16*7*7)
 
         # Dense Layers
         x = self.fc1(x)  # (batch_size, 16*7*7) -> (batch_size, 128)
@@ -82,12 +81,12 @@ def train_pytorch(model, train_loader, test_loader, num_epochs=5, lr=0.01):
         train_correct, train_total = 0, 0
 
         for inputs, labels in train_loader:
-            optimizer.zero_grad() # Clear gradients from previous iterations
+            optimizer.zero_grad()  # Clear gradients from previous iterations
 
             outputs = model(inputs)  # Forward pass
             loss = criterion(outputs, labels)
 
-            loss.backward()          # Backward pass
+            loss.backward()  # Backward pass
             optimizer.step()
 
             # Statistics
@@ -140,19 +139,21 @@ def main():
 
     print("\nLoading MNIST dataset...")
     # Define transforms: convers PIL image to tensor and scales to [0,1]
-    transform = transforms.Compose([
-        transforms.ToTensor(),       # Automatically scales to [0, 1] and adds channel dim
-        transforms.Normalize((0.1307,), (0.3081,))  # MNIST mean and std
-    ])
-
-    train_dataset_full = datasets.MNIST(
-        root='./data',   # Downloads to specified directory
-        train=True,
-        download=True,      # Downloads if not present
-        transform=transform
+    transform = transforms.Compose(
+        [
+            transforms.ToTensor(),  # Automatically scales to [0, 1] and adds channel dim
+            transforms.Normalize((0.1307,), (0.3081,)),  # MNIST mean and std
+        ]
     )
 
-    test_dataset_full = datasets.MNIST(root='./data', train=False, download=True, transform=transform)
+    train_dataset_full = datasets.MNIST(
+        root="./data",  # Downloads to specified directory
+        train=True,
+        download=True,  # Downloads if not present
+        transform=transform,
+    )
+
+    test_dataset_full = datasets.MNIST(root="./data", train=False, download=True, transform=transform)
 
     train_subset = torch.utils.data.Subset(train_dataset_full, range(5000))
     test_subset = torch.utils.data.Subset(test_dataset_full, range(5000))
@@ -184,13 +185,9 @@ def main():
     print("Training complete!")
     print("=" * 50)
 
-    print(f"\nfinal Results:")
-    print(
-        f"Train Loss: {history['train_loss'][-1]:.4f}, Train Acc: {history['train_acc'][-1]:.4f}"
-    )
-    print(
-        f"Test Loss: {history['test_loss'][-1]:.4f}, Test Acc: {history['test_acc'][-1]:.4f}"
-    )
+    print("\nfinal Results:")
+    print(f"Train Loss: {history['train_loss'][-1]:.4f}, Train Acc: {history['train_acc'][-1]:.4f}")
+    print(f"Test Loss: {history['test_loss'][-1]:.4f}, Test Acc: {history['test_acc'][-1]:.4f}")
 
     print("=" * 50)
     print("\nSample predictions:")
@@ -212,9 +209,7 @@ def main():
             confidence = torch.softmax(outputs[i], dim=0)[predicted_label].item()
 
             status = "Correct" if true_label == predicted_label else "Incorrect"
-            print(
-                f"{status} Sample {i+1}: True={true_label}, Predicted={predicted_label}, Confidence={confidence:.4f}"
-            )
+            print(f"{status} Sample {i+1}: True={true_label}, Predicted={predicted_label}, Confidence={confidence:.4f}")
 
     return history, model
 

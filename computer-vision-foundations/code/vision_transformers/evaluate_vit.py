@@ -30,13 +30,25 @@ from torch.utils.data import DataLoader
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
-CIFAR_CLASSES = ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
+CIFAR_CLASSES = [
+    "airplane",
+    "automobile",
+    "bird",
+    "cat",
+    "deer",
+    "dog",
+    "frog",
+    "horse",
+    "ship",
+    "truck",
+]
 
 CIFAR10_MEAN = [0.4914, 0.4822, 0.4465]
 CIFAR10_STD = [0.2470, 0.2435, 0.2616]
 
-CHECKPOINT_PATH = Path('checkpoints/best_vit_cifar10.pth')
-OUTPUT_DIR = Path('outputs/evaluation')
+CHECKPOINT_PATH = Path("checkpoints/best_vit_cifar10.pth")
+OUTPUT_DIR = Path("outputs/evaluation")
+
 
 @dataclass
 class ViTConfig:
@@ -44,27 +56,36 @@ class ViTConfig:
     ViT-Tiny hyperparameters. num_patches is derived automatically from image_size and patch_size
     in __post_init__
     """
-    image_size:     int= 32
-    patch_size:     int = 4
-    num_classes:    int = 10
-    embed_dim:      int = 192
-    depth:          int = 12
-    num_heads:      int = 3
-    mlp_ratio:      float = 4.0
-    dropout:        float = 0.0
-    attn_dropout:   float = 0.0
-    num_patches:    int = field(init=False)
+
+    image_size: int = 32
+    patch_size: int = 4
+    num_classes: int = 10
+    embed_dim: int = 192
+    depth: int = 12
+    num_heads: int = 3
+    mlp_ratio: float = 4.0
+    dropout: float = 0.0
+    attn_dropout: float = 0.0
+    num_patches: int = field(init=False)
 
     def __post_init__(self):
         self.num_patches = (self.image_size // self.patch_size) ** 2
+
 
 VIT_CONFIG = ViTConfig()
 
 # ── Architecture ──────────────────────────────────────────────────────────────
 # Must match the Kaggle training checkpoint state_dict keys exactly.
 
+
 class PatchEmbedding(nn.Module):
-    def __init__(self, image_size: int, patch_size: int, in_channels: int = 3, embed_dim: int = 192) -> None:
+    def __init__(
+        self,
+        image_size: int,
+        patch_size: int,
+        in_channels: int = 3,
+        embed_dim: int = 192,
+    ) -> None:
         super().__init__()
         self.proj = nn.Conv2d(in_channels, embed_dim, kernel_size=patch_size, stride=patch_size)
         self.norm = nn.LayerNorm(embed_dim)
@@ -77,9 +98,9 @@ class MultiHeadSelfAttention(nn.Module):
     def __init__(self, embed_dim: int, num_heads: int, attn_dropout: float = 0.0) -> None:
         super().__init__()
         if embed_dim % num_heads != 0:
-            raise ValueError(f'embed_dim ({embed_dim}) must be divisible by num_heads ({num_heads})')
+            raise ValueError(f"embed_dim ({embed_dim}) must be divisible by num_heads ({num_heads})")
         self.num_heads = num_heads
-        self.head_dim  = embed_dim // num_heads
+        self.head_dim = embed_dim // num_heads
         self.qkv = nn.Linear(embed_dim, embed_dim * 3, bias=False)
         self.proj = nn.Linear(embed_dim, embed_dim)
 
@@ -94,10 +115,13 @@ class MultiHeadSelfAttention(nn.Module):
 class MLP(nn.Module):
     def __init__(self, embed_dim: int, mlp_ratio: float = 4.0, dropout: float = 0.0) -> None:
         super().__init__()
-        hidden  = int(embed_dim * mlp_ratio)
+        hidden = int(embed_dim * mlp_ratio)
         self.net = nn.Sequential(
-            nn.Linear(embed_dim, hidden), nn.GELU(), nn.Dropout(dropout),
-            nn.Linear(hidden, embed_dim), nn.Dropout(dropout),
+            nn.Linear(embed_dim, hidden),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden, embed_dim),
+            nn.Dropout(dropout),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -105,8 +129,14 @@ class MLP(nn.Module):
 
 
 class TransformerBlock(nn.Module):
-    def __init__(self, embed_dim: int, num_heads: int, mlp_ratio: float = 4.0,
-                 dropout: float = 0.0, attn_dropout: float = 0.0) -> None:
+    def __init__(
+        self,
+        embed_dim: int,
+        num_heads: int,
+        mlp_ratio: float = 4.0,
+        dropout: float = 0.0,
+        attn_dropout: float = 0.0,
+    ) -> None:
         super().__init__()
         self.norm1 = nn.LayerNorm(embed_dim)
         self.attn = MultiHeadSelfAttention(embed_dim, num_heads, attn_dropout)
@@ -132,10 +162,18 @@ class ViTTiny(nn.Module):
         self.cls_token = nn.Parameter(torch.zeros(1, 1, cfg.embed_dim))
         self.pos_embed = nn.Parameter(torch.zeros(1, cfg.num_patches + 1, cfg.embed_dim))
         self.pos_drop = nn.Dropout(cfg.dropout)
-        self.blocks = nn.ModuleList([
-            TransformerBlock(cfg.embed_dim, cfg.num_heads, cfg.mlp_ratio, cfg.dropout, cfg.attn_dropout)
-            for _ in range(cfg.depth)
-        ])
+        self.blocks = nn.ModuleList(
+            [
+                TransformerBlock(
+                    cfg.embed_dim,
+                    cfg.num_heads,
+                    cfg.mlp_ratio,
+                    cfg.dropout,
+                    cfg.attn_dropout,
+                )
+                for _ in range(cfg.depth)
+            ]
+        )
         self.norm = nn.LayerNorm(cfg.embed_dim)
         self.head = nn.Linear(cfg.embed_dim, cfg.num_classes)
 
@@ -152,32 +190,37 @@ class ViTTiny(nn.Module):
 
 # ── Model & Data Loading ──────────────────────────────────────────────────────
 
+
 def load_model(checkpoint_path: Path, device: torch.device) -> tuple[ViTTiny, dict]:
     """Load trained ViT-Tiny from checkpoint."""
     if not checkpoint_path.exists():
         raise FileNotFoundError(
-            f'Checkpoint not found at {checkpoint_path}.\n'
-            'Download best_vit_cifar10.pth from Kaggle output tab and place it in checkpoints/'
+            f"Checkpoint not found at {checkpoint_path}.\n"
+            "Download best_vit_cifar10.pth from Kaggle output tab and place it in checkpoints/"
         )
     ckpt = torch.load(checkpoint_path, map_location=device, weights_only=False)
     model = ViTTiny(VIT_CONFIG).to(device)
-    model.load_state_dict(ckpt['model_state'])
+    model.load_state_dict(ckpt["model_state"])
     model.eval()
     print(f'✓ Checkpoint loaded — epoch {ckpt["epoch"]}, best acc {ckpt["best_acc"]:.2f}%')
     return model, ckpt
+
 
 class DualTransformCIFAR10(torch.utils.data.Dataset):
     """
     CIFAR-10 test set that returns (norm_img, raw_img, label) per item.
     Applies both transforms to the same PIL image - avoids loading the dataset twice
     """
-    _norm_transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize(CIFAR10_MEAN, CIFAR10_STD),
-    ])
+
+    _norm_transform = transforms.Compose(
+        [
+            transforms.ToTensor(),
+            transforms.Normalize(CIFAR10_MEAN, CIFAR10_STD),
+        ]
+    )
     _raw_transform = transforms.ToTensor()
 
-    def __init__(self, root: str = './data', dowload: bool = True) -> None:
+    def __init__(self, root: str = "./data", dowload: bool = True) -> None:
         # Transform=None so we receive PIL images and apply both transforms ourselves
         self._base = torchvision.datasets.CIFAR10(root=root, train=False, download=dowload, transform=None)
 
@@ -188,7 +231,8 @@ class DualTransformCIFAR10(torch.utils.data.Dataset):
         img, label = self._base[idx]
         return self._norm_transform(img), self._raw_transform(img), label
 
-def load_data(batch_size: int = 256) -> tuple['DualTransformCIFAR10', DataLoader]:
+
+def load_data(batch_size: int = 256) -> tuple["DualTransformCIFAR10", DataLoader]:
     """Return a DualTransformCIFAR10 dataset and a Dataloader over it"""
     dataset = DualTransformCIFAR10()
     test_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=2, pin_memory=False)
@@ -197,9 +241,11 @@ def load_data(batch_size: int = 256) -> tuple['DualTransformCIFAR10', DataLoader
 
 # ── Inference ─────────────────────────────────────────────────────────────────
 
+
 @torch.no_grad()
-def get_all_predictions(model: ViTTiny, loader: DataLoader, device: torch.device) \
-        -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+def get_all_predictions(
+    model: ViTTiny, loader: DataLoader, device: torch.device
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """
     Run full test set inference.
 
@@ -220,41 +266,61 @@ def get_all_predictions(model: ViTTiny, loader: DataLoader, device: torch.device
 
 # ── Plotting ──────────────────────────────────────────────────────────────────
 
+
 def plot_training_history(history: dict, best_acc: float, out_dir: Path) -> None:
     """Four-panel training history: loss, accuracy, LR schedule, zoomed test acc."""
-    epochs = range(1, len(history['train_loss']) + 1)
+    epochs = range(1, len(history["train_loss"]) + 1)
     fig, axes = plt.subplots(2, 2, figsize=(14, 9))
 
-    axes[0, 0].plot(epochs, history['train_loss'], label='Train', linewidth=2)
-    axes[0, 0].plot(epochs, history['test_loss'],  label='Test',  linewidth=2)
-    axes[0, 0].set_title('Loss'); axes[0, 0].set_xlabel('Epoch'); axes[0, 0].set_ylabel('Cross-Entropy Loss')
-    axes[0, 0].legend(); axes[0, 0].grid(alpha=0.3)
+    axes[0, 0].plot(epochs, history["train_loss"], label="Train", linewidth=2)
+    axes[0, 0].plot(epochs, history["test_loss"], label="Test", linewidth=2)
+    axes[0, 0].set_title("Loss")
+    axes[0, 0].set_xlabel("Epoch")
+    axes[0, 0].set_ylabel("Cross-Entropy Loss")
+    axes[0, 0].legend()
+    axes[0, 0].grid(alpha=0.3)
 
-    axes[0, 1].plot(epochs, history['train_acc'], label='Train', linewidth=2)
-    axes[0, 1].plot(epochs, history['test_acc'],  label='Test',  linewidth=2)
-    axes[0, 1].axhline(best_acc, linestyle='--', color='green', alpha=0.7, label=f'Best {best_acc:.2f}%')
-    axes[0, 1].set_title('Accuracy (%)'); axes[0, 1].set_xlabel('Epoch'); axes[0, 1].set_ylabel('Accuracy (%)')
-    axes[0, 1].legend(); axes[0, 1].grid(alpha=0.3)
+    axes[0, 1].plot(epochs, history["train_acc"], label="Train", linewidth=2)
+    axes[0, 1].plot(epochs, history["test_acc"], label="Test", linewidth=2)
+    axes[0, 1].axhline(
+        best_acc,
+        linestyle="--",
+        color="green",
+        alpha=0.7,
+        label=f"Best {best_acc:.2f}%",
+    )
+    axes[0, 1].set_title("Accuracy (%)")
+    axes[0, 1].set_xlabel("Epoch")
+    axes[0, 1].set_ylabel("Accuracy (%)")
+    axes[0, 1].legend()
+    axes[0, 1].grid(alpha=0.3)
 
-    axes[1, 0].plot(epochs, history['lr'], linewidth=2, color='purple')
-    axes[1, 0].set_title('Learning Rate Schedule'); axes[1, 0].set_xlabel('Epoch'); axes[1, 0].set_ylabel('Learning Rate')
-    axes[1, 0].set_yscale('log'); axes[1, 0].grid(alpha=0.3)
+    axes[1, 0].plot(epochs, history["lr"], linewidth=2, color="purple")
+    axes[1, 0].set_title("Learning Rate Schedule")
+    axes[1, 0].set_xlabel("Epoch")
+    axes[1, 0].set_ylabel("Learning Rate")
+    axes[1, 0].set_yscale("log")
+    axes[1, 0].grid(alpha=0.3)
 
-    test_acc = history['test_acc']
-    axes[1, 1].plot(epochs, test_acc, linewidth=2, color='coral')
-    axes[1, 1].set_title('Test Accuracy (Zoomed)'); axes[1, 1].set_xlabel('Epoch'); axes[1, 1].set_ylabel('Accuracy (%)')
+    test_acc = history["test_acc"]
+    axes[1, 1].plot(epochs, test_acc, linewidth=2, color="coral")
+    axes[1, 1].set_title("Test Accuracy (Zoomed)")
+    axes[1, 1].set_xlabel("Epoch")
+    axes[1, 1].set_ylabel("Accuracy (%)")
     axes[1, 1].set_ylim(min(test_acc) - 3, max(test_acc) + 2)
     axes[1, 1].grid(alpha=0.3)
 
-    plt.suptitle('ViT-Tiny CIFAR-10 — Training History', fontsize=13, fontweight='bold')
+    plt.suptitle("ViT-Tiny CIFAR-10 — Training History", fontsize=13, fontweight="bold")
     plt.tight_layout()
-    plt.savefig(out_dir / 'training_history.png', dpi=150, bbox_inches='tight')
+    plt.savefig(out_dir / "training_history.png", dpi=150, bbox_inches="tight")
     plt.show()
     plt.close(fig)
-    print('✓ training_history.png saved')
+    print("✓ training_history.png saved")
 
-def plot_per_class_accuracy(all_preds: torch.Tensor, all_labels: torch.Tensor,
-                            out_dir: Path) -> tuple[float, list[float]]:
+
+def plot_per_class_accuracy(
+    all_preds: torch.Tensor, all_labels: torch.Tensor, out_dir: Path
+) -> tuple[float, list[float]]:
     """Bar chart of per-class accuracy. Also prints a text breakdown. Returns class_acc list."""
     overall_accuracy = (all_preds == all_labels).float().mean().item() * 100
     class_total = torch.bincount(all_labels, minlength=10)
@@ -263,28 +329,40 @@ def plot_per_class_accuracy(all_preds: torch.Tensor, all_labels: torch.Tensor,
     class_acccuracy = torch.where(class_total > 0, 100.0 * class_correct / class_total, torch.zeros(10)).tolist()
 
     print(f'\n{"Class":>12}  {"Acc":>6}  {"Correct":>8}  {"Total":>6}')
-    print('-' * 40)
+    print("-" * 40)
     for cls, acc, correct, total in zip(CIFAR_CLASSES, class_acccuracy, class_correct.tolist(), class_total.tolist()):
-        print(f'{cls:>12}  {acc:6.2f}%  {correct:8d}  {total:6d}')
-    print('-' * 40)
+        print(f"{cls:>12}  {acc:6.2f}%  {correct:8d}  {total:6d}")
+    print("-" * 40)
     print(f'{"Overall":>12}  {overall_accuracy:6.2f}%')
 
-    colors = ['#2ecc71' if a >= 90 else '#f39c12' if a >= 80 else '#e74c3c' for a in class_acccuracy]
+    colors = ["#2ecc71" if a >= 90 else "#f39c12" if a >= 80 else "#e74c3c" for a in class_acccuracy]
     fig, ax = plt.subplots(figsize=(10, 5))
-    bars = ax.bar(CIFAR_CLASSES, class_acccuracy, color=colors, edgecolor='white', linewidth=0.8)
-    ax.axhline(overall_accuracy, linestyle='--', color='black', alpha=0.5, label=f'Overall {overall_accuracy:.1f}%')
-    ax.set_title('Per-Class Test Accuracy — ViT-Tiny', fontsize=13, fontweight='bold')
-    ax.set_ylabel('Accuracy (%)');
+    bars = ax.bar(CIFAR_CLASSES, class_acccuracy, color=colors, edgecolor="white", linewidth=0.8)
+    ax.axhline(
+        overall_accuracy,
+        linestyle="--",
+        color="black",
+        alpha=0.5,
+        label=f"Overall {overall_accuracy:.1f}%",
+    )
+    ax.set_title("Per-Class Test Accuracy — ViT-Tiny", fontsize=13, fontweight="bold")
+    ax.set_ylabel("Accuracy (%)")
     ax.set_ylim(0, 105)
-    ax.legend();
-    ax.grid(alpha=0.3, axis='y')
+    ax.legend()
+    ax.grid(alpha=0.3, axis="y")
     for bar, acc in zip(bars, class_acccuracy):
-        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.8, f'{acc:.1f}%', ha='center', fontsize=9)
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height() + 0.8,
+            f"{acc:.1f}%",
+            ha="center",
+            fontsize=9,
+        )
     plt.tight_layout()
-    plt.savefig(out_dir / 'per_class_accuracy.png', dpi=150, bbox_inches='tight')
+    plt.savefig(out_dir / "per_class_accuracy.png", dpi=150, bbox_inches="tight")
     plt.show()
     plt.close(fig)
-    print('✓ per_class_accuracy.png saved')
+    print("✓ per_class_accuracy.png saved")
 
     return overall_accuracy, class_acccuracy
 
@@ -299,34 +377,55 @@ def plot_confusion_matrix(all_preds: torch.Tensor, all_labels: torch.Tensor, out
     norm_np = conf_norm.numpy()
 
     fig, ax = plt.subplots(figsize=(12, 10))
-    im = ax.imshow(norm_np, cmap='Blues', vmin=0, vmax=1)
+    im = ax.imshow(norm_np, cmap="Blues", vmin=0, vmax=1)
     plt.colorbar(im, ax=ax, fraction=0.046)
 
-    ax.set_xticks(range(10)); ax.set_xticklabels(CIFAR_CLASSES, rotation=45, ha='right')
-    ax.set_yticks(range(10)); ax.set_yticklabels(CIFAR_CLASSES)
-    ax.set_xlabel('Predicted Label', fontsize=12); ax.set_ylabel('True Label', fontsize=12)
-    ax.set_title('Confusion Matrix (counts and proportions) — ViT-Tiny', fontsize=13, fontweight='bold', pad=20)
+    ax.set_xticks(range(10))
+    ax.set_xticklabels(CIFAR_CLASSES, rotation=45, ha="right")
+    ax.set_yticks(range(10))
+    ax.set_yticklabels(CIFAR_CLASSES)
+    ax.set_xlabel("Predicted Label", fontsize=12)
+    ax.set_ylabel("True Label", fontsize=12)
+    ax.set_title(
+        "Confusion Matrix (counts and proportions) — ViT-Tiny",
+        fontsize=13,
+        fontweight="bold",
+        pad=20,
+    )
 
     for i in range(10):
         for j in range(10):
-            ax.text(j, i, f'{conf_np[i, j]}\n({norm_np[i, j]:.2f})', ha='center', va='center', fontsize=8,
-                    color='white' if norm_np[i, j] > 0.5 else 'black')
+            ax.text(
+                j,
+                i,
+                f"{conf_np[i, j]}\n({norm_np[i, j]:.2f})",
+                ha="center",
+                va="center",
+                fontsize=8,
+                color="white" if norm_np[i, j] > 0.5 else "black",
+            )
 
-    print('\nTop misclassifications:')
-    off_diag = [(conf[i, j].item(), CIFAR_CLASSES[i], CIFAR_CLASSES[j])
-                for i in range(10) for j in range(10) if i != j]
+    print("\nTop misclassifications:")
+    off_diag = [(conf[i, j].item(), CIFAR_CLASSES[i], CIFAR_CLASSES[j]) for i in range(10) for j in range(10) if i != j]
     for count, true_cls, pred_cls in sorted(off_diag, reverse=True)[:5]:
-        print(f'  {true_cls:<12} → {pred_cls:<12}  ({count} samples)')
+        print(f"  {true_cls:<12} → {pred_cls:<12}  ({count} samples)")
 
     plt.tight_layout()
-    plt.savefig(out_dir / 'confusion_matrix.png', dpi=150, bbox_inches='tight')
+    plt.savefig(out_dir / "confusion_matrix.png", dpi=150, bbox_inches="tight")
     plt.show()
     plt.close(fig)
-    print('✓ confusion_matrix.png saved')
+    print("✓ confusion_matrix.png saved")
 
 
-def plot_sample_predictions(dataset: DualTransformCIFAR10, all_preds: torch.Tensor, all_labels: torch.Tensor,
-                            all_confs: torch.Tensor, out_dir: Path, num_samples: int = 16, seed: int = 42) -> None:
+def plot_sample_predictions(
+    dataset: DualTransformCIFAR10,
+    all_preds: torch.Tensor,
+    all_labels: torch.Tensor,
+    all_confs: torch.Tensor,
+    out_dir: Path,
+    num_samples: int = 16,
+    seed: int = 42,
+) -> None:
     """
     Random grid of predictions with confidence scores.
     Green title = correct, red = wrong.
@@ -341,32 +440,42 @@ def plot_sample_predictions(dataset: DualTransformCIFAR10, all_preds: torch.Tens
     axes = axes.ravel()
 
     for ax, idx in zip(axes, indices):
-        _, raw_img, _ = dataset[idx]                        # Unpack: (norm, raw, label)
+        _, raw_img, _ = dataset[idx]  # Unpack: (norm, raw, label)
         true_cls = CIFAR_CLASSES[all_labels[idx].item()]
         pred_cls = CIFAR_CLASSES[all_preds[idx].item()]
         conf = all_confs[idx].item()
         correct = all_preds[idx] == all_labels[idx]
 
         ax.imshow(raw_img.permute(1, 2, 0).numpy())
-        ax.axis('off')
-        ax.set_title(f'True: {true_cls}\nPred: {pred_cls}\nConf: {conf:.2f}', fontsize=9, color='green' if correct else 'red')
+        ax.axis("off")
+        ax.set_title(
+            f"True: {true_cls}\nPred: {pred_cls}\nConf: {conf:.2f}",
+            fontsize=9,
+            color="green" if correct else "red",
+        )
 
     for ax in axes[num_samples:]:
-        ax.axis('off')
+        ax.axis("off")
 
-    plt.suptitle('Sample Predictions — ViT-Tiny', fontsize=13, fontweight='bold')
+    plt.suptitle("Sample Predictions — ViT-Tiny", fontsize=13, fontweight="bold")
     plt.tight_layout()
-    plt.savefig(out_dir / 'sample_predictions.png', dpi=150, bbox_inches='tight')
+    plt.savefig(out_dir / "sample_predictions.png", dpi=150, bbox_inches="tight")
     plt.show()
     plt.close(fig)
-    print('✓ sample_predictions.png saved')
+    print("✓ sample_predictions.png saved")
 
 
-def plot_misclassified(all_preds: torch.Tensor, all_labels: torch.Tensor, dataset: DualTransformCIFAR10,
-                       out_dir: Path, n_samples: int = 16, seed: int = 42) -> None:
+def plot_misclassified(
+    all_preds: torch.Tensor,
+    all_labels: torch.Tensor,
+    dataset: DualTransformCIFAR10,
+    out_dir: Path,
+    n_samples: int = 16,
+    seed: int = 42,
+) -> None:
     """Grid of misclassified examples. Shows true vs predicted label."""
     wrong_idx = (all_preds != all_labels).nonzero(as_tuple=True)[0]
-    print(f'\nMisclassified: {len(wrong_idx):,} / {len(dataset):,} ({100 * len(wrong_idx) / len(dataset):.1f}%)')
+    print(f"\nMisclassified: {len(wrong_idx):,} / {len(dataset):,} ({100 * len(wrong_idx) / len(dataset):.1f}%)")
 
     rng = np.random.default_rng(seed)
     sample_idx = rng.choice(len(wrong_idx), min(n_samples, len(wrong_idx)), replace=False)
@@ -381,60 +490,61 @@ def plot_misclassified(all_preds: torch.Tensor, all_labels: torch.Tensor, datase
     for ax, idx in zip(axes, sample):
         _, raw_img, _ = dataset[idx]
         ax.imshow(raw_img.permute(1, 2, 0).numpy())
-        ax.set_title(f'True: {CIFAR_CLASSES[all_labels[idx].item()]}\n'
-                     f'Pred: {CIFAR_CLASSES[all_preds[idx].item()]}',
-                     fontsize=8, color='red')
-        ax.axis('off')
-    for ax in axes[len(sample):]:
-        ax.axis('off')
+        ax.set_title(
+            f"True: {CIFAR_CLASSES[all_labels[idx].item()]}\n" f"Pred: {CIFAR_CLASSES[all_preds[idx].item()]}",
+            fontsize=8,
+            color="red",
+        )
+        ax.axis("off")
+    for ax in axes[len(sample) :]:
+        ax.axis("off")
 
-    plt.suptitle('Misclassified Samples — ViT-Tiny', fontsize=13, fontweight='bold')
+    plt.suptitle("Misclassified Samples — ViT-Tiny", fontsize=13, fontweight="bold")
     plt.tight_layout()
-    plt.savefig(out_dir / 'misclassified_samples.png', dpi=150, bbox_inches='tight')
+    plt.savefig(out_dir / "misclassified_samples.png", dpi=150, bbox_inches="tight")
     plt.show()
     plt.close(fig)
-    print('✓ misclassified_samples.png saved')
+    print("✓ misclassified_samples.png saved")
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    device = torch.device('cpu')
-    print(f'Device: {device}')
+    device = torch.device("cpu")
+    print(f"Device: {device}")
 
-    print('\n' + '=' * 70)
-    print('ViT-Tiny CIFAR-10 — Evaluation')
-    print('=' * 70)
+    print("\n" + "=" * 70)
+    print("ViT-Tiny CIFAR-10 — Evaluation")
+    print("=" * 70)
 
     model, ckpt = load_model(CHECKPOINT_PATH, device)
     dataset, test_loader = load_data()
-    print(f'✓ Test data loaded ({len(dataset):,} samples)')
+    print(f"✓ Test data loaded ({len(dataset):,} samples)")
 
-    print('\nRunning inference...')
+    print("\nRunning inference...")
     all_preds, all_labels, all_confs = get_all_predictions(model, test_loader, device)
 
-    print('\n── Training History ──')
-    plot_training_history(ckpt['history'], ckpt['best_acc'], OUTPUT_DIR)
+    print("\n── Training History ──")
+    plot_training_history(ckpt["history"], ckpt["best_acc"], OUTPUT_DIR)
 
-    print('\n── Per-Class Accuracy ──')
+    print("\n── Per-Class Accuracy ──")
     overall_acc, _ = plot_per_class_accuracy(all_preds, all_labels, OUTPUT_DIR)
 
-    print('\n── Confusion Matrix ──')
+    print("\n── Confusion Matrix ──")
     plot_confusion_matrix(all_preds, all_labels, OUTPUT_DIR)
 
-    print('\n── Sample Predictions ──')
+    print("\n── Sample Predictions ──")
     plot_sample_predictions(dataset, all_preds, all_labels, all_confs, OUTPUT_DIR)
 
-    print('\n── Misclassified Samples ──')
+    print("\n── Misclassified Samples ──")
     plot_misclassified(all_preds, all_labels, dataset, OUTPUT_DIR)
 
     total_params = sum(p.numel() for p in model.parameters())
-    print('\n' + '=' * 70)
-    print('Evaluation complete')
-    print('=' * 70)
-    print(f'Parameters:     {total_params:,}')
+    print("\n" + "=" * 70)
+    print("Evaluation complete")
+    print("=" * 70)
+    print(f"Parameters:     {total_params:,}")
     print(f'Epochs trained: {ckpt["epoch"]}')
     print(f'Best acc:       {ckpt["best_acc"]:.2f}%')
-    print(f'Eval acc:       {overall_acc:.2f}%')
-    print(f'Outputs:        {OUTPUT_DIR.resolve()}')
-    print('=' * 70)
+    print(f"Eval acc:       {overall_acc:.2f}%")
+    print(f"Outputs:        {OUTPUT_DIR.resolve()}")
+    print("=" * 70)

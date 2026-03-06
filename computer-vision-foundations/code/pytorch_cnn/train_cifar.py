@@ -23,16 +23,27 @@ CONFIG = {
     "batch_size": 128,
     "learning_rate": 0.01,
     "momentum": 0.9,
-    "weight_decay": 5e-4,      # L2 regularization
-    "lr_decay_epochs": [5, 8], # Reduce LR at these epochs
-    "lr_decay_factor": 0.1,    # Multiply LR by this
+    "weight_decay": 5e-4,  # L2 regularization
+    "lr_decay_epochs": [5, 8],  # Reduce LR at these epochs
+    "lr_decay_factor": 0.1,  # Multiply LR by this
     "num_workers": 0,
     "num_classes": 10,
     "data_dir": "./data",
-    "subset_size": 5000
+    "subset_size": 5000,
 }
 
-CIFAR10_CLASSES = ["plane", "car", "bird", "cat", "deer", "dog", "frog", "horse", "ship", "truck"]
+CIFAR10_CLASSES = [
+    "plane",
+    "car",
+    "bird",
+    "cat",
+    "deer",
+    "dog",
+    "frog",
+    "horse",
+    "ship",
+    "truck",
+]
 
 
 def get_transforms() -> Tuple[transforms.Compose, transforms.Compose]:
@@ -55,24 +66,30 @@ def get_transforms() -> Tuple[transforms.Compose, transforms.Compose]:
     """
     # Standard CIFAR-10 normalization values
     mean = [0.4914, 0.4822, 0.4465]
-    std  = [0.2470, 0.2435, 0.2616]
+    std = [0.2470, 0.2435, 0.2616]
 
-    train_transform = transforms.Compose([
-        transforms.RandomCrop(32, padding=4),
-        transforms.RandomHorizontalFlip(p=0.5),
-        transforms.ToTensor(),
-        transforms.Normalize(mean, std),
-    ])
+    train_transform = transforms.Compose(
+        [
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(p=0.5),
+            transforms.ToTensor(),
+            transforms.Normalize(mean, std),
+        ]
+    )
 
-    test_transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize(mean, std),
-    ])
+    test_transform = transforms.Compose(
+        [
+            transforms.ToTensor(),
+            transforms.Normalize(mean, std),
+        ]
+    )
 
     return train_transform, test_transform
 
 
-def get_dataloaders(data_dir: str, batch_size: int, num_workers: int, subset_size=None) -> Tuple[DataLoader, DataLoader]:
+def get_dataloaders(
+    data_dir: str, batch_size: int, num_workers: int, subset_size=None
+) -> Tuple[DataLoader, DataLoader]:
     """
     Load CIFAR-10 dataset and create DataLoaders.
 
@@ -104,13 +121,21 @@ def get_dataloaders(data_dir: str, batch_size: int, num_workers: int, subset_siz
         print(f"  Test samples:  {len(test_dataset):,}")
 
     # Create DataLoaders, shuffle each epoch
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True,
-                              num_workers=num_workers, pin_memory=False)
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+        pin_memory=False,
+    )
 
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False,
-                             num_workers=num_workers, pin_memory=False)
-
-
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=False,
+    )
 
     return train_loader, test_loader
 
@@ -119,8 +144,15 @@ def get_dataloaders(data_dir: str, batch_size: int, num_workers: int, subset_siz
 # TRAINING
 # =============================================================================
 
-def train_epoch(model: nn.Module, train_loader: DataLoader, criterion: nn.Module, optimizer: optim.Optimizer,
-                device: torch.device, epoch: int,) -> Tuple[float, float]:
+
+def train_epoch(
+    model: nn.Module,
+    train_loader: DataLoader,
+    criterion: nn.Module,
+    optimizer: optim.Optimizer,
+    device: torch.device,
+    epoch: int,
+) -> Tuple[float, float]:
     """
     Train for one epoch.
 
@@ -135,7 +167,7 @@ def train_epoch(model: nn.Module, train_loader: DataLoader, criterion: nn.Module
     Returns:
         (average_loss, accuracy)
     """
-    model.train()   # Enables BatchNorm training mode and Dropout
+    model.train()  # Enables BatchNorm training mode and Dropout
     total_loss = 0.0
     correct = 0
     total = 0
@@ -177,7 +209,12 @@ def train_epoch(model: nn.Module, train_loader: DataLoader, criterion: nn.Module
     return avg_loss, accuracy
 
 
-def evaluate(model: nn.Module, test_loader: DataLoader, criterion: nn.Module, device: torch.device) -> Tuple[float, float]:
+def evaluate(
+    model: nn.Module,
+    test_loader: DataLoader,
+    criterion: nn.Module,
+    device: torch.device,
+) -> Tuple[float, float]:
     """
     Evaluate model on test set.
 
@@ -190,13 +227,13 @@ def evaluate(model: nn.Module, test_loader: DataLoader, criterion: nn.Module, de
     Returns:
         (average_loss, accuracy)
     """
-    model.eval()    # Disables BatchNorm running stats update
+    model.eval()  # Disables BatchNorm running stats update
 
     total_loss = 0.0
     correct = 0
     total = 0
 
-    with torch.no_grad():   # No gradients needed for evaluation
+    with torch.no_grad():  # No gradients needed for evaluation
         for inputs, labels in test_loader:
             inputs = inputs.to(device)
             labels = labels.to(device)
@@ -242,7 +279,7 @@ def adjust_learning_rate(optimizer: optim.Optimizer, epoch: int, config: dict) -
     return lr
 
 
-def per_class_accuracy(model: nn.Module, test_loader: DataLoader,device: torch.device) -> dict:
+def per_class_accuracy(model: nn.Module, test_loader: DataLoader, device: torch.device) -> dict:
     """
     Compute accuracy per CIFAR-10 class.
 
@@ -284,6 +321,7 @@ def per_class_accuracy(model: nn.Module, test_loader: DataLoader,device: torch.d
 # MAIN TRAINING LOOP
 # =============================================================================
 
+
 def train(config: dict) -> dict:
     """
     Full training pipeline.
@@ -318,7 +356,13 @@ def train(config: dict) -> dict:
     )
 
     # History
-    history = {"train_loss": [], "train_acc": [], "test_loss":  [], "test_acc":  [], "lr": []}
+    history = {
+        "train_loss": [],
+        "train_acc": [],
+        "test_loss": [],
+        "test_acc": [],
+        "lr": [],
+    }
     best_test_acc = 0.0
 
     print("\n" + "=" * 60)

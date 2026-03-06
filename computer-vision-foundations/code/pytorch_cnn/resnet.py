@@ -7,7 +7,8 @@ Reference: "Deep Residual Learning for Image Recognition"
 
 import torch
 import torch.nn as nn
-from typing import List, Optional
+from typing import List
+
 
 class BasicBlock(nn.Module):
     """
@@ -29,8 +30,14 @@ class BasicBlock(nn.Module):
         super(BasicBlock, self).__init__()
 
         # First conv: possible downsample (stride=2) and change channel count
-        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3,
-                               stride=stride, padding=1, bias=False) # no bias needed, BatchNorm handles it
+        self.conv1 = nn.Conv2d(
+            in_channels,
+            out_channels,
+            kernel_size=3,
+            stride=stride,
+            padding=1,
+            bias=False,
+        )  # no bias needed, BatchNorm handles it
         self.bn1 = nn.BatchNorm2d(out_channels)
         self.relu = nn.ReLU(inplace=True)
 
@@ -44,7 +51,9 @@ class BasicBlock(nn.Module):
         self.shortcut = nn.Sequential()
         if stride != 1 or in_channels != out_channels:
             self.shortcut = nn.Sequential(
-                nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, bias=False), # 1x1 conv to match dims
+                nn.Conv2d(
+                    in_channels, out_channels, kernel_size=1, stride=stride, bias=False
+                ),  # 1x1 conv to match dims
                 nn.BatchNorm2d(out_channels),
             )
 
@@ -74,16 +83,18 @@ class BasicBlock(nn.Module):
         return out
 
     def __repr__(self) -> str:
-        return(
+        return (
             f"BasicBlock(in={self.conv1.in_channels}, "
             f"out={self.conv1.out_channels}, "
             f"stride={self.conv1.stride[0]}, "
             f"shortcut={'projection' if len(self.shortcut) > 0 else 'Identity'}"
         )
 
+
 # =============================================================================
 # RESNET - Full Architecture
 # =============================================================================
+
 
 class ResNet(nn.Module):
     """
@@ -97,7 +108,13 @@ class ResNet(nn.Module):
         in_channels: Numer of input channels (3=RGB, 1=Grayscale)
     """
 
-    def __init__(self, block: type, layers: List[int], num_classes: int=1000, in_channels: int=3) -> None:
+    def __init__(
+        self,
+        block: type,
+        layers: List[int],
+        num_classes: int = 1000,
+        in_channels: int = 3,
+    ) -> None:
         super(ResNet, self).__init__()
         self.current_channels = 64  # Tracks channels as layers are built
 
@@ -112,9 +129,9 @@ class ResNet(nn.Module):
 
         # Residual layers - each doubles channels (except for layer1)
         self.layer1 = self._make_layer(block, 64, layers[0], stride=1)  # (batch, 64, 56, 56)
-        self.layer2 = self._make_layer(block, 128, layers[1], stride=2) # (batch, 128, 28, 28)
-        self.layer3 = self._make_layer(block, 256, layers[2], stride=2) # (batch, 256, 14, 14)
-        self.layer4 = self._make_layer(block, 512, layers[3], stride=2) # (batch, 512, 7, 7)
+        self.layer2 = self._make_layer(block, 128, layers[1], stride=2)  # (batch, 128, 28, 28)
+        self.layer3 = self._make_layer(block, 256, layers[2], stride=2)  # (batch, 256, 14, 14)
+        self.layer4 = self._make_layer(block, 512, layers[3], stride=2)  # (batch, 512, 7, 7)
 
         # Global average pooling: (batch, 512, 7, 7) -> (batch, 512, 1, 1)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
@@ -143,7 +160,7 @@ class ResNet(nn.Module):
         layers = [block(self.current_channels, out_channels, stride)]
 
         # First block: downsampling and channel change
-        self.current_channels = out_channels # Update for next block
+        self.current_channels = out_channels  # Update for next block
 
         # Remaining blocks: same channels, no downsampling
         for _ in range(1, num_blocks):
@@ -161,12 +178,12 @@ class ResNet(nn.Module):
 
         for module in self.modules():
             if isinstance(module, nn.Conv2d):
-                nn.init.kaiming_normal_(module.weight, mode='fan_out', nonlinearity='relu')
+                nn.init.kaiming_normal_(module.weight, mode="fan_out", nonlinearity="relu")
             elif isinstance(module, nn.BatchNorm2d):
                 nn.init.constant_(module.weight, 1)
                 nn.init.constant_(module.bias, 0)
             elif isinstance(module, nn.Linear):
-                nn.init.normal_(module.weight,0, 0.01)
+                nn.init.normal_(module.weight, 0, 0.01)
                 nn.init.constant_(module.bias, 0)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -180,10 +197,10 @@ class ResNet(nn.Module):
         """
 
         # Initial feature extraction
-        x = self.conv1(x) # -> (batch, 64, 112, 112)
+        x = self.conv1(x)  # -> (batch, 64, 112, 112)
         x = self.bn1(x)
         x = self.relu(x)
-        x = self.maxpool(x) # -> (batch, 64, 56, 56)
+        x = self.maxpool(x)  # -> (batch, 64, 56, 56)
 
         # Residual layers (batch, 64, 56, 56) -> ... -> (batch, 512, 7, 7)
         x = self.layer1(x)
@@ -192,9 +209,9 @@ class ResNet(nn.Module):
         x = self.layer4(x)
 
         # Global average pooling + classify
-        x = self.avgpool(x)     # -> (batch, 512, 1, 1)
-        x = torch.flatten(x, 1)     # -> (batch, 512)
-        x = self.fc(x)          # -> (batch, num_classes)
+        x = self.avgpool(x)  # -> (batch, 512, 1, 1)
+        x = torch.flatten(x, 1)  # -> (batch, 512)
+        x = self.fc(x)  # -> (batch, num_classes)
 
         return x
 
@@ -207,7 +224,8 @@ class ResNet(nn.Module):
 # ResNet Versions
 # ============================================================================================================
 
-def resnet18(num_classes: int=1000, in_channels: int=3) -> ResNet:
+
+def resnet18(num_classes: int = 1000, in_channels: int = 3) -> ResNet:
     """
     ResNet-18: 18 weight layers
     config: [2, 2, 2, 2] BasicBlocks
@@ -215,7 +233,8 @@ def resnet18(num_classes: int=1000, in_channels: int=3) -> ResNet:
     """
     return ResNet(BasicBlock, [2, 2, 2, 2], num_classes=num_classes, in_channels=in_channels)
 
-def resnet34(num_classes: int=1000, in_channels: int=3) -> ResNet:
+
+def resnet34(num_classes: int = 1000, in_channels: int = 3) -> ResNet:
     """
     ResNet-34: 34 weight layers
     Config: [3, 4, 6, 3] BasicBlock
@@ -224,15 +243,14 @@ def resnet34(num_classes: int=1000, in_channels: int=3) -> ResNet:
     return ResNet(BasicBlock, [3, 4, 6, 3], num_classes=num_classes, in_channels=in_channels)
 
 
-
 # ============================================================================================================
 # Test
 # ============================================================================================================
 
-if __name__ == '__main__':
-    print("="*60)
+if __name__ == "__main__":
+    print("=" * 60)
     print("ResNet-18 architecture test")
-    print("="*60)
+    print("=" * 60)
 
     model = resnet18(num_classes=10)
     print("\nFull architecture")
@@ -240,11 +258,10 @@ if __name__ == '__main__':
 
     total = model.count_parameters()
     print(f"\nTotal trainable parameters: {total:,}")
-    print(f"Expected (ImageNet):           11,689,512")
-
+    print("Expected (ImageNet):           11,689,512")
 
     print("\nTesting forward pass...")
-    x = torch.randn(4, 3, 224, 224) # 4 RGB 224x224 images
+    x = torch.randn(4, 3, 224, 224)  # 4 RGB 224x224 images
     out = model(x)
     print(f"Input shape: {x.shape}, Output shape: {out.shape}")
     assert out.shape == (4, 10), f"Expected (4,10), got {out.shape}"

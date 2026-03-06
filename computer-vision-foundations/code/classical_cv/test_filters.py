@@ -85,9 +85,7 @@ def cv2_comparison():
     for obj_name, obj_img in objects.items():
         print(f"Testing object: {obj_name}")
         my_blur = gaussian_blur(image=obj_img, kernel_dim=kernel_size, sigma=sigma)
-        cv_blur = cv2.GaussianBlur(
-            src=obj_img, ksize=(kernel_size, kernel_size), sigmaX=sigma
-        )
+        cv_blur = cv2.GaussianBlur(src=obj_img, ksize=(kernel_size, kernel_size), sigmaX=sigma)
         blur_diff = np.abs(my_blur - cv_blur)
         max_diff = np.max(blur_diff)
         mean_diff = np.mean(blur_diff)
@@ -111,9 +109,7 @@ def test_canny():
     for obj_name, obj_img in objects.items():
         print(f"\nTesting Canny on object: {obj_name}")
         print(f"Input shape: {obj_img.shape}")
-        my_edges = canny_edge_detector(
-            image=obj_img, low_ratio=0.2, high_ratio=0.8, sigma=1.4
-        )
+        my_edges = canny_edge_detector(image=obj_img, low_ratio=0.2, high_ratio=0.8, sigma=1.4)
 
         # CV2 implementation
         obj_img_uint8 = (obj_img * 255).astype("uint8")
@@ -124,12 +120,8 @@ def test_canny():
         total = my_edges.size
         match_rate = 100 * (1 - diff / total)
 
-        print(
-            f"Canny Edge Detection match rate: {match_rate:.2f}% ({total - diff} / {total} pixels match)\n"
-        )
-        print(
-            f"My edge: {np.sum(my_edges > 0)} pixels\nCV2 edge: {np.sum(cv_edges > 0)} pixels"
-        )
+        print(f"Canny Edge Detection match rate: {match_rate:.2f}% ({total - diff} / {total} pixels match)\n")
+        print(f"My edge: {np.sum(my_edges > 0)} pixels\nCV2 edge: {np.sum(cv_edges > 0)} pixels")
 
         fig, axes = plt.subplots(1, 3, figsize=(15, 5))
         axes[0].imshow(obj_img, cmap="gray")

@@ -42,7 +42,7 @@ X_test, y_test = generate_simple_patterns(150, img_size=14)
 
 print(f"Train set: {X_train.shape}, Labels: {y_train.shape}")
 print(f"Test set:  {X_test.shape}, Labels: {y_test.shape}")
-print(f"Classes: 0=vertical, 1=horizontal, 2=diagonal")
+print("Classes: 0=vertical, 1=horizontal, 2=diagonal")
 
 # Build CNN
 model = Network(
@@ -84,7 +84,7 @@ history = train(
 
 print("=" * 60)
 print("Training complete!")
-print(f"\nFinal Results:")
+print("\nFinal Results:")
 print(f"  Train Accuracy: {history['train_acc'][-1]:.4f}")
 print(f"  Test Accuracy:  {history['test_acc'][-1]:.4f}")
 

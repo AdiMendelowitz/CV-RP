@@ -5,9 +5,7 @@ from train import SGD, train
 
 np.random.seed(42)
 
-X_train = np.random.rand(100, 1, 8, 8).astype(
-    "float32"
-)  # 100 samples, 1 channel, 8x8 images
+X_train = np.random.rand(100, 1, 8, 8).astype("float32")  # 100 samples, 1 channel, 8x8 images
 y_train = np.random.randint(0, 3, 100)
 
 X_test = np.random.rand(20, 1, 8, 8).astype("float32")
@@ -47,6 +45,4 @@ history = train(
 
 print("=" * 30)
 print("Starting testing...")
-print(
-    f"\nFinal Test Loss: {history['test_loss'][-1]:.4f}, Final Test Accuracy: {history['test_acc'][-1]:.4f}"
-)
+print(f"\nFinal Test Loss: {history['test_loss'][-1]:.4f}, Final Test Accuracy: {history['test_acc'][-1]:.4f}")

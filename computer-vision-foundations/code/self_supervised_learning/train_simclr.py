@@ -20,8 +20,8 @@ from simclr import SimCLR, NTXentLoss, SimCLRAugmentation
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S',
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
 
 logger = logging.getLogger(__name__)
@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Dataset wrapper — applies SimCLR augmentation to return positive pairs
 # ---------------------------------------------------------------------------
+
 
 class SimCLRDataset(Dataset):
     """
@@ -59,8 +60,14 @@ class SimCLRDataset(Dataset):
 # Trainin
 # ---------------------------------------------------------------------------
 
-def train_one_epoch(model: nn.Module, loader: DataLoader, optimizer: torch.optim.Optimizer,
-                    loss_fn: NTXentLoss, device: torch.device) -> float:
+
+def train_one_epoch(
+    model: nn.Module,
+    loader: DataLoader,
+    optimizer: torch.optim.Optimizer,
+    loss_fn: NTXentLoss,
+    device: torch.device,
+) -> float:
     """Runs one training epoch, returns mean loss."""
     model.train()
     total_loss = 0
@@ -79,9 +86,10 @@ def train_one_epoch(model: nn.Module, loader: DataLoader, optimizer: torch.optim
 
     return total_loss / len(loader)
 
+
 def pretrain(args: argparse.Namespace) -> None:
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    logger.info(f'Using device: {device}')
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    logger.info(f"Using device: {device}")
 
     # --- DATA ---
     augmentation = SimCLRAugmentation(image_size=32, s=0.5)
@@ -89,14 +97,18 @@ def pretrain(args: argparse.Namespace) -> None:
     # Load CIFAR-10 without transform
     base_dataset = datasets.CIFAR10(root=args.data_dir, train=True, download=True, transform=None)
     dataset = SimCLRDataset(base_dataset, augmentation)
-    loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers,
-                        pin_memory=(device.type == 'cuda'), drop_last=True)     # NT-Xent requires consistent batch size
+    loader = DataLoader(
+        dataset,
+        batch_size=args.batch_size,
+        shuffle=True,
+        num_workers=args.num_workers,
+        pin_memory=(device.type == "cuda"),
+        drop_last=True,
+    )  # NT-Xent requires consistent batch size
 
     # --- MODEL ---
     model = SimCLR(base_encoder=args.encoder, out_dim=args.out_dim).to(device)
-    logger.info(
-        f"Parameters: {sum(p.numel() for p in model.parameters()) / 1e6:.2f}M"
-    )
+    logger.info(f"Parameters: {sum(p.numel() for p in model.parameters()) / 1e6:.2f}M")
 
     # --- OPTIMIZER + SCHEDULER ---
     # LARS is used in the paper for large batches. Adam is more stable for small batches
@@ -115,18 +127,18 @@ def pretrain(args: argparse.Namespace) -> None:
         loss = train_one_epoch(model, loader, optimizer, loss_fn, device)
         scheduler.step()
 
-        logger.info(
-            f"Epoch [{epoch:3d}/{args.epochs}] "
-            f"loss={loss:.4f}  "
-            f"lr={scheduler.get_last_lr()[0]:.6f}"
-        )
+        logger.info(f"Epoch [{epoch:3d}/{args.epochs}] " f"loss={loss:.4f}  " f"lr={scheduler.get_last_lr()[0]:.6f}")
 
         if epoch % args.save_every == 0 or epoch == args.epochs:
             ckpt_path = save_dir / f"simclr_epoch{epoch:03d}.pt"
             torch.save(
-                {"epoch": epoch, "model_state_dict": model.state_dict(),
-                 "optimizer_state_dict": optimizer.state_dict(), "loss": loss, "args": vars(args),
-                 },
+                {
+                    "epoch": epoch,
+                    "model_state_dict": model.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "loss": loss,
+                    "args": vars(args),
+                },
                 ckpt_path,
             )
             logger.info(f"Checkpoint saved: {ckpt_path}")
@@ -138,15 +150,16 @@ def pretrain(args: argparse.Namespace) -> None:
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description='SimCLR pretraining on CIFAR-10')
+    parser = argparse.ArgumentParser(description="SimCLR pretraining on CIFAR-10")
 
     # DATA
-    parser.add_argument("--data-dir", type=str, default='./data')
+    parser.add_argument("--data-dir", type=str, default="./data")
     parser.add_argument("--num-workers", type=int, default=4)
 
     # Model
-    parser.add_argument("--encoder", type=str, default='resnet18', choices=['resnet18', 'resnet50'])
+    parser.add_argument("--encoder", type=str, default="resnet18", choices=["resnet18", "resnet50"])
     parser.add_argument("--out-dim", type=int, default=512)
 
     # Training
@@ -157,10 +170,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--temperature", type=float, default=0.5)
 
     # Checkpoint
-    parser.add_argument("--save-dir", type=str, default='./checkpoints/simclr')
+    parser.add_argument("--save-dir", type=str, default="./checkpoints/simclr")
     parser.add_argument("--save-every", type=int, default=10)
 
     return parser.parse_args()
+
 
 if __name__ == "__main__":
     pretrain(parse_args())

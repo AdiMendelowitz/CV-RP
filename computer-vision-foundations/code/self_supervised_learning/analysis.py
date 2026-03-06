@@ -26,7 +26,6 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 
-from simclr import CIFAR10_MEAN, CIFAR10_STD
 from linear_eval import (
     ENCODER_DIMS,
     evaluate,
@@ -44,8 +43,16 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 CIFAR10_CLASSES = [
-    "airplane", "automobile", "bird", "cat", "deer",
-    "dog", "frog", "horse", "ship", "truck",
+    "airplane",
+    "automobile",
+    "bird",
+    "cat",
+    "deer",
+    "dog",
+    "frog",
+    "horse",
+    "ship",
+    "truck",
 ]
 
 # Sparse loss log — recorded at checkpoint intervals during pretraining.
@@ -65,18 +72,21 @@ _TRAINING_LOG: dict[int, float] = {
 # Style
 # ---------------------------------------------------------------------------
 
+
 def _setup_style() -> None:
     """Apply consistent matplotlib styling across all plots."""
-    plt.rcParams.update({
-        "figure.dpi": 150,
-        "font.family": "sans-serif",
-        "font.size": 11,
-        "axes.spines.top": False,
-        "axes.spines.right": False,
-        "axes.grid": True,
-        "grid.alpha": 0.3,
-        "lines.linewidth": 2,
-    })
+    plt.rcParams.update(
+        {
+            "figure.dpi": 150,
+            "font.family": "sans-serif",
+            "font.size": 11,
+            "axes.spines.top": False,
+            "axes.spines.right": False,
+            "axes.grid": True,
+            "grid.alpha": 0.3,
+            "lines.linewidth": 2,
+        }
+    )
 
 
 _CLASS_COLORS = plt.cm.tab10(np.linspace(0, 1, 10))
@@ -85,6 +95,7 @@ _CLASS_COLORS = plt.cm.tab10(np.linspace(0, 1, 10))
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _balanced_subsample(labels: torch.Tensor, n_total: int, seed: int = 42) -> torch.Tensor:
     """Return indices for a class-balanced subsample of n_total items.
@@ -140,6 +151,7 @@ def _stratified_subsample(
 # Plot 1: Training loss curve
 # ---------------------------------------------------------------------------
 
+
 def plot_loss_curve(save_dir: Path) -> None:
     """Plot NT-Xent loss vs epoch from the sparse training log.
 
@@ -150,7 +162,14 @@ def plot_loss_curve(save_dir: Path) -> None:
     losses = list(_TRAINING_LOG.values())
 
     fig, ax = plt.subplots(figsize=(8, 4))
-    ax.plot(epochs, losses, marker="o", color="steelblue", markersize=6, label="NT-Xent loss")
+    ax.plot(
+        epochs,
+        losses,
+        marker="o",
+        color="steelblue",
+        markersize=6,
+        label="NT-Xent loss",
+    )
 
     # Annotate final value
     ax.annotate(
@@ -178,6 +197,7 @@ def plot_loss_curve(save_dir: Path) -> None:
 # ---------------------------------------------------------------------------
 # Plot 2: t-SNE embeddings
 # ---------------------------------------------------------------------------
+
 
 def plot_tsne(
     features: torch.Tensor,
@@ -207,8 +227,12 @@ def plot_tsne(
     for cls_idx, cls_name in enumerate(CIFAR10_CLASSES):
         mask = lab_np == cls_idx
         ax.scatter(
-            embedded[mask, 0], embedded[mask, 1],
-            s=8, alpha=0.6, label=cls_name, color=_CLASS_COLORS[cls_idx],
+            embedded[mask, 0],
+            embedded[mask, 1],
+            s=8,
+            alpha=0.6,
+            label=cls_name,
+            color=_CLASS_COLORS[cls_idx],
         )
 
     ax.set_title(f"t-SNE of SimCLR Encoder Features — {n_samples} test samples")
@@ -227,6 +251,7 @@ def plot_tsne(
 # ---------------------------------------------------------------------------
 # Plot 3: Nearest-neighbour retrieval
 # ---------------------------------------------------------------------------
+
 
 def plot_nearest_neighbours(
     features: torch.Tensor,
@@ -254,16 +279,14 @@ def plot_nearest_neighbours(
     norm_feats = F.normalize(features, dim=1)
 
     # One query per class, take the first example of each
-    query_indices = [
-        (labels == cls).nonzero(as_tuple=True)[0][0].item()
-        for cls in range(n_queries)
-    ]
+    query_indices = [(labels == cls).nonzero(as_tuple=True)[0][0].item() for cls in range(n_queries)]
 
     # Similarity: (n_queries, N)
     sim = norm_feats[query_indices] @ norm_feats.T
 
     fig, axes = plt.subplots(
-        n_queries, n_neighbours + 1,
+        n_queries,
+        n_neighbours + 1,
         figsize=(2.2 * (n_neighbours + 1), 2.2 * n_queries),
     )
 
@@ -275,7 +298,7 @@ def plot_nearest_neighbours(
 
         for col, img_idx in enumerate([q_idx] + top_k):
             ax = axes[row, col]
-            image, _ = raw_dataset[img_idx]          # (C, H, W) float32
+            image, _ = raw_dataset[img_idx]  # (C, H, W) float32
 
             if col == 0:
                 # Red border: pad image array with a 2-pixel red frame
@@ -309,6 +332,7 @@ def plot_nearest_neighbours(
 # ---------------------------------------------------------------------------
 # Plot 4: Label fraction accuracy
 # ---------------------------------------------------------------------------
+
 
 def plot_label_fraction(
     train_features: torch.Tensor,
@@ -352,18 +376,34 @@ def plot_label_fraction(
     label_counts = [int(50000 * f) for f in fractions]
 
     fig, ax = plt.subplots(figsize=(8, 4))
-    ax.semilogx(label_counts, accuracies, marker="o", color="steelblue",
-                markersize=7, label="SimCLR encoder (frozen)")
+    ax.semilogx(
+        label_counts,
+        accuracies,
+        marker="o",
+        color="steelblue",
+        markersize=7,
+        label="SimCLR encoder (frozen)",
+    )
 
     for x, y in zip(label_counts, accuracies):
-        ax.annotate(f"{y:.1f}%", (x, y), textcoords="offset points",
-                    xytext=(5, 6), fontsize=9, color="steelblue")
+        ax.annotate(
+            f"{y:.1f}%",
+            (x, y),
+            textcoords="offset points",
+            xytext=(5, 6),
+            fontsize=9,
+            color="steelblue",
+        )
 
     # Reference lines
-    ax.axhline(93.43, linestyle="--", color="tomato", alpha=0.8,
-               label="Supervised ResNet-18 (93.43%)")
-    ax.axhline(10.0, linestyle=":", color="gray", alpha=0.6,
-               label="Random encoder (~10%)")
+    ax.axhline(
+        93.43,
+        linestyle="--",
+        color="tomato",
+        alpha=0.8,
+        label="Supervised ResNet-18 (93.43%)",
+    )
+    ax.axhline(10.0, linestyle=":", color="gray", alpha=0.6, label="Random encoder (~10%)")
 
     ax.set_xlabel("Number of labeled training samples (log scale)")
     ax.set_ylabel("Top-1 Test Accuracy (%)")
@@ -381,6 +421,7 @@ def plot_label_fraction(
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
+
 
 def analyse(args: argparse.Namespace) -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -400,21 +441,19 @@ def analyse(args: argparse.Namespace) -> None:
     # --- Datasets ---
     # Normalized: for feature extraction
     eval_transform = get_transforms(train=False)
-    train_dataset = datasets.CIFAR10(root=args.data_dir, train=True,
-                                     download=True, transform=eval_transform)
-    test_dataset = datasets.CIFAR10(root=args.data_dir, train=False,
-                                    download=True, transform=eval_transform)
+    train_dataset = datasets.CIFAR10(root=args.data_dir, train=True, download=True, transform=eval_transform)
+    test_dataset = datasets.CIFAR10(root=args.data_dir, train=False, download=True, transform=eval_transform)
 
     # Raw (ToTensor only, no normalization): for image display in plot 3
     raw_test_dataset = datasets.CIFAR10(
-        root=args.data_dir, train=False, download=False,
+        root=args.data_dir,
+        train=False,
+        download=False,
         transform=transforms.ToTensor(),
     )
 
-    train_loader = DataLoader(train_dataset, batch_size=256, shuffle=False,
-                              num_workers=args.num_workers)
-    test_loader = DataLoader(test_dataset, batch_size=256, shuffle=False,
-                             num_workers=args.num_workers)
+    train_loader = DataLoader(train_dataset, batch_size=256, shuffle=False, num_workers=args.num_workers)
+    test_loader = DataLoader(test_dataset, batch_size=256, shuffle=False, num_workers=args.num_workers)
 
     # --- Extract features once — shared by plots 2, 3, 4 ---
     logger.info("Extracting train features (50,000 images)...")
@@ -430,16 +469,24 @@ def analyse(args: argparse.Namespace) -> None:
     # --- Plot 3: nearest neighbours ---
     logger.info("Plot 3/4: Nearest-neighbour retrieval")
     plot_nearest_neighbours(
-        test_features, test_labels, raw_test_dataset,
-        n_queries=5, n_neighbours=5, save_dir=save_dir,
+        test_features,
+        test_labels,
+        raw_test_dataset,
+        n_queries=5,
+        n_neighbours=5,
+        save_dir=save_dir,
     )
 
     # --- Plot 4: label fraction ---
     logger.info("Plot 4/4: Label fraction accuracy (6 runs × 30 epochs each)")
     plot_label_fraction(
-        train_features, train_labels,
-        test_features, test_labels,
-        args.encoder, device, save_dir,
+        train_features,
+        train_labels,
+        test_features,
+        test_labels,
+        args.encoder,
+        device,
+        save_dir,
     )
 
     logger.info(f"Done. All plots saved to {save_dir}/")
@@ -449,13 +496,19 @@ def parse_args() -> argparse.Namespace:
     _SCRIPT_DIR = Path(__file__).parent
     parser = argparse.ArgumentParser(description="SimCLR representation analysis")
 
-    parser.add_argument("--checkpoint", type=str,
-                        default=str(_SCRIPT_DIR / "checkpoints" / "simclr" / "simclr_epoch100.pt"))
+    parser.add_argument(
+        "--checkpoint",
+        type=str,
+        default=str(_SCRIPT_DIR / "checkpoints" / "simclr" / "simclr_epoch100.pt"),
+    )
     parser.add_argument("--data-dir", type=str, default="./data")
-    parser.add_argument("--encoder", type=str, default="resnet18",
-                        choices=list(ENCODER_DIMS.keys()))
-    parser.add_argument("--tsne-samples", type=int, default=2000,
-                        help="Number of test samples for t-SNE (balanced per class)")
+    parser.add_argument("--encoder", type=str, default="resnet18", choices=list(ENCODER_DIMS.keys()))
+    parser.add_argument(
+        "--tsne-samples",
+        type=int,
+        default=2000,
+        help="Number of test samples for t-SNE (balanced per class)",
+    )
     parser.add_argument("--save-dir", type=str, default="./plots")
     parser.add_argument("--num-workers", type=int, default=4)
 

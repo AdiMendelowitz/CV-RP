@@ -1,19 +1,16 @@
 import numpy as np
-from typing import Tuple, Optional, Any
+from typing import Tuple
 import matplotlib.pyplot as plt
 
 from pathlib import Path
+
 output_dir = Path(__file__).parent / "outputs"
 output_dir.mkdir(parents=True, exist_ok=True)
 
 
-def _pad_image(
-    image: np.ndarray, pad_h: int, pad_w: int, mode: str = "zero"
-) -> np.ndarray:
+def _pad_image(image: np.ndarray, pad_h: int, pad_w: int, mode: str = "zero") -> np.ndarray:
     if mode == "zero":
-        return np.pad(
-            image, ((pad_h, pad_h), (pad_w, pad_w)), mode="constant", constant_values=0
-        )
+        return np.pad(image, ((pad_h, pad_h), (pad_w, pad_w)), mode="constant", constant_values=0)
     elif mode == "replicate":
         return np.pad(image, ((pad_h, pad_h), (pad_w, pad_w)), mode="edge")
     elif mode == "mirror":
@@ -22,9 +19,7 @@ def _pad_image(
         raise ValueError(f"Unknown padding mode: {mode}")
 
 
-def correlated2d(
-    image: np.ndarray, kernel: np.ndarray, padding: str = "zero"
-) -> np.ndarray:
+def correlated2d(image: np.ndarray, kernel: np.ndarray, padding: str = "zero") -> np.ndarray:
     """Applies a 2D correlation operation on the input image using the given kernel.
     Args:
         image (np.ndarray): The input image (H,W) or (H,W,C).
@@ -36,17 +31,14 @@ def correlated2d(
     """
     if image.ndim == 3:  # handle grayscale vs color
         return np.stack(
-            [
-                correlated2d(image[:, :, c], kernel, padding)
-                for c in range(image.shape[2])
-            ],
+            [correlated2d(image[:, :, c], kernel, padding) for c in range(image.shape[2])],
             axis=2,
         )
 
     # Dimensions
     h, w = image.shape
     kh, kw = kernel.shape
-    pad_h, pad_w = kh // 2, kw // 2
+    pad_h = kh // 2
 
     # Padding
     padded = _pad_image(image=image, pad_h=pad_h, pad_w=pad_h, mode=padding)
@@ -61,9 +53,7 @@ def correlated2d(
     return output
 
 
-def convolve2d(
-    image: np.ndarray, kernel: np.ndarray, padding: str = "zero"
-) -> np.ndarray:
+def convolve2d(image: np.ndarray, kernel: np.ndarray, padding: str = "zero") -> np.ndarray:
     """Convolution = correlation with flipped kernel."""
     flipped_kernel = np.flip(kernel)
     return correlated2d(image, flipped_kernel, padding)
@@ -81,9 +71,7 @@ def gaussian_kernel(size: int, sigma: float) -> np.ndarray:
     return kernel / np.sum(kernel)
 
 
-def gaussian_blur(
-    image: np.ndarray, kernel_dim: int = 5, sigma: float = 1.0
-) -> np.ndarray:
+def gaussian_blur(image: np.ndarray, kernel_dim: int = 5, sigma: float = 1.0) -> np.ndarray:
     """Apply gaussian blur"""
     kernel = gaussian_kernel(size=kernel_dim, sigma=sigma)
     return convolve2d(image, kernel, padding="replicate")
@@ -150,7 +138,7 @@ if __name__ == "__main__":
     axes[0].set_title("Original (Sharp Edges)")
     axes[1].imshow(blurred_img, cmap="gray")
     axes[1].set_title("Gaussian Blur (σ=3)")
-    plt.savefig(output_dir /"gaussian_test.png")
+    plt.savefig(output_dir / "gaussian_test.png")
     print("Saved gaussian_test.png")
 
     # Test Sobel on diagonal edge
@@ -181,6 +169,6 @@ if __name__ == "__main__":
         ax.axis("off")
 
     plt.tight_layout()
-    plt.savefig(output_dir /"sobel_visualization.png", dpi=150, bbox_inches="tight")
+    plt.savefig(output_dir / "sobel_visualization.png", dpi=150, bbox_inches="tight")
     print("Saved: sobel_visualization.png")
     plt.show()
