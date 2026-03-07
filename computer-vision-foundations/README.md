@@ -19,6 +19,7 @@ A ground-up implementation of core computer vision systems — from classical im
 | ViT-Tiny | CIFAR-10 classification | **86.70%** | 5.36M | T4 GPU, 100 epochs |
 | SimCLR | CIFAR-10 linear evaluation | **68.23%** | — | Self-supervised, no labels during pretraining |
 
+![Results Summary](computer-vision-foundations/code/results_summary.png)
 ---
 
 ## Repository Structure
