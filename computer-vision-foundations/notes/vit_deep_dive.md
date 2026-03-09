@@ -16,8 +16,7 @@
 - [ViT vs CNNs](#vit-vs-cnns)
 - [ViT vs "Attention Is All You Need"](#vit-vs-attention-is-all-you-need-2017)
 - [Training Considerations](#training-considerations)
-- [Interview Questions](#interview-questions)
-
+- [Model Variants](#model-variants)
 ---
 
 ## The Paradigm Shift

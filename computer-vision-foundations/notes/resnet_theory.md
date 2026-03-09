@@ -7,11 +7,7 @@
 
 ## The Vanishing Gradient Problem
 
-### What is it?
-
 In deep neural networks (20+ layers), gradients become exponentially smaller as they propagate backward through layers during backpropagation.
-
-**The Math:**
 
 During backpropagation, gradients are computed via the chain rule:
 
@@ -28,7 +24,7 @@ For a network with sigmoid activations:
 ```
 gradient = 0.25 × 0.25 × 0.25 × ... × 0.25  (20 times)
          ≈ 0.25²⁰
-         ≈ 9 × 10⁻¹³  (practically zero!)
+         ≈ 9 × 10⁻¹³  (practically zero)
 ```
 
 ### Consequences
@@ -102,7 +98,7 @@ For `L` layers:
 
 Even if all `∂F_l/∂x_l ≈ 0`, the gradient is at least:
 ```
-∂L/∂x_0 ≈ ∂L/∂x_L  (direct path exists!)
+∂L/∂x_0 ≈ ∂L/∂x_L  (direct path exists)
 ```
 
 ### Visualization
@@ -125,7 +121,7 @@ Skip connections provide highway: gradient ≈ 1.0²⁰ = 1.0 ✅
 
 ---
 
-## Why This Works: Intuitive Explanation
+## Intuitive Explanation
 
 ### Learning Incremental Changes
 
@@ -240,7 +236,7 @@ If `W₂` has small values (common with proper initialization), gradients shrink
 **ResNet solution:** Bypass the weights entirely with skip connection
 ```
 ∂L/∂x₁ = ∂L/∂x₂ × (W₂ × ReLU'(z₁) + 1)
-                                      ↑
+                                    ↑
                               identity term
 ```
 
