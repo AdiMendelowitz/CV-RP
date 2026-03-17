@@ -297,4 +297,3 @@ If using this for research:
 
 **Adi Mendelowitz**  
 Machine Learning Engineer  
-Specialization: Computer Vision & Image Processing

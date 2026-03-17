@@ -77,27 +77,4 @@ results/
 *.npy
 *.npz
 !/computer-vision-foundations/notebooks/
-
-START_HERE.md
-SETUP_GUIDE.md
-setup.ps1
-progress.md
-COMPLETE_12_WEEK_PLAN.md
-computer-vision-foundations/personal_general_README.md
-computer-vision-foundations/personal_general_README.md
-!/START_HERE.md
-!/PROGRESS.md
-!/START_HERE.md
-START_HERE.md
-PROGRESS.md
-/computer-vision-foundations/code/pytorch_cnn/cnn_resent_pytorch_walkthroughs.md
-!/computer-vision-foundations/code/pytorch_cnn/resnet_cnn_walkthroughs.md
 /computer-vision-foundations/notebooks/
-notebooks/
-**/notebooks/
-!/computer-vision-foundations/notebooks/
-!/computer-vision-foundations/code/vision_transformers/vit_learning_guide.md
-!/computer-vision-foundations/code/vision_transformers/vit_learning_guide.md
-!/computer-vision-foundations/code/self_supervised_learning/code_walkthrough_readme.md
-!/Advanced CV & Efficient Models/README.md
-!/computer-vision-foundations/code/pytorch_cnn/resnet_cnn_walkthroughs.md
