@@ -164,7 +164,19 @@ Validation accuracy comparison:
 **On frozen teacher:** the teacher must be in `eval()` mode with all gradients disabled during distillation training. If the teacher were trainable, backpropagating through both models simultaneously would update the teacher toward the student's poor predictions — the signal would degrade rather than improve.
 
 ---
+## Soft Target Visualisation
 
+![Soft target distributions](../../../Advanced%20CV%20%26%20Efficient%20Models/code/compression/plots/distillation/soft_target_distributions.png)
+
+Four correctly classified CIFAR-10 images at T=1, 2, 4, 8. Red bar = true class, blue = other classes.
+
+At T=1 the teacher assigns near-100% to the correct class, the soft target is essentially a hard label. By T=4 inter-class similarity structure emerges: cat gets non-trivial probability on dog and deer; ship gets probability on airplane
+and truck; airplane (an ambiguous poster image) spreads across all vehicle classes. By T=8 the distribution is so flat that the true class is no longer dominant for
+uncertain images, which is why T=8 is generally too high causing the signal to degrade.
+
+This is the empirical justification for T=4: it exposes the teacher's learned similarity structure without washing out the correct class signal entirely.
+
+---
 ## Variants and Extensions (not implemented)
 
 **Feature-level distillation (FitNets, Romero et al., 2015):** instead of matching only the final logits, intermediate feature maps from the teacher are used as targets for corresponding student layers. More information transfer but requires aligned architectures.
