@@ -17,6 +17,9 @@ import argparse
 import logging
 import random
 from pathlib import Path
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "computer-vision-foundations" / "code" / "pytorch_cnn"))
+from resnet import resnet18 as custom_resnet18
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -26,7 +29,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms, models
 
-from distillation import build_student, load_teacher_from_checkpoint
+from distillation import build_student
 
 
 SEED = 42
@@ -34,7 +37,7 @@ random.seed(SEED)
 np.random.seed(SEED)
 torch.manual_seed(SEED)
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(message)s", datefmt="%d/%m/%Y %I:%M:%S %p")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(message)s", datefmt="%d/%m/%Y %H:%M:%S")
 logger = logging.getLogger(__name__)
 
 
@@ -43,7 +46,7 @@ logger = logging.getLogger(__name__)
 # ----------------------------------------------------------------------------------------------------------------------
 
 CIFAR10_MEAN = (0.4914, 0.4822, 0.4465)
-CIFAR10_STD = (0.2023, 0.1994, 0.2010)
+CIFAR10_STD = (0.2470, 0.2435, 0.2616)
 
 def get_cifar10_loaders(data_dir: str = "./data", batch_size: int = 128,
                         num_workers: int = 2) -> tuple[DataLoader, DataLoader]:
@@ -324,7 +327,7 @@ def parse_args() -> argparse.Namespace:
         / "computer-vision-foundations"
         / "code"
         / "pytorch_cnn"
-        / "best_resnet18_cifar10.pth"
+        / "best_resnet18_cifar10 (1).pth"
     )
     p = argparse.ArgumentParser(description="Knowledge distillation on CIFAR-10")
     p.add_argument("--mode", choices=["distill", "baseline", "both"], default="both")
@@ -361,8 +364,14 @@ def main() -> None:
 
     if args.mode in ("distill", "both"):
         logger.info("Loading teacher from %s", args.checkpoint)
-        teacher = models.resnet18(weights=None, num_classes=10)
-        teacher = load_teacher_from_checkpoint(teacher, args.checkpoint, device)
+        teacher = custom_resnet18(num_classes=10)
+        teacher.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
+        teacher.maxpool = nn.Identity()
+        checkpoint = torch.load(args.checkpoint, map_location=device, weights_only=False)
+        teacher.load_state_dict(checkpoint)
+        teacher.eval()
+        for param in teacher.parameters():
+            param.requires_grad = False
 
         n_teacher = sum(p.numel() for p in teacher.parameters())
         logger.info("Teacher (ResNet-18): %s parameters", f"{n_teacher:,}")

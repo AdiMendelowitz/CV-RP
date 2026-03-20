@@ -20,8 +20,7 @@ This is the central insight: **hard labels tell you what the answer is; soft lab
 The combined distillation loss has two terms:
 
 ```
-L = α · T² · KL(softmax(z_s/T) ‖ softmax(z_t/T))
-  + (1 - α) · CE(z_s, y)
+L = α · T² · KL(softmax(z_s/T) ‖ softmax(z_t/T)) + (1 - α) · CE(z_s, y)
 ```
 
 Where:
@@ -39,7 +38,16 @@ Without temperature scaling, the teacher's distribution is so peaked that all no
 
 ### The T² Multiplier
 
-This is equation (4) from the paper and the most commonly omitted detail. When you divide logits by T, the softmax gradient scales by 1/T². Without compensating, the KL term's gradients are T² times smaller than the CE term's gradients, making α an unstable hyperparameter — increasing T would silently downweight the distillation signal. Multiplying by T² restores gradient magnitudes to be comparable, so α retains its intended meaning regardless of temperature.
+The full combined loss from the paper (equation 4) is:
+```
+L = (1 - α) · H(y, σ(z_s; T=1)) + α · H(σ(z_t; T), σ(z_s; T))
+```
+Where H is cross-entropy and σ is softmax at temperature T. When you divide logits by T, the softmax gradient scales by 1/T². Without compensating, the KL term's gradients are T² times smaller than the CE term's gradients, making α an unstable hyperparameter where increasing T would silently downweight the distillation signal. Multiplying by T² restores gradient magnitudes to be comparable, so α retains its intended meaning regardless of temperature.
+
+In implementation this becomes the KL form shown at the top of this section, with the T² scaling factor applied explicitly. The two formulations are equivalent -
+KL divergence between two distributions equals their cross-entropy minus the entropy of the target, and since the teacher distribution is fixed, minimising KL and
+minimising cross-entropy are the same optimisation problem.
+
 
 ### Alpha α
 
@@ -79,43 +87,63 @@ Linear(256, 10)
 
 ## Hyperparameters
 
-| Parameter | Value | Rationale |
-|---|---|---|
-| Temperature T | 4.0 | Hinton et al. recommendation for vision tasks |
-| Alpha α | 0.7 | KL dominates; paper's default |
-| Optimizer | Adam | lr=1e-3 |
+| Parameter | Value             | Rationale |
+|---|-------------------|---|
+| Temperature T | 4.0               | Hinton et al. recommendation for vision tasks |
+| Alpha α | 0.3               | KL dominates; paper's default |
+| Optimizer | Adam              | lr=1e-3 |
 | Scheduler | CosineAnnealingLR | Smooth decay, no manual LR tuning |
-| Epochs | 30 | Sufficient for student convergence on CIFAR-10 |
-| Batch size | 128 | Standard for CIFAR-10 |
+| Epochs | 30                | Sufficient for student convergence on CIFAR-10 |
+| Batch size | 128               | Standard for CIFAR-10 |
 
 ---
 
 ## Experiment Results
 
-### Run 1 (without LR scheduler) — Diagnostic
+### Run 1 — Diagnostic (broken)
 
-Training stalled at ~27% val_acc. Loss plateau visible from epoch 9 onwards. Root
-cause: misplaced `return` inside the batch loop caused the student to train on only
-one batch per epoch (1/390th of the data). Additionally, fixed lr=1e-3 with no
-scheduler caused oscillation in later epochs. Demonstrates that training dynamics
-are as important as distillation hyperparameters.
+Training stalled at ~27% val_acc. Two bugs: `return` statement inside the batch
+loop caused the student to train on only one batch per epoch (1/390th of the data),
+and fixed lr=1e-3 with no scheduler caused oscillation. Demonstrates that training
+dynamics matter as much as distillation hyperparameters.
 
-### Run 2 — Final (CosineAnnealingLR, alpha=0.3, T=4)
+### Run 2 — Partial fix (wrong teacher, wrong normalisation)
+
+Fixed the return bug and added CosineAnnealingLR. Used wrong teacher checkpoint
+(72.93% accuracy) and mismatched normalisation stats between teacher and students
+(0.2023 vs 0.2470 std). Distillation reached 77.77% vs baseline 78.38% (Δ=-0.61pp).
+The negative gap was a symptom of the weak teacher — soft targets from a 72.93%
+model carry less structured inter-class information.
+
+### Run 3 — Final (correct teacher, unified normalisation)
 
 | | Distillation (T=4, α=0.3) | Baseline (CE only) |
 |---|---|---|
-| Best val_acc | 77.77% | 78.38% |
-| Gap | -0.61pp | — |
-| val_acc at epoch 1 | 50.55% | 46.98% |
-| val_acc at epoch 5 | 64.35% | 64.26% |
-| Compression ratio | 65× (170K vs 11.2M params) | — |
+| Best val_acc | 78.34% | 78.27% |
+| Gap | **+0.07pp** | — |
+| val_acc at epoch 1 | 45.61% | 48.26% |
+| val_acc at epoch 5 | 61.89% | 62.42% |
+| val_acc at epoch 10 | 68.59% | 70.02% |
+| val_acc at epoch 20 | 75.91% | 76.61% |
 
-**Interpretation:** distillation provides faster early convergence (+3.5pp at epoch 1)
-but converges to the same ceiling as CE training. At 65× compression the student
-capacity is the binding constraint, not the quality of the training signal. Logit-level
-distillation benefits are most pronounced at moderate compression ratios (2–10×);
-at extreme ratios, feature-level distillation (FitNets) or a larger student are needed
-to observe a positive accuracy gap.
+**Interpretation:** with a strong teacher (93.43%) distillation correctly edges above
+the baseline. The margin (+0.07pp) is small because student capacity (170K params,
+65.6× compression) is the binding constraint — the student cannot fully absorb the
+teacher's richer soft distributions. The convergence curves are noisier than the
+baseline because the KD loss signal is harder to optimise than plain CE at this
+compression ratio.
+
+### Inference Benchmark (CPU, batch_size=128)
+
+| Model | Parameters | Size | Val Acc | Latency/batch | Throughput |
+|---|---|---|---|---|---|
+| ResNet-18 (teacher) | 11,173,962 | 42.6 MB | 93.43% | 1117ms | 115 img/s |
+| SmallCNN — distilled | 170,378 | 0.6 MB | 78.34% | 76ms | 1,676 img/s |
+| SmallCNN — baseline CE | 170,378 | 0.6 MB | 78.27% | 67ms | 1,905 img/s |
+
+**Compression ratio:** 65.6× parameters, 71× size  
+**Speedup vs teacher:** 14.6× (distilled), 16.6× (baseline)  
+**Accuracy cost:** 15.09pp vs teacher at 14.6× speedup
 
 ### Plots
 
