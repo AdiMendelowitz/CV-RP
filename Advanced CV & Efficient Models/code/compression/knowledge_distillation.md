@@ -15,6 +15,26 @@ This is the central insight: **hard labels tell you what the answer is; soft lab
 
 ---
 
+## Architecture Diagrams
+
+### Knowledge Distillation Pipeline
+
+The diagram below shows the full forward and backward pass. Purple = teacher
+(frozen), blue = student (trainable), teal = loss components, amber = combined
+loss. The dashed line is the gradient flowing back - it reaches only the student.
+
+**Distillation Pipline:**
+how teacher logits and student logits feed both loss terms, and how backprop flows only to the student.
+
+![Distillation pipeline](../../../Advanced%20CV%20%26%20Efficient%20Models/code/compression/plots/distillation/distillation_pipeline.svg)
+
+
+**SmallCNN architecture:** each row shows the operation, the channel progression, and the output tensor shape.
+
+![SmallCNN architecture](../../../Advanced%20CV%20%26%20Efficient%20Models/code/compression/plots/distillation/smallcnn_architecture.svg)
+
+---
+
 ## The Loss Function
 
 The combined distillation loss has two terms:
