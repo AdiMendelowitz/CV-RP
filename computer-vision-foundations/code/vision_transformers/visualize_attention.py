@@ -18,6 +18,8 @@ What it produces:
 from pathlib import Path
 from typing import Optional
 
+_DATA_ROOT = Path(__file__).resolve().parents[3] / "data"
+
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -440,7 +442,7 @@ if __name__ == "__main__":
             transforms.Normalize(mean=CIFAR10_MEAN, std=CIFAR10_STD),
         ]
     )
-    test_dataset = datasets.CIFAR10(root="./data", train=False, download=True, transform=test_transform)
+    test_dataset = datasets.CIFAR10(root=str(_DATA_ROOT), train=False, download=True, transform=test_transform)
 
     n_test = len(test_dataset)
     if not 0 <= image_idx < n_test:

@@ -19,6 +19,8 @@ import math
 from dataclasses import dataclass, field
 from pathlib import Path
 
+_DATA_ROOT = Path(__file__).resolve().parents[3] / "data"
+
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -220,7 +222,7 @@ class DualTransformCIFAR10(torch.utils.data.Dataset):
     )
     _raw_transform = transforms.ToTensor()
 
-    def __init__(self, root: str = "./data", dowload: bool = True) -> None:
+    def __init__(self, root: str = str(_DATA_ROOT), dowload: bool = True) -> None:
         # Transform=None so we receive PIL images and apply both transforms ourselves
         self._base = torchvision.datasets.CIFAR10(root=root, train=False, download=dowload, transform=None)
 

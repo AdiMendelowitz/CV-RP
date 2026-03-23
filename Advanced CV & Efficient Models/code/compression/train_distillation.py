@@ -17,6 +17,8 @@ import argparse
 import logging
 import random
 from pathlib import Path
+
+_DATA_ROOT = Path(__file__).resolve().parents[3] / "data"
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "computer-vision-foundations" / "code" / "pytorch_cnn"))
 from resnet import resnet18 as custom_resnet18
@@ -48,7 +50,7 @@ logger = logging.getLogger(__name__)
 CIFAR10_MEAN = (0.4914, 0.4822, 0.4465)
 CIFAR10_STD = (0.2470, 0.2435, 0.2616)
 
-def get_cifar10_loaders(data_dir: str = "./data", batch_size: int = 128,
+def get_cifar10_loaders(data_dir: str = str(_DATA_ROOT), batch_size: int = 128,
                         num_workers: int = 2) -> tuple[DataLoader, DataLoader]:
     """Return (train_loader, test_loader) for CIFAR-10."""
 
@@ -338,7 +340,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--temperature", type=float, default=4.0)
     p.add_argument("--alpha", type=float, default=0.3)  # reduced from 0.7
     p.add_argument("--student-arch", type=str, default="small_cnn")
-    p.add_argument("--data-dir", type=str, default="./data")
+    p.add_argument("--data-dir", type=str, default=str(_DATA_ROOT))
     p.add_argument("--checkpoint-dir", type=str, default="checkpoints/distillation")
     p.add_argument("--plot-dir", type=str, default="plots/distillation")
     p.add_argument("--num-workers", type=int, default=2)

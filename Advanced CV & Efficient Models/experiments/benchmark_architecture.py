@@ -38,7 +38,7 @@ IMG_SIZE = 224
 EXTRACT_BATCH = 256
 TIMING_RUNS = 200
 LR_C = 0.316
-DATA_DIR = "./data"
+DATA_DIR = str(Path(__file__).resolve().parents[2] / "data")
 OUTPUT_MD = "experiments/architecture_benchmark.md"
 DEVICE = torch.device("cpu")
 

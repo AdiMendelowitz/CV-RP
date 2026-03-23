@@ -18,6 +18,8 @@ import argparse
 import logging
 from pathlib import Path
 
+_DATA_ROOT = Path(__file__).resolve().parents[3] / "data"
+
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -501,7 +503,7 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default=str(_SCRIPT_DIR / "checkpoints" / "simclr" / "simclr_epoch100.pt"),
     )
-    parser.add_argument("--data-dir", type=str, default="./data")
+    parser.add_argument("--data-dir", type=str, default=str(_DATA_ROOT))
     parser.add_argument("--encoder", type=str, default="resnet18", choices=list(ENCODER_DIMS.keys()))
     parser.add_argument(
         "--tsne-samples",

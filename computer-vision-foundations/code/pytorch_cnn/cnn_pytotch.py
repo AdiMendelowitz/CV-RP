@@ -6,7 +6,10 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
+from pathlib import Path
 from torchvision import datasets, transforms
+
+_DATA_ROOT = Path(__file__).resolve().parents[3] / "data"
 
 # Fix seeds for initializations, makes results reproducible
 torch.manual_seed(42)
@@ -147,13 +150,13 @@ def main():
     )
 
     train_dataset_full = datasets.MNIST(
-        root="./data",  # Downloads to specified directory
+        root=str(_DATA_ROOT),  # Downloads to specified directory
         train=True,
         download=True,  # Downloads if not present
         transform=transform,
     )
 
-    test_dataset_full = datasets.MNIST(root="./data", train=False, download=True, transform=transform)
+    test_dataset_full = datasets.MNIST(root=str(_DATA_ROOT), train=False, download=True, transform=transform)
 
     train_subset = torch.utils.data.Subset(train_dataset_full, range(5000))
     test_subset = torch.utils.data.Subset(test_dataset_full, range(5000))

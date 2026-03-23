@@ -27,6 +27,7 @@ np.random.seed(SEED)
 torch.manual_seed(SEED)
 
 _project_root = Path(__file__).resolve().parents[3]
+_DATA_ROOT = _project_root / "data"
 
 TEACHER_CHECKPOINT = (
     _project_root
@@ -106,7 +107,7 @@ def main() -> None:
         transforms.ToTensor(),
         transforms.Normalize(CIFAR10_MEAN, CIFAR10_STD),
     ])
-    dataset = datasets.CIFAR10(root="./data", train=False, download=True, transform=tf)
+    dataset = datasets.CIFAR10(root=str(_DATA_ROOT), train=False, download=True, transform=tf)
 
     # Pick one correctly classified sample per class for the first N_SAMPLES classes.
     torch.manual_seed(SEED)

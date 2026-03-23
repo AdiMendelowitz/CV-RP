@@ -15,8 +15,11 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 import numpy as np
 import time
+from pathlib import Path
 from typing import Tuple
 from resnet import resnet18
+
+_DATA_ROOT = Path(__file__).resolve().parents[3] / "data"
 
 CONFIG = {
     "num_epochs": 10,
@@ -28,7 +31,7 @@ CONFIG = {
     "lr_decay_factor": 0.1,  # Multiply LR by this
     "num_workers": 0,
     "num_classes": 10,
-    "data_dir": "./data",
+    "data_dir": str(_DATA_ROOT),
     "subset_size": 5000,
 }
 

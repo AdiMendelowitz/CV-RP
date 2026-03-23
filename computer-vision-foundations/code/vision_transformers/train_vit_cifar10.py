@@ -25,6 +25,8 @@ from tqdm import tqdm
 from config_vit_cifar10 import DATA_CONFIG, TRAINING_CONFIG
 from vit import VisionTransformer
 
+_DATA_ROOT = Path(__file__).resolve().parents[3] / "data"
+
 torch.autograd.set_detect_anomaly(True)
 
 CIFAR10_MEAN = (0.4914, 0.4822, 0.4465)
@@ -39,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_cifar10_dataloaders(
-    batch_size: int = 64, num_workers: int = 0, data_dir: str = "./data"
+    batch_size: int = 64, num_workers: int = 0, data_dir: str = str(_DATA_ROOT)
 ) -> Tuple[DataLoader, DataLoader]:
     """
     Create CIFAR-10 dataloader with augmentation

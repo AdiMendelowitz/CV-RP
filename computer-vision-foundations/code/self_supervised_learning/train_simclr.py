@@ -11,6 +11,8 @@ import logging
 from pathlib import Path
 from typing import Tuple
 
+_DATA_ROOT = Path(__file__).resolve().parents[3] / "data"
+
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
@@ -155,7 +157,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="SimCLR pretraining on CIFAR-10")
 
     # DATA
-    parser.add_argument("--data-dir", type=str, default="./data")
+    parser.add_argument("--data-dir", type=str, default=str(_DATA_ROOT))
     parser.add_argument("--num-workers", type=int, default=4)
 
     # Model

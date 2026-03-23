@@ -4,6 +4,10 @@ Configuration file for ViT training on CIFAR-10
 Modify these parameters to experiment with different settings.
 """
 
+from pathlib import Path
+
+_DATA_ROOT = Path(__file__).resolve().parents[3] / "data"
+
 # Model Configuration
 MODEL_CONFIG = {
     "img_size": 32,  # CIFAR-10 image size
@@ -30,7 +34,7 @@ TRAINING_CONFIG = {
 
 # Data Configuration (CPU-optimized)
 DATA_CONFIG = {
-    "data_dir": "./data",
+    "data_dir": str(_DATA_ROOT),
     "num_workers": 0,  # CPU-optimized (was 4)
     "pin_memory": False,  # GPU optimization - disabled for CPU
 }

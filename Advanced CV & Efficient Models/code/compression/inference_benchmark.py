@@ -22,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "computer-vision-fo
 from resnet import resnet18 as custom_resnet18
 
 _project_root = Path(__file__).resolve().parents[3]
+_DATA_ROOT = _project_root / "data"
 
 TEACHER_CHECKPOINT = (
     _project_root
@@ -54,7 +55,7 @@ def get_val_loader(mean: tuple, std: tuple) -> DataLoader:
         transforms.ToTensor(),
         transforms.Normalize(mean, std),
     ])
-    ds = datasets.CIFAR10(root="./data", train=False, download=True, transform=tf)
+    ds = datasets.CIFAR10(root=str(_DATA_ROOT), train=False, download=True, transform=tf)
     return DataLoader(ds, batch_size=BATCH_SIZE, shuffle=False, num_workers=NUM_WORKERS, pin_memory=False)
 
 
