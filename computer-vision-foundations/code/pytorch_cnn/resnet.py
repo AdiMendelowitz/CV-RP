@@ -56,6 +56,7 @@ class BasicBlock(nn.Module):
                 ),  # 1x1 conv to match dims
                 nn.BatchNorm2d(out_channels),
             )
+        self.skip_add = torch.ao.nn.quantized.FloatFunctional()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -76,8 +77,8 @@ class BasicBlock(nn.Module):
 
         # Skip connection: Identity or projection
         # Then add: output = F(x) + x
-        out += self.shortcut(x)
-
+        # out += self.shortcut(x)
+        out = self.skip_add.add(out, self.shortcut(x))
         out = self.relu(out)
 
         return out
