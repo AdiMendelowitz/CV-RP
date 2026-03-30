@@ -30,7 +30,7 @@ The core tradeoff: lower bit-width compresses the value range that can be repres
 
 FP16 sits between the two: half the memory of FP32 with negligible accuracy loss, no calibration required, and supported natively on NVIDIA GPUs. INT8 is preferred for edge/mobile deployment where memory bandwidth and power are constrained.
 
-The 2-4x speedup is not automatic. It requires hardware with INT8 matrix-multiply units (e.g., NVIDIA's DP4A instruction on Turing/Volta, ARM's SDOT). On hardware without native INT8 support, quantized inference can actually be slower due to dequantization overhead.
+The 2-4x speedup is not automatic. It requires hardware with INT8 matrix-multiply units (e.g., NVIDIA's DP4A instruction on Pascal GP102+ and later (Volta, Turing, Ampere); Turing additionally introduced INT8 Tensor Cores for matrix multiply, ARM's SDOT). On hardware without native INT8 support, quantized inference can actually be slower due to dequantization overhead.
 
 ---
 
@@ -116,7 +116,7 @@ Min-max is the easiest to implement and is the default in PyTorch's `MinMaxObser
 
 ```python
 import torch
-from torch.quantization import prepare, convert, get_default_qconfig
+from torch.ao.quantization import prepare, convert, get_default_qconfig  # torch.quantization is deprecated
 
 model.eval()
 model.qconfig = get_default_qconfig("x86")   # or "qnnpack" for ARM
@@ -153,7 +153,7 @@ Activations are typically quantized per-tensor because their channel-wise statis
 
 ## 8. Key Numbers to Remember
 
-- INT8 quantization typically achieves 2-4x memory reduction and 2-4x latency improvement on supported hardware.
-- Entropy/KL calibration on a 1000-sample dataset typically brings PTQ accuracy within 0.5% of FP32 for ResNet/EfficientNet class models (Nagel et al., 2021).
+- INT8 quantization reduces weight storage by ~4x (32-bit → 8-bit). Total model file size reduction is typically close to 4x for weight-heavy architectures, with a small remainder from FP32 biases and calibration parameters. Latency improvement on supported hardware is typically 2-4x.
+- Entropy/KL calibration on a 1000-sample dataset typically brings PTQ accuracy close to FP32 for ResNet/EfficientNet class models, with negligible degradation (often <1%) when the model and calibration data are well-matched (Nagel et al., 2021).
 - Per-channel weight quantization alone recovers a significant portion of per-tensor accuracy loss at no inference overhead.
 - Below INT8 (e.g., INT4), PTQ accuracy degrades sharply and QAT or more advanced techniques (GPTQ, SmoothQuant) become necessary.

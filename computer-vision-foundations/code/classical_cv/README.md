@@ -210,87 +210,112 @@ R = [[cos(θ), -sin(θ)],
 ```
 
 ---
-
 ## 💻 Implementation Details
 
-### Convolution Engine
+### Cross-Correlation and Convolution
 
-All filtering operations (Gaussian, Sobel) use the same convolution implementation:
+`filters.py` separates the two operations explicitly. `correlated2d` is the sliding-window
+engine; `convolve2d` is true convolution — it flips the kernel before calling `correlated2d`.
+Both accept a `padding` parameter: `"zero"`, `"replicate"`, or `"mirror"`.
 
 ```python
-def convolve2d(image: np.ndarray, kernel: np.ndarray) -> np.ndarray:
-    """
-    2D convolution with zero padding.
-    
-    For each output pixel:
-        1. Extract kernel-sized neighborhood from input
-        2. Element-wise multiply with kernel
-        3. Sum to produce output value
-    """
-    # Pad input to handle borders
-    pad = kernel.shape[0] // 2
-    padded = np.pad(image, pad, mode='constant')
-    
-    # Sliding window convolution
-    output = np.zeros_like(image)
-    for i in range(output.shape[0]):
-        for j in range(output.shape[1]):
-            neighborhood = padded[i:i+kernel.shape[0], j:j+kernel.shape[1]]
-            output[i, j] = np.sum(neighborhood * kernel)
-    
+def correlated2d(image: np.ndarray, kernel: np.ndarray, padding: str = "zero") -> np.ndarray:
+    """2D cross-correlation (no kernel flip). Core sliding-window engine."""
+    h, w = image.shape
+    kh, kw = kernel.shape
+    padded = _pad_image(image, pad_h=kh // 2, pad_w=kw // 2, mode=padding)
+    output = np.zeros_like(image, dtype="float32")
+    for i in range(h):
+        for j in range(w):
+            output[i, j] = np.sum(padded[i:i+kh, j:j+kw] * kernel)
     return output
+
+def convolve2d(image: np.ndarray, kernel: np.ndarray, padding: str = "zero") -> np.ndarray:
+    """True convolution = cross-correlation with 180°-flipped kernel."""
+    return correlated2d(image, np.flip(kernel), padding)
 ```
 
-**Optimization note:** Nested loops are slow in Python; production code would use `scipy.signal.convolve2d` or FFT-based convolution. This implementation prioritizes clarity over speed.
+Gaussian blur uses `convolve2d` (symmetric kernel, so flip has no effect in practice).
+Sobel edge detection uses `convolve2d` with replicate padding.
+
+**Optimization note:** The nested loop in `correlated2d` is O(H × W × K²). Production code
+would use `scipy.signal.convolve2d` or FFT-based convolution. This implementation
+prioritises clarity.
+
+---
 
 ### Non-Maximum Suppression
 
-Critical component of Canny pipeline:
+The NMS implementation in `edge_detection.py` uses the standard 4-bin Canny approach.
+Gradient angles in [0°, 180°) are assigned to one of four directions, then each pixel
+is compared to its two neighbours along that direction and suppressed if not the local
+maximum.
 
 ```python
-def non_maximum_suppression(magnitude: np.ndarray, angle: np.ndarray) -> np.ndarray:
+def non_max_suppression(magnitude: np.ndarray, direction: np.ndarray) -> np.ndarray:
     """
     Thin edges to 1-pixel width by suppressing non-maximum pixels along gradient direction.
-    
-    Quantize gradient angle to 8 directions, compare magnitude with neighbors along that direction.
+    Quantizes gradient angle to 4 bins: 0°, 45°, 90°, 135°.
     """
-    # Quantize angle to 8 bins (0°, 45°, 90°, 135°, ...)
-    angle_quantized = np.round(angle / 22.5) * 22.5
-    
-    # For each pixel, compare with neighbors along gradient direction
-    # Suppress if not local maximum
-    ...
+    suppressed = np.zeros_like(magnitude)
+    angle = np.rad2deg(direction) % 180
+
+    directions = [
+        ((angle < 22.5) | (angle >= 157.5),  [(0, 1),  (0, -1)]),   # 0°  — horizontal
+        ((angle >= 22.5) & (angle < 67.5),    [(-1, 1), (1, -1)]),   # 45° — diagonal
+        ((angle >= 67.5) & (angle < 112.5),   [(-1, 0), (1, 0)]),    # 90° — vertical
+        ((angle >= 112.5) & (angle < 157.5),  [(-1, -1),(1, 1)]),    # 135°— anti-diagonal
+    ]
+
+    for mask, [(dx1, dy1), (dx2, dy2)] in directions:
+        # compare each interior pixel to its two neighbours along the gradient direction
+        ...
 ```
 
-### Inverse Mapping
+---
 
-All geometric transformations use inverse mapping to avoid holes:
+### Geometric Transformations
+
+Transformations are split across two functions: `warp_affine` (2×3 matrix) and
+`warp_perspective` (3×3 homography). Both use vectorised inverse mapping — a meshgrid
+of output coordinates is mapped back to source coordinates in one matrix multiply —
+followed by bilinear interpolation via `_bilinear_interpolate`.
 
 ```python
-def apply_transform(image: np.ndarray, transform_matrix: np.ndarray) -> np.ndarray:
-    """
-    Apply geometric transformation via inverse mapping.
-    
-    For each output pixel (x_out, y_out):
-        1. Compute source coordinate: (x_in, y_in) = T^(-1) @ (x_out, y_out)
-        2. Sample input image at (x_in, y_in)
-        3. Assign to output pixel
-    """
-    output = np.zeros_like(image)
-    inverse_transform = np.linalg.inv(transform_matrix)
-    
-    for y_out in range(output.shape[0]):
-        for x_out in range(output.shape[1]):
-            # Map output → input
-            src_coords = inverse_transform @ [x_out, y_out, 1]
-            x_in, y_in = int(src_coords[0]), int(src_coords[1])
-            
-            # Sample if within bounds
-            if 0 <= x_in < image.shape[1] and 0 <= y_in < image.shape[0]:
-                output[y_out, x_out] = image[y_in, x_in]
-    
-    return output
+def warp_affine(image: np.ndarray, matrix: np.ndarray,
+                output_shape: Tuple[int, int]) -> np.ndarray:
+    """Inverse affine mapping with bilinear interpolation."""
+    height, width = output_shape
+    M_inv = np.linalg.inv(np.vstack([matrix, [0, 0, 1]]))[:2]
+
+    # Vectorised: map every output pixel to its source coordinate in one step
+    y_coords, x_coords = np.mgrid[0:height, 0:width]
+    coords = np.stack([x_coords.ravel(), y_coords.ravel(), np.ones(height * width)])
+    src = M_inv @ coords          # (2, H*W)
+    src_x = src[0].reshape(height, width)
+    src_y = src[1].reshape(height, width)
+
+    return _bilinear_interpolate(image, src_x, src_y)
+
+def warp_perspective(image: np.ndarray, matrix: np.ndarray,
+                     output_shape: Tuple[int, int]) -> np.ndarray:
+    """Inverse perspective mapping with homogeneous divide and bilinear interpolation."""
+    height, width = output_shape
+    H_inv = np.linalg.inv(matrix)
+
+    y_coords, x_coords = np.mgrid[0:height, 0:width]
+    coords = np.stack([x_coords.ravel(), y_coords.ravel(), np.ones(height * width)])
+    hom = H_inv @ coords
+    src_x = (hom[0] / hom[2]).reshape(height, width)   # homogeneous divide
+    src_y = (hom[1] / hom[2]).reshape(height, width)
+
+    return _bilinear_interpolate(image, src_x, src_y)
 ```
+
+**Key property:** Inverse mapping (output → source) guarantees every output pixel is
+filled. Forward mapping (source → output) leaves holes when multiple source pixels map
+to the same output location or some output pixels are skipped entirely. Bilinear
+interpolation additionally avoids the aliasing produced by nearest-neighbour sampling.
 
 ---
 
@@ -345,10 +370,11 @@ IEEE Transactions on Pattern Analysis and Machine Intelligence, PAMI-8(6), 679-6
 
 **Sobel Operator:**
 Sobel, I., & Feldman, G. (1968).  
-*A 3×3 Isotropic Gradient Operator for Image Processing.*
+*A 3×3 Isotropic Gradient Operator for Image Processing.*  
+Unpublished talk, Stanford Artificial Intelligence Laboratory (SAIL), Stanford University.
 
 **Gaussian Filtering:**
-Gonzalez, R. C., & Woods, R. E. (2018).  
+Gonzalez, R. C., & Woods, R. E. (2017).  
 *Digital Image Processing* (4th ed.). Pearson.
 
 **Perspective Transformations:**
@@ -368,5 +394,3 @@ MIT License - See LICENSE file for details.
 **Adi Mendelowitz**  
 Machine Learning Engineer  
 Specialization: Computer Vision & Image Processing
-
----

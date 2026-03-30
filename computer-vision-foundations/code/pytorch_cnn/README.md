@@ -7,7 +7,7 @@ Implementations of CNN architectures in PyTorch: from basic convolutional networ
 
 ## 🎯 Overview
 
-This directory implementations of:
+This directory contains implementations of:
 
 1. **Basic CNN** - Foundational convolutional neural network for MNIST
 2. **ResNet-18** - Deep residual learning with skip connections for CIFAR-10
@@ -22,10 +22,11 @@ This directory implementations of:
 
 ```
 pytorch_cnn/
-├── cnn_pytorch.py                  # Basic CNN implementation
+├── cnn_pytotch.py                  # Basic CNN implementation (note: filename typo)
 ├── resnet.py                       # ResNet-18 from scratch
 ├── train_cifar.py                  # Training script for CIFAR-10
 ├── compare_implementations.py      # CNN vs NumPy validation
+├── resnet_cnn_walkthroughs.md      # Technical deep dive
 │
 ├── 03_resnet_training.ipynb        # Interactive training notebook
 ├── training_history.json           # Training metrics log
@@ -33,13 +34,14 @@ pytorch_cnn/
 ├── best_resnet18_cifar10.pth       # Best model checkpoint
 ├── best_resnet18_cifar10 (1).pth   # Backup checkpoint
 │
-├── resnet_cnn_walkthroughs.md      # Technical deep dive
+├── cifar10_samples.png             # Dataset samples
+├── resnet_cifar10_training.png     # Training curves
+├── resnet_per_class.png            # Per-class accuracy
+├── resnet_predictions.png          # Sample predictions
+├── img.png
 │
-└── visualizations/
-    ├── cifar10_samples.png         # Dataset samples
-    ├── resnet_cifar10_training.png # Training curves
-    ├── resnet_per_class.png        # Per-class accuracy
-    └── resnet_predictions.png      # Sample predictions
+└── data/
+    └── cifar-10-batches-py/        # CIFAR-10 dataset (auto-downloaded)
 ```
 
 ## 🏗️ Architectures
@@ -66,16 +68,20 @@ Input (28×28×1) → Conv2d(1→8, 3×3) → ReLU → MaxPool(2×2) →
 
 ### 2. ResNet-18 (`resnet.py`)
 
-Implementation of ["Deep Residual Learning for Image Recognition"](https://arxiv.org/abs/1512.03385) (He et al., 2015).
+Implementation of ["Deep Residual Learning for Image Recognition"](https://arxiv.org/abs/1512.03385) (He et al., 2016).
 
 ```
-Input (32×32×3) → Conv 7×7 → MaxPool → 
-                  [BasicBlock ×2] (64 channels) → 
-                  [BasicBlock ×2] (128 channels) → 
-                  [BasicBlock ×2] (256 channels) → 
-                  [BasicBlock ×2] (512 channels) → 
+Input (32×32×3) → Conv 3×3, stride 1 (no MaxPool) →
+                  [BasicBlock ×2] (64 channels) →
+                  [BasicBlock ×2] (128 channels) →
+                  [BasicBlock ×2] (256 channels) →
+                  [BasicBlock ×2] (512 channels) →
                   GlobalAvgPool → FC(512→10) → Output
 ```
+> **CIFAR-10 adaptation:** The first conv uses 3×3 (stride 1) with no
+> MaxPool, replacing the standard 7×7 (stride 2) + MaxPool used for
+> ImageNet 224×224 inputs. This preserves spatial resolution appropriate
+> for 32×32 images.
 
 **Key Components:**
 
@@ -92,7 +98,7 @@ where F(x) = Conv → BatchNorm → ReLU → Conv → BatchNorm
 **Why This Works:**
 - Solves vanishing gradient problem
 - Gradient flows directly through identity path: `∂L/∂x = ∂L/∂y + ∂L/∂y × ∂F/∂x`
-- Enables training of very deep networks (50-152 layers)
+- Enables training at depths previously intractable — the paper demonstrates ResNets up to 152 layers
 
 **Parameters:** ~11.2M (for 10 classes)
 
@@ -158,7 +164,7 @@ Expected output:
 ```
 ResNet-18 architecture test
 ============================================================
-Total trainable parameters: 11,689,512
+Total trainable parameters: 11,173,962
 ✅ All tests passed! ResNet-18 implementation correct!
 ```
 
@@ -383,13 +389,16 @@ Demonstrates:
 ## 📖 References
 
 **ResNet Paper:**
-He, K., Zhang, X., Ren, S., & Sun, J. (2015).  
+He, K., Zhang, X., Ren, S., & Sun, J. (2016).  
 *Deep Residual Learning for Image Recognition.*  
-[arXiv:1512.03385](https://arxiv.org/abs/1512.03385)
+Proceedings of the IEEE Conference on Computer Vision and Pattern
+Recognition (CVPR), 2016, pp. 770-778. [arXiv:1512.03385](https://arxiv.org/abs/1512.03385)
 
 **Batch Normalization:**
 Ioffe, S., & Szegedy, C. (2015).  
-*Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift.*
+*Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift.*  
+Proceedings of the 32nd International Conference on Machine Learning
+(ICML), pp. 448-456. [arXiv:1502.03167](https://arxiv.org/abs/1502.03167)
 
 **PyTorch Documentation:**
 [PyTorch CNN Tutorial](https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html)
@@ -418,9 +427,3 @@ Implementation is original work based on cited academic papers.
 
 **Adi Mendelowitz**  
 ML Engineer  
-Specialization: Computer Vision & Deep Learning Systems
-
----
-
-**Last Updated:** February 2026  
-**Status:** ✅ Production-ready implementations with verified results

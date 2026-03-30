@@ -4,7 +4,7 @@
 
 ## Compound Scaling
 
-**Paper:** EfficientNet: Rethinking Model Scaling for CNNs — Tan & Le, 2019
+**Paper:** EfficientNet: Rethinking Model Scaling for CNNs — Tan & Le, ICML 2019
 **arXiv:** https://arxiv.org/abs/1905.11946
 
 ### Background
@@ -62,7 +62,7 @@ just compound-scaled versions of B0 with increasing φ.
 returns, then stopping (or arbitrarily picking a number):
 
 ```
-naive depth scaling:      accuracy gains saturate — gradients degrade in very deep networks even with ResNets; 
+naive depth scaling:      accuracy gains saturate — gradients degrade in very deep networks even with ResNets;
                           adding more layers stops helping around 1000 layers on CIFAR.
 
 naive width scaling:      wide-but-shallow networks fail to capture high-level
@@ -100,14 +100,15 @@ in balance.
 
 | Model           | ImageNet Top-1 | Params | FLOPs  |
 |-----------------|---------------|--------|--------|
-| ResNet-50       | 76.0%         | 26M    | 4.1B   |
+| ResNet-50       | 76.3%         | 26M    | 4.1B   |
 | ResNet-152      | 77.8%         | 60M    | 11.3B  |
 | EfficientNet-B0 | 77.1%         | 5.3M   | 0.39B  |
-| EfficientNet-B4 | 82.9%         | 19M    | 4.2B   |
-| EfficientNet-B7 | 84.3%         | 66M    | 37B    |
+| EfficientNet-B4 | 82.6%         | 19M    | 4.2B   |
+| EfficientNet-B7 | 84.4%         | 66M    | 37B    |
 
-B0 matches ResNet-50 at 8.5× fewer parameters and 10× fewer FLOPs. B4 beats
-ResNet-152 at the same FLOP budget with 3× fewer parameters.
+B0 matches ResNet-50 at roughly 4.9× fewer parameters and 10× fewer FLOPs. B4
+surpasses ResNet-152 in accuracy with 3× fewer parameters and less than 40% of
+its FLOPs.
 
 ---
 
@@ -122,7 +123,7 @@ ResNet-152 at the same FLOP budget with 3× fewer parameters.
 
 ## When Does ConvNeXt Beat ViT?
 
-**Paper:** A ConvNet for the 2020s — Liu et al., 2022
+**Paper:** A ConvNet for the 2020s — Liu et al., CVPR 2022
 **arXiv:** https://arxiv.org/abs/2201.03545
 
 ### Background
@@ -147,31 +148,33 @@ Starting from ResNet-50 → ResNet-50-A → ... → ConvNeXt, each step is ablat
 | Training recipe (epochs, augment, AdamW) | +2.7pp    |
 | Stage ratio (3:4:6:3 → 3:3:9:3)      | +0.6pp        |
 | Patchify stem (4×4 non-overlap conv)  | +0.1pp        |
-| Depthwise separable conv              | +0.3pp        |
+| ResNeXt-style (depthwise conv + width 64→96) | +1.0pp |
 | Inverted bottleneck (wide → narrow)   | +0.1pp        |
-| Large kernel (3×3 → 7×7 depthwise)   | +0.5pp        |
+| Move depthwise conv to first position | -0.1pp        |
+| Large kernel (3×3 → 7×7 depthwise)   | +0.7pp        |
 | Activation: ReLU → GELU              | +0.0pp        |
 | Fewer activations (one per block)     | +0.4pp        |
 | Fewer normalizations (BN → LN, one)  | +0.5pp        |
 | Separate downsampling layers          | +0.4pp        |
-| **Total**                             | **+5.7pp**    |
+| **Total**                             | **+6.4pp**    |
 
 The final ConvNeXt-T matches Swin-T at identical FLOPs and parameters.
 
-This table documents how Liu et al. (2022) transformed a standard ResNet-50 into ConvNeXt-T by applying one change at a time, measuring the ImageNet accuracy gain from each modification in isolation. The baseline ResNet-50 sits around 76.1% top-1 accuracy; the final ConvNeXt-T reaches ~82%.
+This table documents how Liu et al. (2022) transformed a standard ResNet-50 into ConvNeXt-T by applying one change at a time, measuring the ImageNet accuracy gain from each modification in isolation. The baseline ResNet-50 sits at 76.1% top-1 accuracy after applying the modern training recipe; the final ConvNeXt-T reaches ~82.1%.
 
-- **Training recipe (+2.7pp):** The biggest single gain comes from not changing the architecture at all, just training better: 300 epochs instead of 90, stronger augmentations (Mixup, CutMix, RandAugment), and AdamW instead of SGD. This alone closes most of the gap with Swin Transformers, which were trained with these modern recipes from the start.
-- **Stage ratio 3:4:6:3 → 3:3:9:3 (+0.6pp):** — ResNet distributes blocks evenly across its four stages. Swin Transformers heavily front-load computation in stage 3. Mirroring that ratio improves accuracy because more capacity is allocated where feature maps are most informative.
+- **Training recipe (+2.7pp):** The biggest single gain comes from not changing the architecture at all — just training better: 300 epochs instead of 90, stronger augmentations (Mixup, CutMix, RandAugment), and AdamW instead of SGD. This alone closes most of the gap with Swin Transformers, which were trained with these modern recipes from the start.
+- **Stage ratio 3:4:6:3 → 3:3:9:3 (+0.6pp):** ResNet distributes blocks evenly across its four stages. Swin Transformers heavily front-load computation in stage 3. Mirroring that ratio improves accuracy because more capacity is allocated where feature maps are most informative.
 - **Patchify stem (+0.1pp):** ResNet uses a 7×7 conv + maxpool to downsample early. ConvNeXt replaces this with a 4×4 non-overlapping convolution (borrowed from ViT's patch embedding), which is simpler and slightly more accurate.
-- **Depthwise separable conv (+0.3pp):** Standard convolutions apply a filter across all channels simultaneously. Depthwise separable conv splits this into a per-channel spatial filter followed by a 1×1 pointwise conv, dramatically reducing FLOPs while maintaining expressivity.
-- **Inverted bottleneck (+0.1pp):** Traditional ResNet bottlenecks go wide→narrow→wide (compress then expand). ConvNeXt flips this to narrow→wide→narrow, matching the MobileNetV2 and Transformer FFN design where the hidden dimension is expanded.
-- **Large kernel 3×3 → 7×7 depthwise (+0.5pp):** Arguably the most conceptually important change. A 7×7 depthwise conv has a receptive field analogous to the self-attention window in Swin, and because it's depthwise (cheap), the extra kernel size costs almost nothing in FLOPs. This is what gives ConvNeXt its "long-range" spatial mixing without attention.
-- **ReLU → GELU (+0.0pp):** Transformers use GELU; switching to it here makes zero difference in accuracy, but the authors keep it for architectural consistency with the Transformer family.
-- **Fewer activations (+0.4pp):** ResNets apply ReLU after every conv. Transformers apply activation only once per block (inside the FFN). Reducing activations to one per block gives the network more linear capacity and improves accuracy non-trivially.
-- **BN → LN, one normalization per block (+0.5pp):** Batch Normalization depends on batch statistics and behaves differently at train vs. inference. Layer Normalization (used in all Transformers) normalizes per-sample, is more stable, and here replaces multiple BN layers with a single LN per block.
-- **Separate downsampling layers (+0.4pp):** ResNet performs downsampling inside residual blocks (via strided conv). ConvNeXt separates this into explicit 2×2 strided conv layers between stages, which is cleaner and lets each stage operate at a fixed resolution throughout.
+- **ResNeXt-style depthwise conv + width increase (+1.0pp):** Standard convolutions apply a filter across all channels simultaneously. ConvNeXt adopts depthwise convolution (a special case of grouped convolution where each channel has its own filter), which dramatically reduces FLOPs. Since depthwise convolution alone reduces model capacity, the network width is increased from 64 to 96 channels (matching Swin-T) to compensate. The combined effect is +1.0pp with similar total FLOPs.
+- **Inverted bottleneck (+0.1pp):** Traditional ResNet bottlenecks go wide→narrow→wide (compress then expand). ConvNeXt flips this to narrow→wide→narrow, matching the MobileNetV2 and Transformer FFN design where the hidden dimension is expanded (by 4×) relative to the input and output. This slightly reduces overall FLOPs and gives a small accuracy gain.
+- **Move depthwise conv to first position (-0.1pp):** To enable larger kernels, the depthwise conv is repositioned before the channel-expansion layers. This temporary rearrangement causes a minor accuracy drop but places the expensive spatial operation where it sees fewer channels, making large kernels computationally feasible.
+- **Large kernel 3×3 → 7×7 depthwise (+0.7pp):** The most conceptually important change. A 7×7 depthwise conv has a receptive field analogous to the self-attention window in Swin, and because it is depthwise (cheap), the extra kernel size costs almost nothing in FLOPs. This gives ConvNeXt its long-range spatial mixing without attention. Performance increases from 79.9% (after repositioning) to 80.6%.
+- **ReLU → GELU (+0.0pp):** Transformers use GELU; switching to it here makes no difference in accuracy, but the authors adopt it for architectural consistency with the Transformer family.
+- **Fewer activations (+0.4pp):** ResNets apply ReLU after every conv. Transformers apply activation only once per block (inside the FFN). Reducing activations to one per block gives the network more linear capacity and improves accuracy.
+- **BN → LN, one normalization per block (+0.5pp):** Batch Normalization depends on batch statistics and behaves differently at train vs. inference time. Layer Normalization (used in all Transformers) normalizes per-sample, is more stable at small batch sizes, and here replaces multiple BN layers with a single LN per block.
+- **Separate downsampling layers (+0.4pp):** ResNet performs downsampling inside residual blocks (via strided conv). ConvNeXt separates this into explicit 2×2 strided conv layers between stages, which is architecturally cleaner and lets each stage operate at a fixed resolution throughout.
 
-- The key takeaway is that modern training recipes account for nearly half the total gain, and the architectural changes are each small and individually motivated by Transformer design principles — ConvNeXt is essentially "what if we trained a ResNet like a Transformer and borrowed its structural choices one by one."
+The key takeaway is that modern training recipes account for nearly half the total gain, and the architectural changes are each small and individually motivated by Transformer design principles — ConvNeXt is essentially the result of training a ResNet with Transformer recipes and adopting its structural choices one at a time.
 
 ---
 
@@ -179,7 +182,7 @@ This table documents how Liu et al. (2022) transformed a standard ResNet-50 into
 
 #### 1. Limited Data / Small- to Medium-Scale Datasets
 
-ViT's global self-attention has no spatial inductive bias, it must learn that
+ViT's global self-attention has no spatial inductive bias; it must learn that
 nearby pixels are more related than distant ones entirely from data. This hurts
 on small datasets.
 
@@ -208,6 +211,8 @@ modification, and matches or exceeds Swin Transformer:
 | Swin-B       | 51.9          | 45.0           |
 | ConvNeXt-B   | 52.7          | 45.6           |
 
+*Cascade Mask R-CNN, 3× schedule, COCO val2017 (Liu et al., 2022, Table 3).*
+
 ConvNeXt-B narrowly wins at the same scale. The hierarchy is a genuine advantage.
 
 #### 3. Inference Efficiency (Throughput / Latency)
@@ -216,29 +221,30 @@ ViT's self-attention is O(n²) in sequence length (image tokens). For high-resol
 inputs or dense tasks, this quadratic cost dominates.
 
 ConvNeXt's depthwise conv is O(n · k²) where k is kernel size (7 here) — linear
-in sequence length. At high resolutions ConvNeXt is substantially faster:
+in sequence length. At high resolutions ConvNeXt is substantially faster. On A100
+GPUs, ConvNeXt achieves up to ~49% higher throughput than comparably-sized Swin
+Transformers (Liu et al., 2022, Appendix E). Relative to a vanilla ViT the
+advantage is larger still, since ViT's quadratic attention is harder to accelerate
+on standard hardware.
 
-- ConvNeXt-B: ~563 images/sec (A100)
-- ViT-B/16: ~383 images/sec (A100, same resolution)
-
-For deployment to edge / embedded hardware: attention is hard to accelerate;
+For deployment to edge or embedded hardware: attention is hard to accelerate;
 convolution has decades of hardware support (cuDNN, ONNX, TFLite, CoreML).
 ConvNeXt benefits from this entire ecosystem immediately.
 
 #### 4. When You Cannot Use Large-Scale Pretraining
 
 Swin and ViT-based models benefit enormously from pretraining on ImageNet-21k or
-larger. For a domain where large pretraining sets do not exist
+larger. For domains where large pretraining sets do not exist
 (medical imaging, satellite imagery, niche industrial data), ConvNeXt's inductive
-biases give a head start that the data volume cannot compensate for.
+biases give a head start that the available data volume cannot compensate for.
 
 #### 5. Fine-tuning Stability
 
-ViT is sensitive to learning rate, weight decay, and augmentation choices, especially when fine-tuning on smaller datasets.
-Suboptimal hyperparameters cause training instability. ConvNeXt, trained with
-the same AdamW recipe as transformers, is more forgiving due to the BN→LN switch, which 
-retains transformer-like stability while the convolutional structure provides
-implicit regularisation via weight sharing.
+ViT is sensitive to learning rate, weight decay, and augmentation choices,
+especially when fine-tuning on smaller datasets. Suboptimal hyperparameters cause
+training instability. ConvNeXt, trained with the same AdamW recipe as transformers,
+is more forgiving due to the BN→LN switch, which retains transformer-like stability
+while the convolutional structure provides implicit regularization via weight sharing.
 
 ---
 
@@ -272,12 +278,14 @@ implicit regularisation via weight sharing.
 
 ### Conclusion
 
-ConvNeXt's main contribution is that **most of ViT's gains over ResNet came from training improvements and design
-decisions, not from self-attention itself**. When applying those same improvements to a CNN, the gap closes almost entirely.
+ConvNeXt's central finding is that most of the performance gap between ResNets
+and modern vision Transformers came from training improvements and design
+decisions, not from self-attention itself. When those same improvements are
+applied to a CNN, the gap closes almost entirely.
 
-This is directly relevant to your portfolio work: when you see a ViT beat a ResNet,
-ask whether the comparison is fair (same training recipe, same augmentation, same
-number of parameters). ConvNeXt was the paper that made this question unavoidable.
+When comparing ViT against ResNet, it is worth asking whether the comparison is
+fair (same training recipe, same augmentation, same number of parameters).
+ConvNeXt made this question unavoidable.
 
 ---
 

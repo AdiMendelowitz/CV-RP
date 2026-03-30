@@ -1,10 +1,10 @@
-# CNN from Scratch — NumPy Only
+# CNN from Scratch - NumPy Only
 
 [![Python](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/)
 [![NumPy](https://img.shields.io/badge/NumPy-1.26-green.svg)](https://numpy.org/)
 [![Verified](https://img.shields.io/badge/verified-PyTorch-red.svg)](https://pytorch.org/)
 
-Complete Convolutional Neural Network implementation using **NumPy exclusively** — no PyTorch, no TensorFlow, no deep learning frameworks.
+Complete Convolutional Neural Network implementation using **NumPy exclusively**.
 
 Every component implemented manually: convolution operations, backpropagation through all layer types, gradient computation via chain rule, and stochastic gradient descent with momentum. Demonstrates deep understanding of the mathematical foundations underlying modern deep learning frameworks.
 
@@ -45,13 +45,13 @@ Same architecture rebuilt in PyTorch to validate mathematical correctness:
 
 **Analysis:**
 
-- **Loss convergence (left):** Train loss decreases monotonically from 1.66 → 0.29 over 5 epochs. Smooth, stable descent with no oscillation confirms correct gradient flow through all layers.
+- **Loss convergence (left):** Train loss decreases monotonically from 1.71 → 0.25 over 5 epochs. Smooth, stable descent with no oscillation confirms correct gradient flow through all layers.
 
-- **Accuracy progression (right):** Test accuracy initially exceeds train accuracy — the network generalizes before memorizing, indicating healthy learning dynamics and proper regularization from limited training data.
+- **Accuracy progression (right):** Test accuracy initially exceeds train accuracy - the network generalizes before memorizing, indicating healthy learning dynamics and proper regularization from limited training data.
 
 - **Generalization gap:** Train/test gap remains small (~3%) with no significant overfitting on 5,000 samples.
 
-- **Early test loss behavior:** Test loss converges below train loss in early epochs — normal when the network is underfitting and the test set happens to contain slightly easier examples in early batches.
+- **Early test loss behaviour:** Test loss falls below train loss in early epochs - a known artefact of how the losses are computed. Training loss is a running average over all mini-batches throughout the epoch, including early batches before the model had learned much. Test loss is evaluated once on the final model state at epoch end. The end-of-epoch model outperforms the average-over-epoch model, making train loss appear higher.
 
 ---
 
@@ -70,7 +70,7 @@ Most errors involve genuinely ambiguous cases where human annotators would hesit
 - **1 → 3**: Curved stroke instead of vertical line
 - **9 → 4**: Unusually short tail makes loop resemble 4's closed top
 
-**This error pattern matches professional CNN behavior** — confusion between visually similar digit pairs (4/6, 7/9, 3/8). These are not implementation defects; they reflect genuine visual ambiguity in handwriting variability.
+**This error pattern matches professional CNN behaviour** - confusion between visually similar digit pairs (4/6, 7/9, 3/8), reflecting genuine visual ambiguity in handwriting variability.
 
 ---
 
@@ -111,7 +111,7 @@ Input (batch, 1, 28, 28)
   Softmax                      → (batch, 10) class probabilities
 ```
 
-**Total parameters: ~13,000** (intentionally compact for CPU training)
+**Total parameters: ~103,000** (dense layers dominate; compact by modern standards)
 
 ---
 
@@ -131,16 +131,16 @@ cnn_scratch/
 ### Layer Architecture (`layers.py`)
 
 Each layer implements three critical methods:
-- `forward(input)` — Computes output, **caches input** for backward pass
-- `backward(grad_output)` — Applies chain rule, returns `grad_input`
-- `get_params()` — Exposes `(parameter, gradient)` pairs to optimizer
+- `forward(input)` - Computes output, **caches input** for backward pass
+- `backward(grad_output)` - Applies chain rule, returns `grad_input`
+- `get_params()` - Exposes `(parameter, gradient)` pairs to optimizer
 
 | Layer | Forward Operation | Backward Gradient |
 |-------|------------------|-------------------|
 | `Conv2D` | Sliding window convolution | ∂L/∂W via input patches; ∂L/∂x via transposed weights |
 | `MaxPool2D` | Max over 2×2 windows | 100% gradient to max position, 0% elsewhere |
 | `Dense` | xW + b | ∂L/∂W = x^T @ grad; ∂L/∂x = grad @ W^T |
-| `ReLU` | max(0, x) | grad × (input > 0) — zeros where inactive |
+| `ReLU` | max(0, x) | grad × (input > 0) - zeros where inactive |
 | `Softmax` | e^x / Σe^x | Full Jacobian matrix |
 | `Flatten` | Reshape to 1D | Reshape to original spatial dimensions |
 
@@ -149,13 +149,13 @@ Each layer implements three critical methods:
 Each layer receives `∂L/∂output`, computes weight gradients, and propagates `∂L/∂input` backward. The chain rule applied sequentially:
 
 ```python
-# Dense layer backward — chain rule in 3 lines
+# Dense layer backward - chain rule in 3 lines
 def backward(self, grad_output: np.ndarray) -> np.ndarray:
     self.grad_weights = self.input.T @ grad_output    # ∂L/∂W
     self.grad_bias    = grad_output.sum(axis=0)       # ∂L/∂b
     return grad_output @ self.weights.T               # ∂L/∂x → previous layer
 
-# ReLU backward — single line
+# ReLU backward - single line
 def backward(self, grad_output: np.ndarray) -> np.ndarray:
     return grad_output * (self.input > 0)             # Zero gradient where inactive
 ```
@@ -251,7 +251,7 @@ Final Test Accuracy: 91.25%
 ## 🔬 Technical Insights
 
 ### 1. Backpropagation is the Chain Rule Applied Sequentially
-Each layer computes one local gradient and passes it backward. The network doesn't "know" the loss function — it just propagates `∂L/∂output` through its local Jacobian.
+Each layer computes one local gradient and passes it backward. The network doesn't "know" the loss function - it just propagates `∂L/∂output` through its local Jacobian.
 
 ### 2. MaxPool Gradient is Sparse
 Only the winning pixel (max value) receives gradient; all other pixels in the 2×2 window get zero. This creates sparse gradient flow but is mathematically correct.
@@ -283,7 +283,7 @@ Nature, 323(6088), 533-536.
 **He Initialization:**
 He, K., Zhang, X., Ren, S., & Sun, J. (2015).  
 *Delving Deep into Rectifiers: Surpassing Human-Level Performance on ImageNet Classification.*  
-[arXiv:1502.01852](https://arxiv.org/abs/1502.01852)
+Proceedings of the IEEE International Conference on Computer Vision (ICCV), 2015, pp. 1026-1034. [arXiv:1502.01852](https://arxiv.org/abs/1502.01852)
 
 **Convolutional Networks:**
 LeCun, Y., Bottou, L., Bengio, Y., & Haffner, P. (1998).  
@@ -301,10 +301,4 @@ MIT License - See LICENSE file for details.
 ## 👤 Author
 
 **Adi Mendelowitz**  
-MLEngineer  
-Specialization: Computer Vision & Deep Learning Foundations
-
----
-
-**Last Updated:** February 2026  
-**Status:** ✅ Production-ready NumPy implementation with verified results
+ML Engineer 

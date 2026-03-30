@@ -1,17 +1,13 @@
 # Background Paper Notes: Efficiency, Detection & Compression
 
-> **Purpose:** Skim-level reference notes for four foundational papers.
-> Each section covers motivation, core ideas, key mechanics, results, limitations,
-> and what to carry forward into implementation work.
-
 ---
 
 ## Table of Contents
 
-1. [MobileNetV3 (2019) — Howard et al.](#1-mobilenetv3-2019)
-2. [YOLOv1 (2016) — Redmon et al.](#2-yolov1-2016)
-3. [DETR (2020) — Carion et al.](#3-detr-2020)
-4. [Deep Compression (2016) — Han et al.](#4-deep-compression-2016)
+1. [MobileNetV3 (2019) - Howard et al.](#1-mobilenetv3-2019)
+2. [YOLOv1 (2016) - Redmon et al.](#2-yolov1-2016)
+3. [DETR (2020) - Carion et al.](#3-detr-2020)
+4. [Deep Compression (2016) - Han et al.](#4-deep-compression-2016)
 
 ---
 
@@ -31,7 +27,7 @@ to dramatically shrink model size for mobile deployment. V3 asks: instead of
 hand-designing the next improvement, can we use **automated search** to find the
 optimal architecture given real hardware latency constraints?
 
-The key tension being solved: accuracy vs. latency on mobile CPUs — not FLOPs,
+The key tension being solved: accuracy vs. latency on mobile CPUs, not FLOPs,
 actual wall-clock milliseconds on an ARM chip.
 
 ---
@@ -40,13 +36,13 @@ actual wall-clock milliseconds on an ARM chip.
 
 #### 1. Two-Stage Architecture Search
 
-**Stage 1 — Platform-Aware NAS (MnasNet-style):**
+**Stage 1 - Platform-Aware NAS (MnasNet-style):**
 - Searches for the macro-level block structure (layer types, kernel sizes, expansion ratios).
 - Optimises for a multi-objective reward: `ACC(m) × [LAT(m) / TAR]^w` where
   `TAR` is target latency and `w` is a weighting factor.
 - Produces the baseline skeleton of MobileNetV3.
 
-**Stage 2 — NetAdapt:**
+**Stage 2 - NetAdapt:**
 - Fine-grained, layer-by-layer adaptation of the NAS skeleton.
 - Iteratively proposes small changes (reduce filter count, remove a layer) that
   satisfy a latency budget, then retrains briefly to measure accuracy impact.
@@ -87,7 +83,7 @@ expand convolution) to keep latency low.
 #### 4. Redesigned Head and Stem
 
 **Stem:** First convolution (16 filters, stride 2) kept but subsequent layers
-thinned using NetAdapt — the early stem was over-parameterised in V2.
+thinned using NetAdapt - the early stem was over-parameterised in V2.
 
 **Head (classifier):** V2 used a 1×1 conv → global average pool → 1×1 conv
 sequence. V3 moves the expensive 1×1 conv *after* pooling, reducing the spatial
@@ -115,7 +111,7 @@ For dense prediction tasks (semantic segmentation), the authors propose
 
 | Model                 | ImageNet Top-1 | vs V2 (acc) | vs V2 (latency) |
 |-----------------------|---------------|-------------|-----------------|
-| MobileNetV3-Large     | ~75.2%        | +3.2%       | −15%            |
+| MobileNetV3-Large     | ~75.2%        | +3.2%       | −20%            |
 | MobileNetV3-Small     | ~67.4%        | +4.6%       | −5%             |
 
 - COCO detection: MobileNetV3-Large is 25% faster at comparable mAP to V2.
@@ -127,7 +123,7 @@ For dense prediction tasks (semantic segmentation), the authors propose
 
 - NAS and NetAdapt search is expensive to run (requires TPU time); practitioners
   use the released checkpoints rather than re-searching.
-- The architecture is highly hardware-specific — latency gains on ARM CPUs may
+- The architecture is highly hardware-specific - latency gains on ARM CPUs may
   not transfer to GPUs or DSPs without re-running search on the target platform.
 - SE blocks add memory bandwidth cost that partially cancels latency savings on
   some hardware.
@@ -244,7 +240,7 @@ where λ_coord = 5, λ_noobj = 0.5
 - `λ_noobj = 0.5`: Downweights confidence loss from background cells to prevent
   them dominating.
 - Square-root of width/height: Makes the loss less sensitive to absolute box scale
-  — a 10px error on a large box should penalise less than on a small one.
+  - a 10px error on a large box should penalise less than on a small one.
 
 ---
 
@@ -260,7 +256,7 @@ where λ_coord = 5, λ_noobj = 0.5
 **Weaknesses:**
 - **One object per cell:** Two objects whose centres fall in the same cell can only
   have one detected. Struggles with dense, small objects (e.g. a flock of birds).
-- **Fixed prior:** No anchor priors — boxes are predicted from scratch, making
+- **Fixed prior:** No anchor priors - boxes are predicted from scratch, making
   localisation harder for unusual aspect ratios.
 - **Scale inflexibility:** Grid resolution is fixed at 7×7, limiting spatial
   granularity.
@@ -289,10 +285,8 @@ demonstrate real-time performance with reasonable accuracy.
 YOLOv1 started a lineage that dominates real-time detection to this day:
 
 ```
-YOLOv1 (2016) → YOLOv2/YOLO9000 (anchor priors, multi-scale)
-    → YOLOv3 (Darknet-53, multi-scale prediction heads)
-    → YOLOv4 (Bag of Freebies/Specials)
-    → YOLOv5 / YOLOv8 (Ultralytics, production-grade)
+YOLOv1 (2016) → YOLOv2/YOLO9000 (anchor priors, multi-scale) → YOLOv3 (Darknet-53, multi-scale prediction heads)
+    → YOLOv4 (Bag of Freebies/Specials) → YOLOv5 / YOLOv8 (Ultralytics, production-grade)
     → RT-DETR (transformer-based real-time, 2023)
 ```
 
@@ -366,7 +360,7 @@ N predictions (most → "no object")
 Each query learns to specialise in detecting objects at certain positions or scales.
 Parallel decoding: all queries are processed simultaneously, not autoregressively.
 
-The queries have no explicit spatial prior — the model learns what they attend to
+The queries have no explicit spatial prior - the model learns what they attend to
 entirely from data. This is what eliminates the need for anchor design.
 
 #### 2. Bipartite Matching Loss
@@ -380,7 +374,7 @@ The critical innovation. Given `N` predictions and `M` ground-truth objects (`M 
 3. Compute loss only on matched pairs; all unmatched predictions are supervised
    as the "no object" class.
 
-This guarantees unique predictions — each ground-truth box is matched to exactly
+This guarantees unique predictions - each ground-truth box is matched to exactly
 one query. **NMS becomes unnecessary** because duplicate detections of the same
 object would compete and only one would win the match.
 
@@ -397,7 +391,7 @@ L1 on normalised box coordinates handles absolute size.
 #### 3. Transformer Encoder
 
 Standard multi-head self-attention over the flattened feature map. Every spatial
-position attends to every other position — this gives global context before
+position attends to every other position - this gives global context before
 the decoder runs. The encoder learns to group features corresponding to the same
 object across spatial locations.
 
@@ -414,7 +408,7 @@ relationships). The decoder produces one set prediction per query.
 DETR naturally extends to panoptic segmentation by adding a pixel-level FFN over
 the decoder's attention maps. For each detected box, the corresponding attention
 maps (multi-head, multi-scale) are upsampled and merged to produce a mask.
-No separate mask head design needed — a clean generalisation of the same framework.
+No separate mask head design needed - a clean generalisation of the same framework.
 
 ---
 
@@ -427,17 +421,19 @@ No separate mask head design needed — a clean generalisation of the same frame
 | DETR R101            | 43.5  | 21.9  | 48.0  | 61.8  | 152    | 20   |
 
 **Reading the table:**
-- On overall AP, DETR matches Faster R-CNN — remarkable given far less engineering.
+- On overall AP, DETR matches Faster R-CNN - remarkable given far less engineering.
 - DETR is significantly better on large objects (`AP_L`) due to global self-attention.
-- DETR is significantly worse on small objects (`AP_S`) — a known weakness.
+- DETR is significantly worse on small objects (`AP_S`) - a known weakness.
 
 ---
 
 ### Limitations
 
-- **Training is slow:** Requires 500 epochs to converge on COCO (Faster R-CNN
-  converges in ~36). The Hungarian matching provides weak gradient signal at the
-  start when predictions are random.
+- **Training is slow:** Requires 500 epochs to reach reported performance (the
+  300-epoch model achieves ~1.5 AP less). Faster R-CNN converges in 12–36 epochs
+  depending on schedule - 12 for the standard 1× schedule and ~36 for the 3×
+  schedule used in the DETR paper's comparison. The Hungarian matching provides
+  weak gradient signal at the start when predictions are random.
 - **Small object detection is weak:** The backbone downsamples by 32×; the
   transformer lacks built-in multiscale processing (addressed by Deformable DETR).
 - **Quadratic attention cost:** Standard MHSA is O(n²) in sequence length; the
@@ -467,23 +463,22 @@ detection models (Grounding DINO, OWL-ViT, etc.).
 ```
 Transformer ("Attention Is All You Need", 2017)
     ↓
-DETR (2020) — set prediction, bipartite matching
+DETR (2020) - set prediction, bipartite matching
     ↓
-Deformable DETR (2021) — deformable attention, 10× faster convergence
+Deformable DETR (2021) - deformable attention, 10× faster convergence
     ↓
-DAB-DETR / DN-DETR (2022) — anchor-based queries, denoising training
+DAB-DETR / DN-DETR (2022) - anchor-based queries, denoising training
     ↓
-DINO-Det (2022) — contrastive denoising, SOTA on COCO
+DINO-Det (2022) - contrastive denoising, SOTA on COCO
     ↓
-Grounding DINO / OWL-ViT (2023) — open-vocabulary
+Grounding DINO / OWL-ViT (2023) - open-vocabulary
 ```
 
 ---
 
 ### What to Take Forward
 
-- **Bipartite matching / Hungarian algorithm** is the key algorithmic idea —
-  understand it deeply; it reappears in tracking, pose estimation, and generative
+- **Bipartite matching / Hungarian algorithm** is the key algorithmic idea, it reappears in tracking, pose estimation, and generative
   matching (e.g. DDPM alignment).
 - **Object queries as learned slots** is a general pattern for variable-cardinality
   outputs without NMS.
@@ -512,7 +507,7 @@ FPGAs) was severely limited by:
 - **Compute:** Embedded CPUs have limited FP32 throughput.
 
 The goal: compress models to fit in on-chip SRAM, enabling both faster inference
-and dramatically lower energy consumption — without any accuracy loss.
+and dramatically lower energy consumption - without any accuracy loss.
 
 ---
 
@@ -570,7 +565,7 @@ to preserve accuracy).
 After pruning, each weight is stored as a full 32-bit float. Stage 2 reduces
 precision by clustering weights and sharing cluster centroids.
 
-**Mechanism — k-means clustering:**
+**Mechanism - k-means clustering:**
 1. Cluster all weights in each layer into `k` clusters (e.g. k=256 → 8-bit index).
 2. Replace each weight with the index of its nearest centroid.
 3. **Retrain (fine-tune) only the centroids** using gradient accumulation:
@@ -604,7 +599,7 @@ For k=32: 32 bits → 5 bits per weight.
 
 ### Stage 3: Huffman Coding
 
-After weight sharing, the distribution of cluster indices is non-uniform — most
+After weight sharing, the distribution of cluster indices is non-uniform where most
 weights fall in a small number of clusters (near-zero values dominate).
 **Huffman coding** assigns shorter codes to more frequent indices, achieving
 lossless compression of the index stream.
@@ -633,7 +628,7 @@ without DRAM access.
 
 ### Why This Works: The Redundancy Argument
 
-Neural networks, especially FC layers, are massively over-parameterised. The
+NNs, especially FC layers, are massively over-parameterised. The
 pruning step reveals that most connections carry near-zero weights and contribute
 negligibly to the output. Quantisation works because the remaining weights
 cluster naturally around a small number of values. Huffman coding works because
@@ -652,7 +647,7 @@ which then efficiently encodes the skewed distribution.
   (which prefers dense tensor operations). Speedup requires sparse BLAS support
   or specialised hardware.
 - **Structured alternatives:** Later work (channel pruning, filter pruning) removes
-  entire filters to produce dense models that accelerate naturally on any GPU —
+  entire filters to produce dense models that accelerate naturally on any GPU -
   at the cost of higher accuracy loss for the same compression ratio.
 - **Retraining required:** Each stage requires fine-tuning, adding training cost.
 - **Quantisation-Aware Training (QAT)** has largely superseded the k-means
@@ -670,8 +665,8 @@ Deep Compression (2016)
   │                      → Post-Training Quantization (PTQ), GPTQ (2022)
   └── Coding branch → Entropy coding in model compression (less used now)
 
-Knowledge Distillation (Hinton, 2015) — orthogonal but complementary approach
-MobileNets / EfficientNet — architecture-level efficiency instead of post-hoc compression
+Knowledge Distillation (Hinton, 2015) - orthogonal but complementary approach
+MobileNets / EfficientNet - architecture-level efficiency instead of post-hoc compression
 ```
 
 ---
@@ -684,8 +679,8 @@ MobileNets / EfficientNet — architecture-level efficiency instead of post-hoc 
   unstructured to get real speedup without specialised hardware.
 - **INT8 quantisation with QAT** is the modern standard; `torch.quantization` and
   TensorRT both implement this. The centroid/k-means approach is mainly historical.
-- The core insight — *most weights are redundant and can be represented with far
-  fewer bits without accuracy loss* — underpins all of modern model compression
+- The core insight - *most weights are redundant and can be represented with far
+  fewer bits without accuracy loss* - underpins all of modern model compression
   and is directly relevant to LLM quantisation (INT4, GGUF, AWQ, etc.).
 
 ---
@@ -700,7 +695,7 @@ MobileNets / EfficientNet — architecture-level efficiency instead of post-hoc 
 | End-to-end training          |             | ✓      | ✓    |                  |
 | Eliminating hand-engineering |             |        | ✓    |                  |
 | Architecture search / NAS    | ✓           |        |      |                  |
-| Quantization                 | ✓ (h-swish) |        |      | ✓                |
+| Quantization (weight/activation)  |             |        |      | ✓                |
 | Real-time inference          | ✓           | ✓      |      | ✓                |
 | Set prediction / global ctx  |             |        | ✓    |                  |
 
