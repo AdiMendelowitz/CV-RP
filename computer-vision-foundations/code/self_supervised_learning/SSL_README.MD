@@ -1,15 +1,15 @@
 # SimCLR: Self-Supervised Visual Representation Learning
 
-A clean, production-quality PyTorch implementation of **SimCLR** (Chen et al., 2020), trained and evaluated on CIFAR-10. This project demonstrates both theoretical understanding of contrastive self-supervised learning and the engineering discipline to implement, train, and evaluate it rigorously from scratch.
+PyTorch implementation of **SimCLR** (Chen et al., 2020), trained and evaluated on CIFAR-10. 
 
 > **Paper:** [A Simple Framework for Contrastive Learning of Visual Representations](https://arxiv.org/abs/2002.05709)  
-> Chen, Kornblitt, Norouzi, Hinton — ICML 2020
+> Chen, Kornblith, Norouzi, Hinton - ICML 2020
 
 ---
 
 ## Overview
 
-Self-supervised learning addresses one of the most persistent bottlenecks in production computer vision: the cost and scarcity of labeled data. SimCLR learns rich visual representations from *unlabeled* images by maximizing agreement between differently augmented views of the same image in a learned embedding space. A linear classifier trained on top of the frozen encoder — without any fine-tuning of the backbone — serves as the standard measure of representation quality.
+Self-supervised learning addresses one of the most persistent bottlenecks in production computer vision: the cost and scarcity of labeled data. SimCLR learns rich visual representations from *unlabeled* images by maximizing agreement between differently augmented views of the same image in a learned embedding space. A linear classifier trained on top of the frozen encoder, without any fine-tuning of the backbone, serves as the standard measure of representation quality.
 
 This implementation reproduces the core SimCLR pipeline end-to-end: the encoder, the non-linear projection head, the NT-Xent contrastive loss, the cosine learning rate schedule, and the linear evaluation protocol described in Appendix B.9 of the original paper.
 
@@ -30,13 +30,13 @@ Input Image
                                                     NT-Xent Loss
 ```
 
-**Encoder — `f(·)`:** ResNet-18 with the final classification head removed, producing 512-dimensional representations. Weights are shared across both augmented views.
+**Encoder - `f(·)`:** ResNet-18 with the final classification head removed, producing 512-dimensional representations. Weights are shared across both augmented views.
 
-**Projection Head — `g(·)`:** A 3-layer MLP (Linear → BN → ReLU → Linear → BN → ReLU → Linear) mapping encoder output to the contrastive embedding space. The projection head is discarded entirely after pretraining; only the encoder is retained for downstream use. This design choice, shown by the authors to be critical, means the encoder is never directly optimized for the contrastive objective — it learns representations that are useful *beyond* the pretraining task.
+**Projection Head - `g(·)`:** A 2-layer MLP (Linear → BN → ReLU → Linear) mapping encoder output to the contrastive embedding space. The projection head is discarded entirely after pretraining; only the encoder is retained for downstream use. This design choice, shown by the authors to be critical, means the encoder is never directly optimized for the contrastive objective - it learns representations that are useful *beyond* the pretraining task.
 
-**Augmentation Pipeline:** Random resized crop, color jitter (strength s=0.5), random grayscale, Gaussian blur, and random horizontal flip — applied independently to each view. Augmentation is the most consequential design decision in SimCLR; the choice and composition of transforms directly determines what invariances the encoder learns.
+**Augmentation Pipeline:** Random resized crop, color jitter (strength s=0.5), random grayscale, Gaussian blur, and random horizontal flip - applied independently to each view. Augmentation is the most consequential design decision in SimCLR; the choice and composition of transforms directly determines what invariances the encoder learns.
 
-**Loss — NT-Xent:** The normalized temperature-scaled cross-entropy loss treats each sample's other augmented view as its sole positive and all other 2(N−1) views in the batch as negatives. Temperature τ=0.5 is used throughout, consistent with the paper's CIFAR-10 configuration.
+**Loss - NT-Xent:** The normalized temperature-scaled cross-entropy loss treats each sample's other augmented view as its sole positive and all other 2(N−1) views in the batch as negatives. Temperature τ=0.5 was used as the training and ablation baseline. The paper's reported optimal is τ=0.1, which this implementation's own temperature sweep confirms (62.7% vs 60.1%).
 
 ---
 
@@ -57,7 +57,7 @@ Pretraining was performed on the full CIFAR-10 training set (50,000 unlabeled im
 
 ![Training Loss Curve](plots/pretrain_loss_curve.png)
 
-The loss exhibits the expected behavior: rapid initial descent as the encoder learns coarse structure, followed by a slower refinement phase. The plateau observed after epoch 75 is consistent with the cosine schedule approaching its minimum learning rate, and is not indicative of overfitting — contrastive loss has no such notion in the conventional sense.
+The loss exhibits the expected behavior: rapid initial descent as the encoder learns coarse structure, followed by a slower refinement phase. The plateau observed after epoch 75 is consistent with the cosine schedule approaching its minimum learning rate, and is not indicative of overfitting - contrastive loss has no such notion in the conventional sense.
 
 ---
 
@@ -65,13 +65,13 @@ The loss exhibits the expected behavior: rapid initial descent as the encoder le
 
 Following the standard protocol (Chen et al., Appendix B.9), the encoder is frozen after pretraining and a single `nn.Linear(512, 10)` layer is trained on labeled CIFAR-10 for 90 epochs using SGD with Nesterov momentum and no weight decay. No encoder gradients are computed during this stage.
 
-This evaluation is deliberately conservative. The linear classifier has no capacity to compensate for weak representations — it can only linearly separate what the encoder has already learned to distinguish. A high linear evaluation accuracy is therefore a strong signal that the learned representations are semantically meaningful and well-structured.
+This evaluation is deliberately conservative. The linear classifier has no capacity to compensate for weak representations - it can only linearly separate what the encoder has already learned to distinguish. A high linear evaluation accuracy is therefore a strong signal that the learned representations are semantically meaningful and well-structured.
 
 | Stage | Accuracy |
 |---|---|
 | **SimCLR Linear Eval (this implementation)** | **68.23%** |
-| SimCLR (Chen et al., 2020) — ResNet-50, batch 4096, 1000 epochs | 70.4% |
-| SimCLR (Chen et al., 2020) — ResNet-18, batch 4096, 1000 epochs | ~68–69% |
+| SimCLR (Chen et al., 2020) - ResNet-50, batch 4096, 1000 epochs | 70.4% |
+| SimCLR (Chen et al., 2020) - ResNet-18, batch 4096, 1000 epochs | ~68–69% |
 | Supervised ResNet-18 baseline (trained in this project) | 93.43% |
 | Random encoder (untrained ResNet-18) | ~10% |
 
@@ -83,38 +83,38 @@ This evaluation is deliberately conservative. The linear classifier has no capac
 
 ![t-SNE Embeddings](plots/tsne_embeddings.png)
 
-Without a single label during pretraining, the encoder has learned to separate semantically distinct classes into distinct regions of the embedding space. Vehicles (automobile, truck) cluster in the bottom-left, ships in the middle-left, and horses at the top. The overlap between cat, dog, and deer in the centre is expected — these classes share fine-grained animal texture features that are difficult to disentangle at CIFAR-10 resolution with 100 epochs of pretraining.
+Without a single label during pretraining, the encoder has learned to separate semantically distinct classes into distinct regions of the embedding space. Vehicles (automobile, truck) cluster in the bottom-left, ships in the lower-left, and horses at the top. The overlap between cat, dog, and deer in the centre is expected - these classes share fine-grained animal texture features that are difficult to disentangle at CIFAR-10 resolution with 100 epochs of pretraining.
 
 ### Nearest-Neighbour Retrieval
 
 ![Nearest Neighbours](plots/nearest_neighbours.png)
 
-Cosine nearest-neighbour retrieval in the frozen embedding space. Each row shows a query image (red border) alongside its 5 most similar images by cosine similarity — with no classifier involved. The airplane row is particularly strong: 3/5 correct, and both misses are ships sharing the same blue-sky/water background context, demonstrating that the encoder has learned visual context as an organizing principle. The automobile misses (retrieving dogs) reflect a query image with unusual framing, not a systematic failure of the representations.
+Cosine nearest-neighbour retrieval in the frozen embedding space. Each row shows a query image (red border) alongside its 5 most similar images by cosine similarity - with no classifier involved. The airplane row is particularly strong: 3/5 correct, and both misses are ships sharing the same blue-sky/water background context, demonstrating that the encoder has learned visual context as an organizing principle. The automobile misses (retrieving dogs) reflect a query image with unusual framing, not a systematic failure of the representations.
 
 ### Label Efficiency
 
 ![Label Fraction Accuracy](plots/label_fraction_accuracy.png)
 
-Linear evaluation accuracy across a range of labeled data fractions, using only 30 training epochs per run. With just 500 labeled samples (1% of the data), the frozen encoder achieves 61.6% — compared to approximately 20–30% for a randomly initialized encoder at the same label budget. The near-flat slope from 10% to 100% labels (66.7% → 69.2%) indicates the representations are already saturated: the bottleneck is encoder quality, not classifier data.
+Linear evaluation accuracy across a range of labeled data fractions, using only 30 training epochs per run. With just 500 labeled samples (1% of the data), the frozen encoder achieves 61.6% - compared to approximately 20–30% for a randomly initialized encoder at the same label budget. The near-flat slope from 10% to 100% labels (66.7% → 69.2%) indicates the representations are already saturated: the bottleneck is encoder quality, not classifier data.
 
 | Labeled samples | Fraction | Accuracy |
 |---|---|---|
-| 500 | 1% | 61.64% |
-| 2,500 | 5% | 65.65% |
-| 5,000 | 10% | 66.67% |
-| 12,500 | 25% | 67.87% |
-| 25,000 | 50% | 68.67% |
-| 50,000 | 100% | 69.15% |
+| 500 | 1% | 61.6% |
+| 2,500 | 5% | 65.6% |
+| 5,000 | 10% | 66.7% |
+| 12,500 | 25% | 67.9% |
+| 25,000 | 50% | 68.7% |
+| 50,000 | 100% | 69.2% |
 
 ---
 
 ## Comparison with the Original Paper
 
-The original SimCLR paper reports approximately 68–69% linear evaluation accuracy on CIFAR-10 with a ResNet-18 encoder, trained with a batch size of 4,096 on Google TPUs for 1,000 epochs. This implementation achieves **68.23%** with a batch size of 256 on CPU for 100 epochs — a 16× reduction in batch size and a 10× reduction in training epochs.
+The original SimCLR paper reports approximately 68–69% linear evaluation accuracy on CIFAR-10 with a ResNet-18 encoder, trained with a batch size of 4,096 on Google TPUs for 1,000 epochs. This implementation achieves **68.23%** with a batch size of 256 on CPU for 100 epochs - a 16× reduction in batch size and a 10× reduction in training epochs.
 
-The NT-Xent loss depends fundamentally on the number of negatives per batch: with batch size 4,096 the encoder sees 4,094 negatives per positive pair per step; at batch size 256 it sees only 254. Larger negative pools produce sharper gradients and more informative contrastive signal, which is why the original paper dedicates an ablation study to this relationship (Figure 9). The fact that comparable accuracy is achieved at a fraction of the computational budget suggests that, for CIFAR-10's relatively low intra-class visual complexity, the encoder reaches representational saturation earlier than the paper's ImageNet-scale experiments would predict.
+The NT-Xent loss depends fundamentally on the number of negatives per batch: with batch size 4,096 the encoder sees 4,094 negatives per positive pair per step; at batch size 256 it sees only 254. Larger negative pools produce sharper gradients and more informative contrastive signal, which is why the original paper dedicates an ablation study to this relationship (Chen et al., 2020). The fact that comparable accuracy is achieved at a fraction of the computational budget suggests that, for CIFAR-10's relatively low intra-class visual complexity, the encoder reaches representational saturation earlier than the paper's ImageNet-scale experiments would predict.
 
-The 25-point gap between the SimCLR linear evaluation (68.23%) and the supervised ResNet-18 baseline (93.43%) is expected and not a shortcoming of this implementation. The appropriate comparison is not supervised accuracy, but rather how much of the supervised ceiling is recovered without any labels during pretraining — here, approximately 73% of the gap above random chance is closed.
+The 25-point gap between the SimCLR linear evaluation (68.23%) and the supervised ResNet-18 baseline (93.43%) is expected and not a shortcoming of this implementation. The appropriate comparison is not supervised accuracy, but rather how much of the supervised ceiling is recovered without any labels during pretraining - here, approximately 73% of the gap above random chance is closed.
 
 ---
 
@@ -126,36 +126,36 @@ To quantify the contribution of each augmentation component, six conditions were
 
 | Condition | Accuracy | Δ vs Baseline |
 |---|---|---|
-| All augmentations (baseline) | 60.4% | — |
-| Remove crop | 38.2% | −22.2pp |
-| Remove color jitter | 53.6% | −6.8pp |
-| Remove grayscale | 56.2% | −4.1pp |
-| Remove Gaussian blur | 61.9% | +1.5pp |
-| Remove flip | 61.7% | +1.3pp |
+| All augmentations (baseline) | 60.1% | - |
+| Remove crop | 38.2% | −21.9pp |
+| Remove color jitter | 55.4% | −4.7pp |
+| Remove grayscale | 55.7% | −4.4pp |
+| Remove Gaussian blur | 60.2% | +0.1pp |
+| Remove flip | 62.3% | +2.2pp |
 
 ### Temperature Sensitivity
 
 ![Temperature Ablation](plots/temperature_ablation.png)
 
-| Temperature τ | Accuracy | Δ vs paper default (0.5) |
+| Temperature τ | Accuracy | Δ vs ablation baseline (τ=0.5) |
 |---|---|---|
 | 0.1 | 62.7% | +2.6pp |
 | 0.3 | 61.6% | +1.5pp |
-| **0.5 (paper default)** | **60.1%** | — |
+| **0.5 (ablation baseline)** | **60.1%** | - |
 | 0.7 | 60.3% | +0.2pp |
 | 1.0 | 58.7% | −1.4pp |
 
-Lower temperatures outperform the paper default on CIFAR-10 at this scale. τ=0.1 produces the best result (62.7%), and performance degrades monotonically as temperature increases beyond 0.5. The overall range is modest — 4pp across the full sweep — indicating relatively low sensitivity compared to augmentation choice.
+Lower temperatures outperform the ablation baseline on CIFAR-10 at this scale. τ=0.1 produces the best result (62.7%), and performance degrades monotonically as temperature increases beyond 0.5. The overall range is modest - 4pp across the full sweep - indicating relatively low sensitivity compared to augmentation choice.
 
-This diverges from the original paper's recommendation of τ=0.5, which was calibrated on ImageNet with batch size 4,096. At smaller batch sizes, the negative pool is shallower (254 negatives vs 4,094), so a lower temperature is needed to produce sharp enough gradients for the encoder to discriminate between hard negatives. This is consistent with theoretical analysis of NT-Xent showing that optimal temperature scales with the expected cosine similarity of negative pairs, which in turn depends on batch size and dataset complexity.
+This diverges from τ=0.5 used during pretraining, which was calibrated for stable training with Adam at small batch size rather than for peak linear evaluation accuracy. At smaller batch sizes, the negative pool is shallower (254 negatives vs 4,094), so a lower temperature is needed to produce sharp enough gradients for the encoder to discriminate between hard negatives. This is consistent with theoretical analysis of NT-Xent showing that optimal temperature scales with the expected cosine similarity of negative pairs, which in turn depends on batch size and dataset complexity.
 
 ### Augmentation Contributions
 
-**RandomResizedCrop is the single most important augmentation by a large margin** — its removal drops accuracy by 22.2 percentage points. This is consistent with the original paper's findings and with the theoretical role of crop in SimCLR: by forcing the encoder to recognize different spatial crops of the same image as equivalent, it creates the hardest and most informative positive pairs. Without crop, the two views are nearly identical in spatial content and the contrastive signal collapses.
+**RandomResizedCrop is the single most important augmentation by a large margin** - its removal drops accuracy by 21.9 percentage points. This is consistent with the original paper's findings and with the theoretical role of crop in SimCLR: by forcing the encoder to recognize different spatial crops of the same image as equivalent, it creates the hardest and most informative positive pairs. Without crop, the two views are nearly identical in spatial content and the contrastive signal collapses.
 
-Color jitter (−6.8pp) and grayscale (−4.1pp) contribute meaningfully by creating color invariance in the learned representations — without them, the encoder can exploit color as a shortcut rather than learning structural features.
+Color jitter (−4.7pp) and grayscale (−4.4pp) contribute meaningfully by creating color invariance in the learned representations - without them, the encoder can exploit color as a shortcut rather than learning structural features.
 
-Gaussian blur and random flip are marginally *beneficial* to remove at this scale (+1.5pp and +1.3pp respectively). This is a scale effect: at 32×32 resolution, a kernel of size 3 blurs the majority of spatial detail in small CIFAR images, destroying more discriminative signal than it creates invariance. Similarly, horizontal flip is a weaker augmentation at 32×32 where left-right symmetry is already pervasive in the dataset. Both results are consistent with DeiT and SimCLR follow-up work showing that aggressive augmentation schedules calibrated for ImageNet (224×224) are over-tuned for small-image benchmarks.
+Gaussian blur and random flip have negligible or marginally positive effects at this scale (+0.1pp and +2.2pp respectively). Gaussian blur at 32×32 resolution uses a kernel that blurs the majority of spatial detail in small CIFAR images, destroying more discriminative signal than it creates invariance. Similarly, horizontal flip is a weaker augmentation at 32×32 where left-right symmetry is already pervasive in the dataset. Both effects are consistent with the general pattern that augmentation schedules calibrated for large-resolution datasets can be over-aggressive for small-image benchmarks.
 
 ---
 
@@ -177,7 +177,8 @@ self_supervised_learning/
     ├── tsne_embeddings.png
     ├── nearest_neighbours.png
     ├── label_fraction_accuracy.png
-    └── augmentation_ablation.png
+    ├── augmentation_ablation.png
+    └── temperature_ablation.png
 ```
 
 ---
@@ -217,7 +218,7 @@ matplotlib>=3.7.0
 
 **Path resolution.** All default file paths are resolved relative to `__file__` using `pathlib.Path`, ensuring the scripts run correctly from any working directory without hardcoded machine-specific paths.
 
-**Encoder isolation.** The linear evaluation script loads the full SimCLR model (encoder + projection head) from the checkpoint, extracts only the encoder, and discards the projection head — matching the paper's protocol precisely. The projection head is never exposed to the downstream evaluation.
+**Encoder isolation.** The linear evaluation script loads the full SimCLR model (encoder + projection head) from the checkpoint, extracts only the encoder, and discards the projection head - matching the paper's protocol precisely. The projection head is never exposed to the downstream evaluation.
 
 ---
 
@@ -226,7 +227,7 @@ matplotlib>=3.7.0
 ```bibtex
 @inproceedings{chen2020simple,
   title     = {A Simple Framework for Contrastive Learning of Visual Representations},
-  author    = {Chen, Ting and Kornblitt, Simon and Norouzi, Mohammad and Hinton, Geoffrey},
+  author    = {Chen, Ting and Kornblith, Simon and Norouzi, Mohammad and Hinton, Geoffrey},
   booktitle = {International Conference on Machine Learning (ICML)},
   year      = {2020},
   url       = {https://arxiv.org/abs/2002.05709}
