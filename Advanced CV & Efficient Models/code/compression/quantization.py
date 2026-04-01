@@ -32,6 +32,7 @@ from torch.utils.data import DataLoader
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _DATA_ROOT = _REPO_ROOT / "data"
+_STATIC_QUANT_CKPT = Path(__file__).resolve().parent / "checkpoints" / "quantization" / "resnet18_static_int8.pth"
 
 sys.path.insert(0, str(_REPO_ROOT / "computer-vision-foundations" / "code" / "pytorch_cnn"))
 from resnet import resnet18 as custom_resnet18  # noqa: E402
@@ -51,7 +52,7 @@ def get_cifar10_loaders(data_dir: str = str(_DATA_ROOT), batch_size: int = 128) 
     """
 
     # in get_cifar10_loaders
-    normalise = T.Normalize(mean=(0.4914, 0.4822, 0.4465), std=(0.2023, 0.1994, 0.2010))
+    normalise = T.Normalize(mean=(0.4914, 0.4822, 0.4465), std=(0.2470, 0.2435, 0.2616))
     transforms = T.Compose([T.ToTensor(), normalise])
 
     calibration_set = torchvision.datasets.CIFAR10(_DATA_ROOT, train=True, download=True, transform=transforms)
@@ -261,6 +262,9 @@ def main() -> None:
 
     print(f"Applying static quantization (calibrating on {N_CALIBRATION_BATCHES} batches)...")
     static_model = apply_static_quantization(model, calibration_loader, N_CALIBRATION_BATCHES)
+    _STATIC_QUANT_CKPT.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(static_model, _STATIC_QUANT_CKPT)
+    print(f"Static INT8 model saved to {_STATIC_QUANT_CKPT}")
     results.append(run_benchmark(static_model, test_loader, "INT8 static (PTQ)", latency_input))
 
     print_results(results)

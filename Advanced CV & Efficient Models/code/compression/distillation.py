@@ -67,7 +67,7 @@ def distillation_loss(student_logits: torch.Tensor, teacher_logits: torch.Tensor
     )
 
     ce_loss = F.cross_entropy(student_logits, labels)
-    return alpha * T * kl_loss + (1 - alpha) * ce_loss
+    return alpha * kl_loss + (1 - alpha) * ce_loss
 
 
 # ----------------------------------------------------------------------------------------------------------------------

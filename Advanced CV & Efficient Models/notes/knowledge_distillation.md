@@ -26,12 +26,12 @@ loss. The dashed line is the gradient flowing back - it reaches only the student
 **Distillation Pipline:**
 how teacher logits and student logits feed both loss terms, and how backprop flows only to the student.
 
-![Distillation pipeline](../../../Advanced%20CV%20%26%20Efficient%20Models/code/compression/plots/distillation/distillation_pipeline.svg)
+![Distillation pipeline](../code/compression/plots/distillation/distillation_pipeline.svg)
 
 
 **SmallCNN architecture:** each row shows the operation, the channel progression, and the output tensor shape.
 
-![SmallCNN architecture](../../../Advanced%20CV%20%26%20Efficient%20Models/code/compression/plots/distillation/smallcnn_architecture.svg)
+![SmallCNN architecture](../code/compression/plots/distillation/smallcnn_architecture.svg)
 
 ---
 
@@ -169,10 +169,10 @@ compression ratio.
 ### Plots
 
 Loss breakdown (distillation run):
-![Distillation loss breakdown](../../../Advanced%20CV%20%26%20Efficient%20Models/code/compression/plots/distillation/distill_loss_breakdown.png)
+![Distillation loss breakdown](../code/compression/plots/distillation/distill_loss_breakdown.png)
 
 Validation accuracy comparison:
-![Val accuracy comparison](../../../Advanced%20CV%20%26%20Efficient%20Models/code/compression/plots/distillation/val_accuracy_comparison.png)
+![Val accuracy comparison](../code/compression/plots/distillation/val_accuracy_comparison.png)
 
 ---
 
@@ -187,7 +187,7 @@ Validation accuracy comparison:
 ---
 ## Soft Target Visualisation
 
-![Soft target distributions](../../../Advanced%20CV%20%26%20Efficient%20Models/code/compression/plots/distillation/soft_target_distributions.png)
+![Soft target distributions](../code/compression/plots/distillation/soft_target_distributions.png)
 
 Four correctly classified CIFAR-10 images at T=1, 2, 4, 8. Red bar = true class, blue = other classes.
 
