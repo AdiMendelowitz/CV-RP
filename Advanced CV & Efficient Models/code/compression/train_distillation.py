@@ -16,12 +16,8 @@ Assumptions:
 import argparse
 import logging
 import random
-from pathlib import Path
-
-_DATA_ROOT = Path(__file__).resolve().parents[3] / "data"
 import sys
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "computer-vision-foundations" / "code" / "pytorch_cnn"))
-from resnet import resnet18 as custom_resnet18
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -29,7 +25,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
-from torchvision import datasets, transforms, models
+from torchvision import datasets, transforms
+
+_DATA_ROOT = Path(__file__).resolve().parents[3] / "data"
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "computer-vision-foundations" / "code" / "pytorch_cnn"))
+from resnet import resnet18 as custom_resnet18
 
 from distillation import build_student
 
@@ -222,7 +222,7 @@ def run_distillation(teacher: nn.Module, train_loader: DataLoader, val_loader: D
                 ckpt,
             )
 
-    logger.info("Distillation complete. Vest val_acc=%.2f%%", best_val_acc*100)
+    logger.info("Distillation complete. Best val_acc=%.2f%%", best_val_acc*100)
     return history
 
 def run_baseline(train_loader: DataLoader, val_loader: DataLoader, device: torch.device, epochs: int,
@@ -256,7 +256,7 @@ def run_baseline(train_loader: DataLoader, val_loader: DataLoader, device: torch
                 ckpt,
             )
 
-    logger.info("Baseline complete. Vest val_acc=%.2f", best_val_acc*100)
+    logger.info("Baseline complete. Best val_acc=%.2f%%", best_val_acc*100)
     return history
 
 

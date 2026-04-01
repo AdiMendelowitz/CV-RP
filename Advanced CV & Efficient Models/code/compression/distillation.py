@@ -10,7 +10,6 @@ Reference: Hinton et al. (2015) "Distilling the Knowledge in a Neural Network"
 
 import logging
 import random
-from ast import Module
 from pathlib import Path
 
 import numpy as np
@@ -79,13 +78,12 @@ class SmallCNN(nn.Module):
     Lightweight 4-conv-block CNN designed for CIFAR-10 (32×32 input).
 
     Architecture:
-        Block 1: Conv(3→32)   + BN + ReLU + MaxPool(2) → 16×16
-        Block 2: Conv(32→64)  + BN + ReLU + MaxPool(2) →  8×8
-        Block 3: Conv(64→128) + BN + ReLU + MaxPool(2) →  4×4
-        Block 4: Conv(128→256)+ BN + ReLU + AdaptiveAvgPool(1) → 1×1
+        Block 1: Conv(3→32)  + BN + ReLU + MaxPool(2) → 16×16
+        Block 2: Conv(32→64) + BN + ReLU + MaxPool(2) →  8×8
+        Block 3: Conv(64→256)+ BN + ReLU + AdaptiveAvgPool(1) → 1×1
         Linear(256, num_classes)
 
-    ~0.5M parameters — roughly 20× smaller than ResNet-18.
+    ~170K parameters, roughly 65× smaller than ResNet-18.
     """
     def __init__(self, num_classes: int=10) -> None:
         super().__init__()
@@ -173,8 +171,7 @@ class KnowledgeDistillationTrainer:
                 best_val_acc = val_acc
                 self._save_checkpoint(epoch, val_acc)
 
-            logger.info("Training completed. Best val_acc=%.2f%%`")
-
+        logger.info("Training complete. Best val_acc=%.2f%%", best_val_acc * 100)
         return history
 
     def _train_epoch(self, train_loader: DataLoader) -> tuple[float, float]:
