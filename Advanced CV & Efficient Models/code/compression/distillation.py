@@ -28,7 +28,6 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "distillation_loss",
     "SmallCNN",
-    "KnowledgeDistillationTrainer",
     "load_teacher_from_checkpoint",
     "build_student"
 ]
@@ -105,123 +104,6 @@ class SmallCNN(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.classifier(self.features(x).flatten(1))
-
-# ----------------------------------------------------------------------------------------------------------------------
-# Trainer
-# ----------------------------------------------------------------------------------------------------------------------
-
-class KnowledgeDistillationTrainer:
-    """
-    Trains a student model via knowledge distillation from a frozen teacher.
-
-    Args:
-        teacher: Pre-trained model, frozen on construction.
-        student: Studet model to train.
-        device: Compute device.
-        temperature: Distillation temperature T (default 4.0).
-        alpha: KL loss weight, CE is (1-alpha) (default 0.7).
-        lr: Adam learning rate for student (default 1e-3).
-        checkpoint_dir: Directory for best student checkpoints.
-    """
-
-    def __init__(self, teacher: nn.Module, student: nn.Module, device: torch.device, temperature: float = 4.0,
-                 alpha: float = 0.7, lr: float = 1e-3, checkpoint_dir: str = "checkpoints/distillation") -> None:
-        self.device = device
-        self.temperature = temperature
-        self.alpha = alpha
-        self.checkpoint_dir = Path(checkpoint_dir)
-        self.checkpoint_dir.mkdir(exist_ok=True, parents=True)
-
-        self.teacher = teacher.to(device).eval()
-        for param in self.teacher.parameters():
-            param.requires_grad = False
-
-        self.student = student.to(device)
-        self.optimizer = torch.optim.Adam(self.student.parameters(), lr=lr)
-
-    def train(self, train_loader: DataLoader, val_loader: DataLoader, epochs: int=30) -> dict[str, list[float]]:
-        """
-        Run the full distillation training loop.
-
-        Args:
-            train_loader: Dataloader for training split.
-            val_loader: Dataloader for validation/test split.
-            epochs: Number of epochs to train.
-
-        Returns:
-            History dict with keys: train_loss, train_acc, val_loss, val_acc.
-            Accuracy values in [0,1]
-        """
-
-        history: dict[str, list[float]] = {"train_loss": [], "train_acc": [], "val_loss": [], "val_acc": []}
-        best_val_acc = 0.0
-
-        for epoch in range(1, epochs+1):
-            train_loss, train_acc = self._train_epoch(train_loader)
-            val_loss, val_acc = self._val_epoch(val_loader)
-            history["train_loss"].append(train_loss)
-            history["train_acc"].append(train_acc)
-            history["val_loss"].append(val_loss)
-            history["val_acc"].append(val_acc)
-
-            logger.info("Epoch %d/%d: Train Loss=%.4f, Train Acc=%.4f, Val Loss=%.4f, Val Acc=%.4f",
-                        epoch, epochs, train_loss, train_acc*100, val_loss, val_acc*100)
-
-            if val_acc > best_val_acc:
-                best_val_acc = val_acc
-                self._save_checkpoint(epoch, val_acc)
-
-        logger.info("Training complete. Best val_acc=%.2f%%", best_val_acc * 100)
-        return history
-
-    def _train_epoch(self, train_loader: DataLoader) -> tuple[float, float]:
-        self.student.train()
-        total_loss, correct, total = 0.0, 0, 0
-
-        for images, labels in train_loader:
-            images, labels = images.to(self.device), labels.to(self.device)
-
-            with torch.no_grad():
-                teacher_logits = self.teacher(images)
-
-            student_logits = self.student(images)
-            loss = distillation_loss(student_logits, teacher_logits, labels, self.temperature, self.alpha)
-
-            self.optimizer.zero_grad()
-            loss.backward()
-            self.optimizer.step()
-
-            total_loss += loss.item() * images.size(0)
-            correct += (student_logits.argmax(dim=1) == labels).sum().item()
-            total += images.size(0)
-
-        return total_loss / total, correct / total
-
-    def _val_epoch(self, val_loader: DataLoader) -> tuple[float, float]:
-        self.student.eval()
-        total_loss, correct, total = 0.0, 0, 0
-
-        with torch.no_grad():
-            for images, labels in val_loader:
-                images, labels = images.to(self.device), labels.to(self.device)
-
-                teacher_logits = self.teacher(images)
-                student_logits = self.student(images)
-                loss = distillation_loss(student_logits, teacher_logits, labels, self.temperature, self.alpha)
-
-                total_loss += loss.item() * images.size(0)
-                correct += (student_logits.argmax(dim=1) == labels).sum().item()
-                total += images.size(0)
-
-        return total_loss / total, correct / total
-
-    def _save_checkpoint(self, epoch: int, val_acc: float) -> None:
-        path = self.checkpoint_dir / "best_student.pth"
-        torch.save({"epoch": epoch, "val_acc": val_acc, "model_state_dict": self.student.state_dict(),
-                    "optimizer_state_dict": self.optimizer.state_dict()},
-                   path)
-
-        logger.info("Checkpoint saved to %s (val_acc=%.2f%%)", path, val_acc*100)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Utils
