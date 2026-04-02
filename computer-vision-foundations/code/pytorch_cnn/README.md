@@ -26,7 +26,6 @@ pytorch_cnn/
 ├── resnet.py                       # ResNet-18 from scratch
 ├── train_cifar.py                  # Training script for CIFAR-10
 ├── compare_implementations.py      # CNN vs NumPy validation
-├── resnet_cnn_walkthroughs.md      # Technical deep dive
 │
 ├── 03_resnet_training.ipynb        # Interactive training notebook
 ├── training_history.json           # Training metrics log

@@ -1,16 +1,16 @@
 # Advanced CV and Efficient Models
 
-This module covers efficient neural network architectures and model compression techniques applied to CIFAR-10
-image classification. All implementations are from scratch using PyTorch primitives. Pretrained backbones from
-`timm` are used only for the architecture benchmark, where the goal is evaluation rather than implementation.
+Efficient neural network architectures and model compression techniques applied to
+CIFAR-10 image classification. All compression experiments use a ResNet-18 baseline
+(93.43% top-1, 11.17M parameters) trained from scratch in the companion
+`computer-vision-foundations` module.
 
 ## Contents
 
-- [Architecture Benchmarks](#architecture-benchmarks)
-- [Model Compression](#model-compression)
-  - [Knowledge Distillation](#knowledge-distillation)
-  - [Post-Training Quantization](#post-training-quantization)
-  - [Unstructured Pruning](#unstructured-pruning)
+- [Architecture Benchmark](#architecture-benchmark)
+- [Knowledge Distillation](#knowledge-distillation)
+- [Post-Training Quantization](#post-training-quantization)
+- [Unstructured Pruning](#unstructured-pruning)
 - [Compression Summary](#compression-summary)
 - [Visualizations](#visualizations)
 - [Code Structure](#code-structure)
@@ -19,165 +19,213 @@ image classification. All implementations are from scratch using PyTorch primiti
 
 ---
 
-## Architecture Benchmarks
+## Architecture Benchmark
 
-A linear probe evaluation was conducted over frozen pretrained backbones from `timm` to compare
-accuracy-per-parameter efficiency across four architectures on CIFAR-10. Features were extracted from the
-frozen encoder, L2-normalized, and fed into a logistic regression classifier (C=0.316). This protocol
+Linear probe evaluation over frozen pretrained backbones from `timm` on CIFAR-10.
+Features were extracted from the frozen encoder, L2-normalized, and fed into a
+logistic regression classifier (C=0.316). This protocol
 isolates representational quality from task-specific fine-tuning.
 
-| Architecture | Top-1 Accuracy (%) | Parameters (M) | Accuracy / Param (%) |
-|---|---|---|---|
-| ConvNeXt-Tiny | 95.08 | 28.6 | 3.32 |
-| EfficientNet-B0 | 90.06 | 4.0 | 22.52 |
-| ResNet-18 | 83.83 | 11.7 | 7.17 |
-| ViT-Tiny | 80.72 | 5.7 | 14.16 |
+| Architecture   | Top-1 (%) | Parameters (M) | Accuracy / Param (%/M) |
+|----------------|-----------|----------------|------------------------|
+| ConvNeXt-Tiny  | 95.08     | 28.6           | 3.32                   |
+| EfficientNet-B0| 90.06     | 4.0            | 22.52                  |
+| ResNet-18      | 83.83     | 11.7           | 7.17                   |
+| ViT-Tiny       | 80.72     | 5.7            | 14.16                  |
 
-EfficientNet-B0 achieves the best accuracy-per-parameter ratio at 22.52%/M, validating the compound scaling
-hypothesis of Tan and Le (2019). ConvNeXt-Tiny leads in absolute accuracy, consistent with the finding of Liu
-et al. (2022) that ConvNet designs remain competitive with vision transformers on smaller datasets and compute
-budgets. ViT-Tiny's comparatively low accuracy reflects its well-documented data hunger: attention mechanisms
-require large-scale pretraining to learn competitive visual representations, and the frozen linear probe setting
-exacerbates this gap.
+EfficientNet-B0 achieves the best accuracy-per-parameter ratio at 22.52%/M,
+consistent with the compound scaling hypothesis of Tan and Le (2019). ConvNeXt-Tiny
+leads in absolute accuracy, supporting the finding of Liu et al. (2022) that modern
+ConvNet designs remain competitive with vision transformers at smaller dataset scales.
+ViT-Tiny's lower accuracy reflects its data hunger: self-attention requires
+large-scale pretraining to learn competitive visual representations, and the frozen
+linear probe setting amplifies this gap.
 
 ---
 
-## Model Compression
+## Knowledge Distillation
 
-### Knowledge Distillation
-
-A lightweight SmallCNN student (170K parameters, depthwise separable convolutions) was trained to mimic a
-ResNet-18 teacher (11.17M parameters) using the distillation objective of Hinton et al. (2015):
+A SmallCNN student (170K parameters, 3 conv blocks) was trained to mimic a ResNet-18
+teacher (11.17M parameters) using the combined KD and CE loss of Hinton et al. (2015):
 
 ```
-L = alpha * T^2 * KL(softmax(z_t / T) || softmax(z_s / T)) + (1 - alpha) * CE(z_s, y)
+L = alpha * T^2 * KL(softmax(z_t/T) || softmax(z_s/T)) + (1 - alpha) * CE(z_s, y)
 ```
 
-where `z_s` and `z_t` are student and teacher logits respectively, `T` is the temperature, and `alpha`
-balances the distillation and task losses. The KL divergence is taken with the teacher distribution as the
-reference (first argument), which is the convention established in Hinton et al. (2015) and matches the
-standard PyTorch implementation using `F.kl_div(log_softmax(z_s/T), softmax(z_t/T))`.
+where `z_s` and `z_t` are student and teacher logits, `T` is temperature, and `alpha`
+weights the soft-target KL term. The `T^2` factor restores gradient magnitudes after
+dividing logits by `T`, keeping `alpha` a stable hyperparameter across temperature
+values. Both distillation and CE baseline students were trained with Adam (lr=1e-3)
+and CosineAnnealingLR over 30 epochs.
 
-**Hyperparameters:** T=4, alpha=0.30, 30 epochs, Adam (lr=1e-3), cosine annealing.
+**Hyperparameters:** T=4.0, alpha=0.3, 30 epochs, batch size 128, Adam lr=1e-3,
+CosineAnnealingLR.
 
-| Model | Parameters | Size (MB) | Latency (ms/batch) | Throughput (img/s) | Top-1 (%) |
-|---|---|---|---|---|---|
-| ResNet-18 (teacher) | 11,173,962 | 42.7 | 744.6 | 172 | 93.43 |
-| SmallCNN (distilled) | 170,378 | 0.65 | 55.8 | 2,294 | 78.34 |
-| SmallCNN (CE baseline) | 170,378 | 0.65 | 54.6 | 2,343 | 78.27 |
+### Student architecture: SmallCNN
 
-The distilled student achieves a **65.6x parameter reduction** and **13.3x inference speedup** over the teacher
-at a top-1 accuracy cost of 15.09 percentage points. The distillation gain over the CE baseline (0.07pp) is
-within run-to-run variance at this training length, indicating the student architecture is the binding
-constraint rather than the training signal. Longer training or a larger student would be expected to widen
-the distillation gap.
+```
+Block 1: Conv(3->32)  + BN + ReLU + MaxPool(2) -> 16x16
+Block 2: Conv(32->64) + BN + ReLU + MaxPool(2) ->  8x8
+Block 3: Conv(64->256)+ BN + ReLU + AdaptiveAvgPool(1) -> 1x1
+Linear(256, 10)
+```
 
-The choice of T=4 is supported empirically by the soft target analysis. At T=1 the teacher's distribution
-is near-degenerate for correctly classified samples (max probability > 0.94), providing almost no inter-class
-relational signal. At T=4 the distribution exposes semantically meaningful structure: the airplane sample
-assigns non-trivial probability to ship and bird, reflecting shared visual features. At T=8 the distribution
-approaches uniform, which dilutes the signal.
+### Results
 
-### Post-Training Quantization
+| Model                  | Parameters  | Size (MB) | Latency (ms) | Top-1 (%) |
+|------------------------|-------------|-----------|--------------|-----------|
+| ResNet-18 (teacher)    | 11,173,962  | 42.63     | 12.44        | 93.43     |
+| SmallCNN (distilled)   | 170,378     | 0.65      | 0.86         | 78.33     |
+| SmallCNN (CE baseline) | 170,378     | 0.65      | 0.84         | 78.97     |
 
-Post-training quantization (PTQ) was applied to a ResNet-18 checkpoint (93.13% top-1 on CIFAR-10) using
-PyTorch's quantization pipeline. Both dynamic and static schemes were evaluated. All benchmarks run on CPU;
-single-sample latency (batch=1) is reported for consistent comparison.
+Latency: single-sample CPU inference, median of 100 runs.
+
+The distilled student achieves 65.6x parameter reduction and 14.4x speedup over the
+teacher at a 15.10pp accuracy cost. The distillation gain over the CE baseline is
+-0.64pp -- the baseline marginally outperforms the distilled student with these
+hyperparameters.
+
+This result is consistent with the capacity-gap analysis: at 65x compression, student
+capacity is the binding constraint rather than the training signal. The soft targets
+from the teacher encode inter-class similarity structure, but the 3-block student
+cannot fully absorb it. With alpha=0.3, the KL term introduces noise relative to the
+dominant CE signal (70% weight) that is not offset by the additional information in
+the soft targets at this compression ratio. A larger student or higher alpha would
+be expected to widen the distillation gap in the positive direction.
+
+### Plots
+
+Loss breakdown (distillation run):
+![Distillation loss breakdown](plots/distillation/distill_loss_breakdown.png)
+
+Validation accuracy comparison:
+![Val accuracy comparison](plots/distillation/val_accuracy_comparison.png)
+
+---
+
+## Post-Training Quantization
+
+PTQ was applied to the ResNet-18 checkpoint using PyTorch's quantization pipeline
+(`torch.ao.quantization`). Both dynamic and static schemes were evaluated on CPU.
+Latency is measured as single-sample median over 100 runs.
 
 **Quantization map:** `x_int = clamp(round(x_float / scale) + zero_point, q_min, q_max)`
 
-Per-channel symmetric quantization was used for weights and per-tensor asymmetric unsigned INT8 for
-activations. The affine quantization formulation follows Jacob et al. (2018); per-channel weight granularity
-follows the best-practice guidance of Nagel et al. (2021). Calibration used 100 CIFAR-10 training batches
-with PyTorch's default MinMax observers. Conv-BN fusion was applied prior to calibration to eliminate
-intermediate requantization steps.
+Static PTQ used per-channel weight quantization and per-tensor unsigned INT8 activation
+quantization, following Jacob et al. (2018). Conv-BN fusion was applied before
+calibration to eliminate intermediate requantization steps. Calibration used 100
+CIFAR-10 training batches with MinMax observers.
 
-*Note: the PTQ and pruning experiments used this 93.13% checkpoint. The distillation teacher above
-(93.43%) is from a separate training run with a different random seed; both are ResNet-18 on CIFAR-10.*
+| Method                      | Size (MB) | Latency (ms) | Top-1 (%) | Delta (pp) |
+|-----------------------------|-----------|--------------|-----------|------------|
+| FP32 baseline               | 42.70     | 9.47         | 93.43     | --         |
+| INT8 dynamic (Linear only)  | 42.69     | 18.80        | 93.44     | +0.01      |
+| INT8 static (PTQ)           | 10.80     | 6.21         | 93.44     | +0.01      |
 
-| Method | Size (MB) | Latency (ms) | Top-1 (%) | Accuracy Delta (pp) |
-|---|---|---|---|---|
-| FP32 baseline | 42.70 | 9.61 | 93.13 | -- |
-| INT8 dynamic (Linear only) | 42.69 | 13.20 | 93.12 | -0.01 |
-| INT8 static (PTQ) | 10.80 | 5.56 | 93.02 | -0.11 |
+Dynamic quantization produces no meaningful size reduction because ResNet-18 is
+almost entirely Conv2d layers. PyTorch does not support dynamic quantization for
+Conv2d, so only the final fully-connected layer (5,120 of 11.17M parameters) is
+quantized. The latency increase reflects dequantization overhead on a
+convolution-dominated model where the quantized FC layer contributes negligibly to
+total compute.
 
-Dynamic quantization produces no meaningful size reduction because ResNet-18 is almost entirely Conv2d layers;
-PyTorch does not support dynamic quantization for Conv2d, so only the final fully-connected layer (5,120 of
-11.17M parameters) is quantized. The resulting latency increase reflects dequantization overhead on a
-convolution-dominated model where the quantized fc layer contributes negligibly to total compute.
+Static PTQ achieves a 3.95x size reduction (42.70 MB to 10.80 MB) and 1.52x latency
+reduction (9.47 ms to 6.21 ms) with no measurable accuracy degradation, consistent
+with well-calibrated INT8 PTQ results on ResNet-class models reported in Nagel et
+al. (2021).
 
-Static PTQ achieves a **3.95x size reduction** (42.70 MB to 10.80 MB) and **1.73x latency reduction**
-(9.61 ms to 5.56 ms) with only 0.11pp accuracy degradation, consistent with the near-zero accuracy loss
-reported for well-calibrated INT8 PTQ on ResNet-class models in Nagel et al. (2021).
+---
 
-### Unstructured Pruning
+## Unstructured Pruning
 
-L1 unstructured magnitude pruning (Han et al., 2015) was applied to all Conv2d weight tensors at three
-sparsity levels, followed by 5 epochs of fine-tuning with a small recovery learning rate (SGD, lr=1e-3).
+L1 magnitude pruning (Han et al., 2015) was applied to all Conv2d weight tensors
+using `torch.nn.utils.prune.l1_unstructured`, followed by 5 epochs of fine-tuning
+with SGD (lr=1e-3, momentum=0.9, weight_decay=5e-4) with masks held fixed. Masks
+were then made permanent via `prune.remove`.
 
-| Target Sparsity | Actual Sparsity | Top-1 Before FT (%) | Top-1 After FT (%) | Delta vs Baseline (pp) |
-|---|---|---|---|---|
-| 0% (baseline) | 0.0% | 93.13 | 93.13 | -- |
-| 20% | 20.0% | 93.16 | 93.42 | +0.29 |
-| 40% | 40.0% | 92.95 | 93.38 | +0.25 |
-| 60% | 60.0% | 91.53 | 93.27 | +0.14 |
+| Target sparsity | Actual sparsity | Top-1 before FT (%) | Top-1 after FT (%) | Delta vs baseline (pp) |
+|-----------------|-----------------|---------------------|--------------------|------------------------|
+| 0% (baseline)   | 0.0%            | 93.43               | 93.43              | --                     |
+| 20%             | 20.0%           | 93.45               | 93.17              | -0.26                  |
+| 40%             | 40.0%           | 93.21               | 93.27              | -0.16                  |
+| 60%             | 60.0%           | 91.56               | 93.16              | -0.27                  |
 
-At 20% and 40% sparsity, fine-tuned accuracy exceeds the dense baseline. Removing the lowest-magnitude weights
-acts as a mild regularizer, suggesting the model was slightly overparameterized for CIFAR-10. At 60% sparsity
-the pre-fine-tuning degradation is 1.6pp, but 5 epochs of recovery training closes this to 0.14pp below
-baseline.
+5-epoch fine-tuning recovers accuracy to within 0.27pp of the dense baseline at all
+three sparsity levels. At 60% sparsity, the pre-fine-tuning degradation is 1.87pp;
+fine-tuning closes this to 0.27pp below baseline.
 
-These gains do not translate to runtime improvements. L1 unstructured pruning zeroes individual weights within
-a dense float32 tensor; after mask removal the weight matrix is structurally identical to the original,
-and standard CPU matrix multiplication kernels do not exploit sparsity. Structured pruning (filter or channel
-removal) would be required to reduce model size and latency.
+These results do not translate to runtime improvements. L1 unstructured pruning zeroes
+individual weights within a dense float32 tensor without changing its shape. Standard
+CPU matrix multiplication kernels process zero-valued weights identically to non-zeros,
+so model size and latency remain equal to the FP32 baseline after mask removal.
+Structured pruning (filter or channel removal) would be required to achieve actual
+size and latency reductions.
+
+Sparsity vs accuracy:
+
+![Sparsity vs accuracy](../../experiments/pruning/sparsity_accuracy.png)
 
 ---
 
 ## Compression Summary
 
-All methods applied to the same ResNet-18 checkpoint (93.13% baseline). Latency figures are single-sample
-CPU measurements except where noted. The student model latency is a batch-128 figure and is not directly
-comparable to the single-sample rows above.
+All methods applied to the same ResNet-18 baseline (93.43%, 11.17M parameters).
+Latency is single-sample CPU inference, median of 100 runs. The student model is a
+different architecture (SmallCNN, 170K parameters) and is not directly comparable
+to the quantization and pruning rows, which all operate on ResNet-18.
 
-| Method | Parameters (M) | Size (MB) | Latency (ms) | Top-1 (%) |
-|---|---|---|---|---|
-| ResNet-18 baseline | 11.17 | 42.70 | 9.61 | 93.13 |
-| + Dynamic quantization | 11.17 | 42.69 | 13.20 | 93.12 |
-| + Static PTQ | 11.17 | 10.80 | 5.56 | 93.02 |
-| + Unstructured pruning 40% | 11.17 | 42.70 | 9.61 | 93.38 |
-| Student (distillation)* | 0.17 | 0.65 | 55.8* | 78.34 |
+| Method                     | Params (M) | Size (MB) | Latency (ms) | Top-1 (%) |
+|----------------------------|------------|-----------|--------------|-----------|
+| ResNet-18 (FP32 baseline)  | 11.17      | 42.70     | 9.47         | 93.43     |
+| + Dynamic INT8             | 11.17      | 42.69     | 18.80        | 93.44     |
+| + Static INT8 (PTQ)        | 11.17      | 10.80     | 6.21         | 93.44     |
+| + Pruning 40% (L1 unstr.)  | 11.17      | 42.70     | 9.47*        | 93.27     |
+| SmallCNN (distilled)       | 0.17       | 0.65      | 0.86         | 78.33     |
+| SmallCNN (CE baseline)     | 0.17       | 0.65      | 0.84         | 78.97     |
 
-*Batch-128 latency from `inference_benchmark.py`. Static PTQ and dynamic quantization latencies are
-single-sample measurements from `quantization.py` and are not directly comparable to the batch figure.
+*Pruning latency equals FP32 baseline -- unstructured pruning has no CPU speedup
+without sparse kernels.
 
-Static PTQ is the most practical compression technique for this architecture: it delivers real runtime gains
-with negligible accuracy cost and requires no retraining. Distillation yields the greatest parameter reduction
-but at a substantial accuracy cost that reflects the capacity gap between teacher and student, not the
-distillation method itself.
+Static PTQ is the most practical compression technique for this architecture: 3.95x
+size reduction and 1.52x speedup with no accuracy cost and no retraining. Distillation
+yields 65.6x parameter reduction and 14.4x speedup but at a 15.10pp accuracy cost
+and, at this compression ratio, no benefit over CE-only training.
 
 ---
 
 ## Visualizations
 
-All plots are saved to `experiments/` and `code/compression/plots/`.
-
 **`plots/distillation/soft_target_distributions.png`**
-Softmax output of the teacher at T=1, 2, 4, 8 for four representative CIFAR-10 samples. Illustrates how
-temperature controls the entropy of soft targets and exposes inter-class similarity structure that hard labels
-discard. The airplane sample at T=4 shows non-trivial probability mass on ship and bird, reflecting shared
-visual features between these classes.
+Softmax output of the teacher at T=1, 2, 4, and 8 for four representative CIFAR-10
+samples. At T=1 the distribution is near-degenerate -- the correct class receives
+close to 100% probability and soft targets carry no more information than hard labels.
+At T=4, inter-class similarity structure emerges: a cat sample assigns non-trivial
+probability to dog and deer; a ship sample spreads probability onto airplane and truck.
+At T=8 the distribution approaches uniform and the correct class signal degrades. This
+is the empirical justification for T=4 as the operating point.
 
 **`plots/distillation/distill_loss_breakdown.png`**
-Per-epoch training loss decomposed into KD loss (T^2 * KL divergence) and CE loss over 30 epochs of
-distillation. Shows the relative contribution of each component and convergence behavior.
+Per-epoch training loss decomposed into the combined loss, KD term
+(T^2 * KL divergence), and CE term over 30 epochs. The KD loss is
+consistently larger in scale than the CE term -- expected, since KL divergence between
+two distributions over 10 classes is naturally larger than cross-entropy against a
+one-hot target. The ratio between them decreases as the student distribution converges
+toward the teacher.
 
 **`plots/distillation/val_accuracy_comparison.png`**
-Validation accuracy over 30 epochs comparing distillation vs CE baseline student training.
+Validation accuracy over 30 epochs comparing distillation vs CE baseline. The plot
+legend reflects training-time validation accuracy logged on Kaggle (distillation best
+77.73%, baseline best 78.93%). Evaluation of the saved checkpoints on the local test
+set gives 78.33% and 78.97% respectively (see Results table); the small difference
+reflects run-to-run variance in validation accuracy across epochs. The ordering is
+consistent: the baseline converges faster and finishes higher, consistent with the
+capacity-gap interpretation.
 
 **`experiments/pruning/sparsity_accuracy.png`**
-Top-1 accuracy at each sparsity level before and after fine-tuning. Shows the regularization effect at
-low sparsity and the recovery capacity of 5-epoch fine-tuning at 60% sparsity.
+Top-1 accuracy at each sparsity level before and after 5-epoch fine-tuning. Shows the
+pre-fine-tuning degradation growing with sparsity (negligible at 20%, 1.87pp at 60%)
+and the recovery capacity of fine-tuning, which brings all three sparsity levels to
+within 0.27pp of the dense baseline.
 
 ---
 
@@ -187,50 +235,51 @@ low sparsity and the recovery capacity of 5-epoch fine-tuning at 60% sparsity.
 Advanced CV & Efficient Models/
 ├── code/
 │   ├── efficient_architectures/
-│   │   ├── efficientnet.py           # EfficientNet-B0 from scratch (compound scaling)
-│   │   └── convnext.py               # ConvNeXt-Tiny from scratch
+│   │   ├── efficientnet.py            # EfficientNet-B0 from scratch
+│   │   ├── convnext.py                # ConvNeXt-Tiny from scratch
+│   │   └── receptive_field_analysis.py
 │   └── compression/
-│       ├── distillation.py           # KD loss, SmallCNN student, KnowledgeDistillationTrainer
-│       ├── train_distillation.py     # Training script: distill and CE baseline modes
-│       ├── quantization.py           # PTQ: dynamic and static quantization benchmarks
-│       ├── pruning.py                # L1 unstructured pruning across sparsity levels
-│       ├── inference_benchmark.py    # Latency and throughput: teacher vs student
-│       └── visualize_soft_targets.py # Soft target distributions at T=1,2,4,8
-└── experiments/
-    ├── benchmark_architecture.py     # Linear probe benchmark over timm backbones
-    └── pruning/
-        └── sparsity_accuracy.png
+│       ├── distillation.py            # SmallCNN, distillation_loss, build_student
+│       ├── train_distillation.py      # Training script: distill and CE baseline modes
+│       ├── quantization.py            # PTQ: dynamic and static quantization
+│       ├── pruning_kaggle.ipynb       # L1 unstructured pruning (Kaggle GPU)
+│       ├── distillation-kaggle.ipynb  # Distillation training (Kaggle GPU)
+│       ├── inference_benchmark.py     # Latency benchmark: teacher vs student
+│       └── visualize_soft_targets.py  # Soft target distributions at T=1,2,4,8
+├── experiments/
+│   ├── benchmark_architecture.py      # Linear probe over timm backbones
+│   └── pruning/
+│       └── sparsity_accuracy.png
+└── notes/
+    ├── knowledge_distillation.md
+    └── networks_comparison.md
 ```
 
 ---
 
 ## Reproducing Results
 
-All scripts read data from `<repo root>/data/` via `Path(__file__).resolve().parents[N] / "data"`.
-Run all commands from the repo root (`ml-research-12weeks/`).
+All scripts resolve data to `<repo_root>/data/` via
+`Path(__file__).resolve().parents[N] / "data"`. Run all commands from the repo root.
 
 ```bash
 # Architecture linear probe benchmark
 python "Advanced CV & Efficient Models/experiments/benchmark_architecture.py"
 
-# Knowledge distillation (distill + CE baseline, ~5 hours CPU)
-python "Advanced CV & Efficient Models/code/compression/train_distillation.py"
+# Post-training quantization
+python "Advanced CV & Efficient Models/code/compression/quantization.py"
+
+# Knowledge distillation (Kaggle GPU recommended, ~25 min on T4)
+# Upload distillation-kaggle.ipynb and resent_input dataset, then run all cells.
+
+# Pruning (Kaggle GPU recommended)
+# Upload pruning_kaggle.ipynb and resent_input dataset, then run all cells.
 
 # Inference benchmark: teacher vs student
 python "Advanced CV & Efficient Models/code/compression/inference_benchmark.py"
-
-# PTQ: dynamic and static quantization
-python "Advanced CV & Efficient Models/code/compression/quantization.py" \
-    --checkpoint "computer-vision-foundations/code/pytorch_cnn/best_resnet18_cifar10.pth"
-
-# L1 unstructured pruning (recommended on GPU)
-python "Advanced CV & Efficient Models/code/compression/pruning.py"
-
-# Soft target visualization
-python "Advanced CV & Efficient Models/code/compression/visualize_soft_targets.py"
 ```
 
-**Environment:** Python 3.12, PyTorch (CPU local / T4 GPU on Kaggle/Colab), timm, scikit-learn.
+**Environment:** Python 3.12, PyTorch, timm, scikit-learn.
 
 ```bash
 pip install -e .
@@ -240,17 +289,18 @@ pip install -e .
 
 ## References
 
-- Hinton, G., Vinyals, O., and Dean, J. (2015). Distilling the Knowledge in a Neural Network.
-  arXiv:1503.02531. https://arxiv.org/abs/1503.02531
-- Han, S., Pool, J., Tran, J., and Dally, W. (2015). Learning both Weights and Connections for
-  Efficient Neural Networks. *NeurIPS*. https://arxiv.org/abs/1506.02626
-- Jacob, B., Kligys, S., Chen, B., Zhu, M., Tang, M., Howard, A., Adam, H., and Kalenichenko, D.
-  (2018). Quantization and Training of Neural Networks for Efficient Integer-Arithmetic-Only
-  Inference. *CVPR*. https://arxiv.org/abs/1712.05877
-- Nagel, M., Fournarakis, M., Amjad, R. A., Bondarenko, Y., van Baalen, M., and Blankevoort, T.
-  (2021). A White Paper on Neural Network Quantization.
+- Hinton, G., Vinyals, O., and Dean, J. (2015). Distilling the Knowledge in a Neural
+  Network. arXiv:1503.02531. https://arxiv.org/abs/1503.02531
+- Han, S., Pool, J., Tran, J., and Dally, W. (2015). Learning both Weights and
+  Connections for Efficient Neural Networks. NeurIPS.
+  https://arxiv.org/abs/1506.02626
+- Jacob, B., Kligys, S., Chen, B., Zhu, M., Tang, M., Howard, A., Adam, H., and
+  Kalenichenko, D. (2018). Quantization and Training of Neural Networks for Efficient
+  Integer-Arithmetic-Only Inference. CVPR. https://arxiv.org/abs/1712.05877
+- Nagel, M., Fournarakis, M., Amjad, R. A., Bondarenko, Y., van Baalen, M., and
+  Blankevoort, T. (2021). A White Paper on Neural Network Quantization.
   https://arxiv.org/abs/2106.08295
-- Tan, M. and Le, Q. V. (2019). EfficientNet: Rethinking Model Scaling for Convolutional Neural
-  Networks. *ICML*. https://arxiv.org/abs/1905.11946
-- Liu, Z., Mao, H., Wu, C.-Y., Feichtenhofer, C., Darrell, T., and Xie, S. (2022). A ConvNet for
-  the 2020s. *CVPR*. https://arxiv.org/abs/2201.03545
+- Tan, M. and Le, Q. V. (2019). EfficientNet: Rethinking Model Scaling for
+  Convolutional Neural Networks. ICML. https://arxiv.org/abs/1905.11946
+- Liu, Z., Mao, H., Wu, C.-Y., Feichtenhofer, C., Darrell, T., and Xie, S. (2022).
+  A ConvNet for the 2020s. CVPR. https://arxiv.org/abs/2201.03545
