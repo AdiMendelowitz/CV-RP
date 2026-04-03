@@ -34,7 +34,6 @@ computer-vision-foundations/
 │   ├── self_supervised_learning/   # SimCLR contrastive learning pipeline
 │   └── tests/
 │       └── test_core.py            # 38 unit tests covering all modules
-├── notebooks/                      # Interactive walkthroughs and visualizations
 └── README.md                       # This file
 ```
 

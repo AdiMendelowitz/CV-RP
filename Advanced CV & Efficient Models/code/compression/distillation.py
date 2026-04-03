@@ -111,7 +111,7 @@ class SmallCNN(nn.Module):
 
 def load_teacher_from_checkpoint(model: nn.Module, checkpoint_path: str, device: torch.device) -> nn.Module:
     """
-    Load teacher weights into a instantiated model.
+    Load teacher weights into an instantiated model.
 
     Handles both plain state-dict files and dictionaries keyed by 'model_state_dict'.
 
