@@ -42,6 +42,82 @@ large-scale pretraining to learn competitive visual representations, and the fro
 linear probe setting amplifies this gap.
 
 ---
+# Architecture Diagrams — README insert
+
+Paste the section below **between the Architecture Benchmark table and the Knowledge Distillation
+section** in compression_readme.md.
+
+Save each screenshotted diagram as a PNG in `plots/architectures/` inside your repo:
+
+  plots/
+  └── architectures/
+      ├── resnet18.png
+      ├── smallcnn.png
+      ├── efficientnet_b0.png
+      ├── convnext_tiny.png
+      └── vit_tiny.png
+
+---
+
+## Paste this block into compression_readme.md
+
+---
+
+### Architecture overviews
+
+**ResNet-18 (teacher)**
+
+![ResNet-18 architecture](plots/architecture/resnet18_architecture.svg)
+
+Stem (Conv 7×7, BN, ReLU) → four residual stages (64 / 128 / 256 / 512 channels, 2 blocks each)
+→ global average pool → FC 512→10. Each ResBlock applies two 3×3 convolutions with a skip
+connection; the shortcut uses a 1×1 Conv when channel count or stride changes.
+
+---
+
+**SmallCNN (student)**
+
+![SmallCNN student architecture](plots/architecture/smallcnn_architecture.svg)
+
+Three convolutional blocks (3→32, 32→64, 64→256 channels), each followed by BatchNorm, ReLU, and
+pooling. Block 3 uses AdaptiveAvgPool(1) in place of MaxPool to collapse the spatial dimensions
+to 1×1 before a single FC 256→10 head. No skip connections. Total: 170K parameters — 65× smaller
+than the ResNet-18 teacher.
+
+---
+
+**EfficientNet-B0 (benchmark)**
+
+![EfficientNet-B0 architecture](plots/architecture/efficientnet_b0_architecture.svg)
+
+Stem Conv 3×3 (32 ch) → one MBConv1 stage → six MBConv6 stages of increasing width and depth
+→ head Conv 1×1 (1280 ch) → global pool → FC. Each MBConv block expands channels by a factor of 6
+(except stage 1), applies a depthwise 3×5 convolution, passes through squeeze-and-excitation, then
+projects back down. Best accuracy-per-parameter in the benchmark at 22.52 %/M.
+
+---
+
+**ConvNeXt-Tiny (benchmark)**
+
+![ConvNeXt-Tiny architecture](plots/architecture/convnext_tiny_architecture.svg)
+
+Patchify stem (Conv 4×4, stride 4, 96 ch) → four stages (3/3/9/3 ConvNeXt blocks, 96/192/384/768 ch)
+→ LayerNorm + global pool → FC 768→10. Each ConvNeXt block uses a depthwise 7×7 convolution,
+LayerNorm (not BatchNorm), an inverted-bottleneck pointwise MLP with GELU, and a skip connection.
+Highest absolute accuracy in the benchmark at 95.08%.
+
+---
+
+**ViT-Tiny (benchmark)**
+
+![ViT-Tiny architecture](plots/architecture/vit_tiny_architecture.svg)
+
+Image → 16×16 patch embedding (196 tokens, dim=192) → prepend CLS token + learnable positional
+embedding (197 tokens total) → 12 transformer encoder blocks (3-head MHSA + MLP ×4, dim=192)
+→ extract CLS token → LayerNorm → FC 192→10. Lower accuracy than ConvNets under frozen linear probe
+evaluation because self-attention requires large-scale pretraining to learn competitive representations.
+
+---
 
 ## Knowledge Distillation
 
