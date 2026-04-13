@@ -1,7 +1,7 @@
 """
 Object detection metrics: IoU, NMS, AP, mAP
 
-NumPy only implementation. Box format: [x1, x2, y1, y2] where x1<x2, y1<y2
+NumPy only implementation. Box format: [x1, y1, x2, y2] where x1<x2, y1<y2
 
 References:
     Everingham et al. (2010) "The PASCAL Visual Object Classes Challenge"
@@ -69,9 +69,9 @@ def non_max_suppression(boxes: np.ndarray, scores: np.ndarray, iou_threshold: fl
 
 def compute_ap(recall: np.ndarray, precision: np.ndarray) -> float:
     """
-    Average percision via 11-point interpolation (PASCAL VOC 2007 protocol).
+    Average precision via 11-point interpolation (PASCAL VOC 2007 protocol).
 
-    For each recall threshold in [0.0, 0.1,...,1.0] take max precision >= current threshold, than average over all 11
+    For each recall threshold in [0.0, 0.1, ..., 1.0] take the max precision at recall >= that threshold, then average over all 11
     thresholds.
 
     Args:
@@ -176,9 +176,3 @@ def compute_map(predictions: dict[int, dict], targets: dict[int, dict], iou_thre
         aps.append(compute_ap(recall, precision))
 
     return float(np.mean(aps)) if aps else 0.0
-
-
-
-
-
-
