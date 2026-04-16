@@ -98,7 +98,7 @@ short, open_circuit, spurious_copper), split 80/10/10 with seed 42.
 
 Model: 3.0M parameters, 8.1 GFLOPs, 6.0MB. Inference speed: 3.9ms per image on Tesla T4.
 Training notebook: `code/detection/yolov8_pcb_kaggle.ipynb`. Full error analysis including
-per-class AP, confusion matrix, and PR curves: `code/detection/yolov8_pcb.md`.
+per-class AP, confusion matrix, and PR curves: [code/detection/yolov8_pcb.md](code/detection/yolov8_pcb.md).
 
 The 0.39 gap between mAP@0.5 and mAP@0.5:0.95 reflects the difficulty of tight box
 localization for small defects (roughly 3-7% of image width). The primary failure mode is
@@ -108,16 +108,72 @@ false positives on background texture, not cross-class confusion.
 
 ## Semantic Segmentation
 
-U-Net (Ronneberger et al., MICCAI 2015) from scratch, implemented as a symmetric
-encoder-decoder with skip connections via feature map concatenation. All convolutions use
-padding=1 to maintain spatial dimensions, producing same-resolution output masks. Training
-uses a combined loss: 0.3 * BCE + 0.7 * Dice. Source: `code/segmentation/unet.py`,
-`code/segmentation/segmentation_loss.py`.
+U-Net (Ronneberger et al., MICCAI 2015) implemented from scratch as a symmetric
+encoder-decoder with skip connections via feature map concatenation. Channel progression:
+1 (or 3) -> 64 -> 128 -> 256 -> 512 -> 1024 through the encoder, then mirrored back to the
+output class count in the decoder. All convolutions use padding=1, so the output mask has
+the same spatial dimensions as the input image. Training uses a combined loss weighted by
+alpha=0.3 (BCE) and 0.7 (Dice), applied as `alpha * BCE + (1 - alpha) * Dice`. Source:
+`code/segmentation/unet.py`, `code/segmentation/segmentation_loss.py`.
 
-Applied to two datasets:
-- LGG brain tumour segmentation (grayscale MRI, Kaggle). Patient-level train/val split
-  prevents anatomy leakage. Script: `code/segmentation/train_unet.py`.
-- Carvana car segmentation (RGB). Notebook: `code/segmentation/train_unet_carvana.ipynb`.
+### Carvana Image Masking (Kaggle, 2017)
+
+Binary segmentation of car silhouettes from RGB images at 512x512 resolution.
+
+**Dataset:** Carvana Image Masking Challenge competition dataset. 90/10 random
+train/validation split (seed 42).
+
+**Training configuration:**
+
+| Parameter | Value |
+|---|---|
+| Input size | 512 x 512, RGB |
+| Batch size | 8 |
+| Epochs | 20 |
+| Optimizer | AdamW (lr=1e-4, weight_decay=1e-4) |
+| Scheduler | OneCycleLR (max_lr=1e-4) |
+| Loss | 0.3 * BCE + 0.7 * Dice |
+| AMP | fp16 (GradScaler) |
+| Gradient clipping | max_norm=1.0 |
+| Hardware | Kaggle T4 |
+| Seed | 42 |
+
+**Result:** Validation Dice approximately 0.99 at epoch 20, as read from the training
+curves plot (`code/segmentation/outputs/training_curves.png`). The exact final scalar is
+not available in the log file, which contains only notebook conversion output. The Dice
+curve rises steeply from 0.70 at epoch 1 to 0.95 by epoch 5, then continues to plateau
+near 0.99 from epoch 10 onward. Train and validation combined losses converge closely
+throughout, with no sign of overfitting at epoch 20.
+
+Notebook: `code/segmentation/train_unet_carvana.ipynb`. Checkpoint:
+`code/segmentation/outputs/checkpoints/best_unet_carvana.pth`.
+
+### LGG MRI Brain Tumour Segmentation
+
+Binary segmentation of lower-grade glioma tumour regions from grayscale MRI slices.
+
+**Dataset:** LGG MRI Segmentation (Buda et al., Computers in Biology and Medicine, 2019).
+Folder layout: one directory per patient (TCGA_* prefix), each containing paired
+`<slice>.tif` and `<slice>_mask.tif` files. Split is patient-level (val_fraction=0.1)
+to prevent anatomy leakage between train and validation sets.
+
+**Training configuration:**
+
+| Parameter | Value |
+|---|---|
+| Input size | 256 x 256, grayscale |
+| Batch size | 4 |
+| Epochs | 20 |
+| Optimizer | AdamW (lr=1e-4, weight_decay=1e-4) |
+| Scheduler | ReduceLROnPlateau (factor=0.5, patience=3) |
+| Loss | 0.3 * BCE + 0.7 * Dice |
+| Augmentation | Random horizontal flip, rotation +-10 degrees |
+| Gradient clipping | max_norm=1.0 |
+| Seed | 42 |
+
+A trained checkpoint exists at `code/segmentation/checkpoints/best_unet_lgg.pth`, but
+the exact final validation Dice and loss are not recoverable from files on disk without
+loading the checkpoint. Script: `code/segmentation/train_unet.py`.
 
 ---
 
