@@ -16,6 +16,38 @@ scratch in the companion `computer-vision-foundations` module.
 
 ---
 
+## Installation
+
+```bash
+# From the repository root
+source .venv/Scripts/activate
+pip install torch torchvision timm scikit-learn ultralytics
+```
+
+All scripts resolve data to `<repo_root>/data/` automatically via
+`Path(__file__).resolve().parents[N] / "data"`. No manual path configuration is needed.
+
+---
+
+## Results Summary
+
+All benchmark numbers are in `experiments/results.md`. The table below collects the
+primary result from each module.
+
+| Module | Model | Task | Primary Metric | Value |
+|---|---|---|---|---|
+| Efficient Architectures | ConvNeXt-Tiny | Linear probe, CIFAR-10 | Top-1 (%) | 95.08 |
+| Efficient Architectures | EfficientNet-B0 | Linear probe, CIFAR-10 | Top-1 (%) | 90.06 |
+| Efficient Architectures | ResNet-18 | Linear probe, CIFAR-10 | Top-1 (%) | 83.83 |
+| Efficient Architectures | ViT-Tiny | Linear probe, CIFAR-10 | Top-1 (%) | 80.72 |
+| Compression | Static INT8 PTQ | CIFAR-10 classification | Top-1 (%) | 93.44 |
+| Compression | Pruning 40% L1 | CIFAR-10 classification | Top-1 (%) | 93.27 |
+| Compression | SmallCNN distilled | CIFAR-10 classification | Top-1 (%) | 78.33 |
+| Detection | YOLOv8n | PCB defect detection | mAP@0.5 | 0.9896 |
+| Segmentation | U-Net | Carvana car masking | Validation Dice | approximately 0.99 |
+
+---
+
 ## Efficient Architectures
 
 From-scratch implementations of two modern convolutional architectures, benchmarked via a
@@ -53,6 +85,21 @@ leverage its long-range modeling capacity.
 
 Script: `experiments/benchmark_architecture.py`.
 
+### Inference Example
+
+```python
+# code/efficient_architectures/convnext.py
+import torch
+from convnext import convnext_tiny
+
+model = convnext_tiny(num_classes=1000)
+model.eval()
+x = torch.randn(1, 3, 224, 224)
+with torch.no_grad():
+    logits = model(x)        # shape: (1, 1000)
+pred = logits.argmax(dim=1)
+```
+
 ---
 
 ## Model Compression
@@ -75,6 +122,25 @@ Knowledge distillation achieves 65.6x parameter reduction and 14.4x speedup at a
 accuracy cost versus the teacher. L1 unstructured pruning at 40% sparsity degrades accuracy
 by 0.16pp after fine-tuning but produces no CPU speedup because standard dense kernels
 process zeroed weights identically to non-zeros.
+
+### Inference Example
+
+```python
+# code/compression/distillation.py
+import torch
+from distillation import build_student
+
+model = build_student(num_classes=10)
+ckpt = torch.load(
+    "checkpoints/distillation/best_student_distill.pth", map_location="cpu"
+)
+model.load_state_dict(ckpt["model_state_dict"])
+model.eval()
+x = torch.randn(1, 3, 32, 32)
+with torch.no_grad():
+    logits = model(x)        # shape: (1, 10)
+pred = logits.argmax(dim=1)
+```
 
 ---
 
@@ -103,6 +169,18 @@ per-class AP, confusion matrix, and PR curves: [code/detection/yolov8_pcb.md](co
 The 0.39 gap between mAP@0.5 and mAP@0.5:0.95 reflects the difficulty of tight box
 localization for small defects (roughly 3-7% of image width). The primary failure mode is
 false positives on background texture, not cross-class confusion.
+
+### Inference Example
+
+```python
+# code/detection/
+from ultralytics import YOLO
+
+model = YOLO("best_pcb_yolov8n.pt")
+results = model.predict("image.jpg", conf=0.487, imgsz=640)
+for r in results:
+    print(r.boxes.xyxy, r.boxes.cls, r.boxes.conf)
+```
 
 ---
 
@@ -174,6 +252,24 @@ to prevent anatomy leakage between train and validation sets.
 A trained checkpoint exists at `code/segmentation/checkpoints/best_unet_lgg.pth`, but
 the exact final validation Dice and loss are not recoverable from files on disk without
 loading the checkpoint. Script: `code/segmentation/train_unet.py`.
+
+### Inference Example
+
+```python
+# code/segmentation/unet.py
+import torch
+from unet import UNet
+
+model = UNet(in_channels=3, num_classes=1)
+ckpt = torch.load(
+    "outputs/checkpoints/best_unet_carvana.pth", map_location="cpu"
+)
+model.load_state_dict(ckpt["model"])
+model.eval()
+x = torch.randn(1, 3, 512, 512)
+with torch.no_grad():
+    mask = torch.sigmoid(model(x)) > 0.5   # shape: (1, 1, 512, 512)
+```
 
 ---
 
