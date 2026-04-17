@@ -8,21 +8,22 @@ Implementation notes:
     The original paper used valid (unpadded) convolutions, which shrinks 572x572 input to 388x388 output.
     The padded variant is standard in practice and avoids the skip-connection crop logic.
   - Conv -> BatchNorm -> ReLU ordering follows modern convention; the original paper predates widespread
-  BatchNorm use in segmentation.
+    BatchNorm use in segmentation.
   - Up supports both bilinear upsampling (fewer parameters, smoother gradients) and transposed convolution
-  (learnable upsampling, original paper style).
+    (learnable upsampling, original paper style).
 """
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-class DoubleConv(nn.Module):
-    """
-    (convolution => [BN] => ReLU) * 2
 
-    The basic building block that's used in the encoder, decoder and bottleneck.
-    In the original paper each stages applies 2 x unpadded 3x3 convolutions. Here padding=1 preserves spatial dimensions.
+class DoubleConv(nn.Module):
+    """Two consecutive Conv3x3 -> BatchNorm -> ReLU blocks.
+
+    The basic building block used in the encoder, decoder, and bottleneck.
+    In the original paper each stage applies 2 x unpadded 3x3 convolutions.
+    Here padding=1 preserves spatial dimensions throughout.
 
     Args:
         in_channels: Number of input channels.
@@ -41,13 +42,21 @@ class DoubleConv(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Apply two Conv-BN-ReLU blocks.
+
+        Args:
+            x: Input feature map of shape (B, in_channels, H, W).
+
+        Returns:
+            Output feature map of shape (B, out_channels, H, W).
+        """
         return self.block(x)
 
-class Down(nn.Module):
-    """
-    One encoder step: 2x2 max pooling followed by a DoubleConv.
 
-    Following the contracting path from the paper: spatial dimensions / 2, channel depth X 2.
+class Down(nn.Module):
+    """One encoder step: 2x2 max pooling followed by a DoubleConv.
+
+    Following the contracting path from the paper: spatial dimensions halved, channel depth doubled.
 
     Args:
         in_channels: Number of input channels.
@@ -62,55 +71,72 @@ class Down(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Downsample by 2x and apply DoubleConv.
+
+        Args:
+            x: Input feature map of shape (B, in_channels, H, W).
+
+        Returns:
+            Output feature map of shape (B, out_channels, H/2, W/2).
+        """
         return self.block(x)
 
-class Up(nn.Module):
-    """
-    One decoder step: upsample, concatenate skip connection, apply DoubleConv.
 
-    The skip connection brings high-resolution spatial details from the matching encoder. If the upsampled tensor and
-    the skip tensor differ in spatial size by 1 pixel (when input dims aren't divisible by 32), the upsampled tensor
-    is padded to match.
+class Up(nn.Module):
+    """One decoder step: upsample, concatenate skip connection, apply DoubleConv.
+
+    The skip connection brings high-resolution spatial details from the matching encoder level. If the
+    upsampled tensor and the skip tensor differ in spatial size by 1 pixel (when input dims are not
+    divisible by 32), the upsampled tensor is padded to match.
 
     Args:
-        in_channles: Number of input channels. This equals the sum of upsampled channels + skip channels =>
-                     2 x out_channels from the previous Up stage.
+        in_channels: Number of input channels. Equals the sum of upsampled channels and skip channels,
+                     which is 2 x out_channels from the previous stage.
         out_channels: Number of output channels after the DoubleConv.
-        bilinear: True => use bilinear interpolation for upsampling.
-                  False => use learnable ConvTranspose2d (original paper).
+        bilinear: If True, use bilinear interpolation for upsampling.
+                  If False, use learnable ConvTranspose2d (original paper style).
     """
 
     def __init__(self, in_channels: int, out_channels: int, bilinear: bool = True) -> None:
         super().__init__()
         if bilinear:
-            # Halve channels with a 1x1 conv before concatenation so DoubleConv recieves in_channels total (half from
-            # upsample, half from skip), matching the transposed-conv branch's channel count.
+            # Halve channels with a 1x1 conv before concatenation so DoubleConv receives in_channels
+            # total (half from upsample, half from skip), matching the transposed-conv branch.
             self.upsample = nn.Sequential(
-                nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False),
-                nn.Conv2d(in_channels, in_channels//2, kernel_size=1),
+                nn.Upsample(scale_factor=2, mode="bilinear", align_corners=False),
+                nn.Conv2d(in_channels, in_channels // 2, kernel_size=1),
             )
         else:
-            # ConvTranspose2d doubles spatial dims and halves channels
-            self.upsample = nn.ConvTranspose2d(in_channels, in_channels//2, kernel_size=2, stride=2)
+            # ConvTranspose2d doubles spatial dims and halves channels.
+            self.upsample = nn.ConvTranspose2d(in_channels, in_channels // 2, kernel_size=2, stride=2)
 
         self.conv = DoubleConv(in_channels, out_channels)
 
     def forward(self, x: torch.Tensor, skip: torch.Tensor) -> torch.Tensor:
+        """Upsample x, concatenate the skip connection, and apply DoubleConv.
+
+        Args:
+            x: Feature map from the previous decoder stage, shape (B, in_channels, H, W).
+            skip: Skip connection from the matching encoder level, shape (B, in_channels//2, 2H, 2W).
+
+        Returns:
+            Output feature map of shape (B, out_channels, 2H, 2W).
+        """
         x = self.upsample(x)
 
-        # Pad x to match skip's spatial size if they differ by 1 pixel
+        # Pad x to match skip's spatial size if they differ by 1 pixel.
         dh = skip.size(2) - x.size(2)
         dw = skip.size(3) - x.size(3)
         if dh > 0 or dw > 0:
-            x = F.pad(x, [dw//2, dw - dw//2, dh//2, dh - dh//2])
+            x = F.pad(x, [dw // 2, dw - dw // 2, dh // 2, dh - dh // 2])
 
         x = torch.cat([x, skip], dim=1)
 
         return self.conv(x)
 
+
 class UNet(nn.Module):
-    """
-    Full U-Net encoder-decoder with 4 down-steps and 4 up-steps.
+    """Full U-Net encoder-decoder with 4 down-steps and 4 up-steps.
 
     Architecture follows figure 1 of Ronneberger et al. (2015), adapted for same-padding convolutions.
     Channel progression through the encoder: 64 -> 128 -> 256 -> 512 -> 1024.
@@ -142,21 +168,28 @@ class UNet(nn.Module):
         self.output_conv = nn.Conv2d(64, num_classes, kernel_size=1)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Run the full U-Net encoder-decoder forward pass.
 
+        Args:
+            x: Input image tensor of shape (B, in_channels, H, W).
+
+        Returns:
+            Raw logits of shape (B, num_classes, H, W).
+        """
         # Encoder: save skip connection at each resolution level.
-        s1 = self.input_conv(x)     # (B, 64, H, W)
-        s2 = self.down1(s1)         # (B, 128, H/2, W/2)
-        s3 = self.down2(s2)         # (B, 256, H/4, W/4)
-        s4 = self.down3(s3)         # (B, 512, H/8, W/8)
-        x = self.down4(s4)          # (B, 1024, H/16, W/16)
+        s1 = self.input_conv(x)  # (B, 64, H, W)
+        s2 = self.down1(s1)  # (B, 128, H/2, W/2)
+        s3 = self.down2(s2)  # (B, 256, H/4, W/4)
+        s4 = self.down3(s3)  # (B, 512, H/8, W/8)
+        x = self.down4(s4)  # (B, 1024, H/16, W/16)
 
         # Decoder: upsample and fuse skip connections.
-        x = self.up1(x, s4)         # (B, 512, H/8, W/8)
-        x = self.up2(x, s3)         # (B, 256, H/4, W/4)
-        x = self.up3(x, s2)         # (B, 128, H/2, W/2)
-        x = self.up4(x, s1)         # (B, 64, H, W)
+        x = self.up1(x, s4)  # (B, 512, H/8, W/8)
+        x = self.up2(x, s3)  # (B, 256, H/4, W/4)
+        x = self.up3(x, s2)  # (B, 128, H/2, W/2)
+        x = self.up4(x, s1)  # (B, 64, H, W)
 
-        return self.output_conv(x)      # (B, num_classes, H, W)
+        return self.output_conv(x)  # (B, num_classes, H, W)
 
 
 if __name__ == "__main__":
@@ -171,5 +204,3 @@ if __name__ == "__main__":
 
     total_params = sum(p.numel() for p in model.parameters())
     print(f"\nTotal parameters: {total_params:,}")
-
-

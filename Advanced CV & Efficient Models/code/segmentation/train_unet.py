@@ -52,22 +52,22 @@ CONFIG = {
 # Datasets
 # ---------------------------------------------------------------------------------------------------------------------
 
-class LGGDataset(Dataset):
-    """
-    LGG MRI segmentation dataset.
 
-    Each sample is a (image, mask) where:
+class LGGDataset(Dataset):
+    """LGG MRI segmentation dataset.
+
+    Each sample is a (image, mask) pair where:
     - image: single-channel float32 tensor, normalised to [0, 1]
     - mask: binary float32 tensor
 
-    Augmentation applies indentical spatial transforms to image and mask using torchvision.transforms.functional
-    with a shared random state.
-    Mask transforms always use NEAREST interpolation to preserve binary values.
+    Augmentation applies identical spatial transforms to image and mask using
+    torchvision.transforms.functional with a shared random state. Mask transforms always use
+    NEAREST interpolation to preserve binary values.
 
     Args:
         slices: List of (image_path, mask_path) pairs.
         img_size: Height and width are resized to this value.
-        augment: True => apply random horizontal flip and rotation.
+        augment: If True, apply random horizontal flip and rotation.
     """
 
     def __init__(self, slices: list[tuple[Path, Path]], img_size: int, augment: bool) -> None:
@@ -76,9 +76,19 @@ class LGGDataset(Dataset):
         self.augment = augment
 
     def __len__(self) -> int:
+        """Return the number of image-mask pairs in the dataset."""
         return len(self.slices)
 
     def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
+        """Load, resize, optionally augment, and return one image-mask pair.
+
+        Args:
+            idx: Index into the slices list.
+
+        Returns:
+            Tuple of (image, mask) where image is float32 in [0, 1] with shape (1, H, W)
+            and mask is a binary float32 tensor with shape (1, H, W).
+        """
         img_path, mask_path = self.slices[idx]
         img = Image.open(img_path).convert("L")
         mask = Image.open(mask_path).convert("L")
@@ -96,12 +106,14 @@ class LGGDataset(Dataset):
         return img, mask
 
     def _resize(self, img: Image.Image, mask: Image.Image) -> tuple[Image.Image, Image.Image]:
+        """Resize image and mask to img_size x img_size."""
         size = (self.img_size, self.img_size)
         img = TF.resize(img, size, interpolation=TF.InterpolationMode.BILINEAR)
         mask = TF.resize(mask, size, interpolation=TF.InterpolationMode.NEAREST)
         return img, mask
 
     def _augment(self, img: Image.Image, mask: Image.Image) -> tuple[Image.Image, Image.Image]:
+        """Apply random horizontal flip and rotation to image and mask in sync."""
         if random.random() > 0.5:
             img = TF.hflip(img)
             mask = TF.hflip(mask)
@@ -113,21 +125,21 @@ class LGGDataset(Dataset):
 
         return img, mask
 
+
 # ---------------------------------------------------------------------------------------------------------------------
 # Data Loading
 # ---------------------------------------------------------------------------------------------------------------------
 
+
 def build_dataloaders(config: dict) -> tuple[DataLoader, DataLoader]:
-    """
-    Build train and validation Dataloaders with patient-level split.
+    """Build train and validation DataLoaders with a patient-level split.
 
     Args:
         config: Training configuration dictionary.
 
     Returns:
-        (train_loader, val_loader) tuple.
+        Tuple of (train_loader, val_loader).
     """
-
     data_root = config["data_root"]
     patient_dirs = sorted(p for p in data_root.iterdir() if p.is_dir())
 
@@ -171,12 +183,31 @@ def build_dataloaders(config: dict) -> tuple[DataLoader, DataLoader]:
 
     return train_loader, val_loader
 
+
 # ---------------------------------------------------------------------------------------------------------------------
 # Train / validation loops
 # ---------------------------------------------------------------------------------------------------------------------
 
-def train_one_epoch(model: nn.Module, loader: DataLoader, optimizer: optim.Optimizer,
-                    device: torch.device, alpha: float) -> float:
+
+def train_one_epoch(
+    model: nn.Module,
+    loader: DataLoader,
+    optimizer: optim.Optimizer,
+    device: torch.device,
+    alpha: float,
+) -> float:
+    """Run one training epoch and return the mean combined loss.
+
+    Args:
+        model: U-Net model in training mode.
+        loader: DataLoader yielding (image, mask) batches.
+        optimizer: Optimizer with parameters already registered.
+        device: Device to move tensors to before the forward pass.
+        alpha: BCE weight passed to combined_loss.
+
+    Returns:
+        Mean combined loss over all batches in the epoch.
+    """
     model.train()
     total_loss = 0.0
 
@@ -194,8 +225,25 @@ def train_one_epoch(model: nn.Module, loader: DataLoader, optimizer: optim.Optim
 
     return total_loss / len(loader)
 
+
 @torch.no_grad()
-def evaluate(model: nn.Module, loader: DataLoader, device: torch.device, alpha: float) -> tuple[float, float]:
+def evaluate(
+    model: nn.Module,
+    loader: DataLoader,
+    device: torch.device,
+    alpha: float,
+) -> tuple[float, float]:
+    """Evaluate the model on a DataLoader and return mean loss and mean Dice score.
+
+    Args:
+        model: U-Net model set to eval mode inside this function.
+        loader: DataLoader yielding (image, mask) batches.
+        device: Device to move tensors to before the forward pass.
+        alpha: BCE weight passed to combined_loss.
+
+    Returns:
+        Tuple of (mean_loss, mean_dice) over all batches.
+    """
     model.eval()
     total_loss, total_dice = 0.0, 0.0
 
@@ -212,11 +260,20 @@ def evaluate(model: nn.Module, loader: DataLoader, device: torch.device, alpha: 
     n = len(loader)
     return total_loss / n, total_dice / n
 
+
 # ---------------------------------------------------------------------------------------------------------------------
 # Plot
 # ---------------------------------------------------------------------------------------------------------------------
 
+
 def save_training_curves(history: dict, output_dir: Path) -> None:
+    """Plot and save training loss and validation Dice curves to output_dir/training_curves.png.
+
+    Args:
+        history: Dictionary with keys "train_loss", "val_loss", and "val_dice", each a list of
+                 per-epoch scalar values.
+        output_dir: Directory in which to write training_curves.png.
+    """
     epochs = range(1, len(history["train_loss"]) + 1)
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
@@ -241,7 +298,6 @@ def save_training_curves(history: dict, output_dir: Path) -> None:
     plt.savefig(path, dpi=150)
     plt.close()
     print(f"Training curves saved to {path}")
-
 
 
 if __name__ == "__main__":
@@ -300,5 +356,3 @@ if __name__ == "__main__":
 
     save_training_curves(history, CONFIG["checkpoint_dir"])
     print(f"\nBest val_loss={best_val_loss:.4f}")
-
-

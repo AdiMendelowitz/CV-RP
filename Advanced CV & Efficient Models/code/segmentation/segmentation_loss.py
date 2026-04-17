@@ -3,36 +3,35 @@ Segmentation loss functions and evaluation metrics.
 
 Dice loss: Milletari et al., "V-Net", 3DV 2016. https://arxiv.org/abs/1606.04797
 BCE + Dice: Standard combination used in medical image segmentation practice.
-IoU: Standard overlap metric. Not differentiable, used for evaluation only
+IoU: Standard overlap metric. Not differentiable, used for evaluation only.
 
 Calling conventions
 -------------------
 dice_loss: expects probabilities (post sigmoid) shape (B, 1, H, W).
-iou_score: expects probablities (post sigmoid) shape (B, 1, H, W).
-combined_loss: expect raw logits, shape (B, 1, H, W). Applies sigmoid internally.
+iou_score: expects probabilities (post sigmoid) shape (B, 1, H, W).
+combined_loss: expects raw logits, shape (B, 1, H, W). Applies sigmoid internally.
 """
 
 import torch
 import torch.nn.functional as F
 
-def dice_loss(pred: torch.Tensor, target: torch.Tensor, eps: float = 1e-6) -> torch.Tensor:
-    """
-    Soft Dice Loss averaged over the batch.
 
-    Differentiable everywhere: the hard argmax is replaced by soft overlap so gradients flow through predicted
-    probabilities. Handles class imbalance better than BCE alone because the denominator normalises by total
-    predicted and true foreground mass, preventing large background from dominating.
+def dice_loss(pred: torch.Tensor, target: torch.Tensor, eps: float = 1e-6) -> torch.Tensor:
+    """Soft Dice loss averaged over the batch.
+
+    Differentiable everywhere: the hard argmax is replaced by soft overlap so gradients flow through
+    predicted probabilities. Handles class imbalance better than BCE alone because the denominator
+    normalises by total predicted and true foreground mass, preventing large background from dominating.
 
     Args:
         pred: Predicted probabilities (after sigmoid), shape (B, 1, H, W).
         target: Binary ground truth mask, shape (B, 1, H, W).
-        eps: Smoothing constant added to both numerator and denominator to handle empty masks without division by zero
-             (pred and target both all-zero).
+        eps: Smoothing constant added to both numerator and denominator to handle empty masks without
+             division by zero (pred and target both all-zero).
 
     Returns:
-        Scalar Dice loss in [0,1]. Lower is better.
+        Scalar Dice loss in [0, 1]. Lower is better.
     """
-
     pred_flat = pred.view(pred.size(0), -1)
     target_flat = target.view(target.size(0), -1)
 
@@ -42,25 +41,24 @@ def dice_loss(pred: torch.Tensor, target: torch.Tensor, eps: float = 1e-6) -> to
     dice_per_sample = (2.0 * intersection + eps) / (union + eps)
     return 1.0 - dice_per_sample.mean()
 
-def iou_score(pred: torch.Tensor, target: torch.Tensor, threshold: float = 0.5, esp: float = 1e-6) -> torch.Tensor:
-    """
-    IoU averaged over the batch.
 
-    Hard metric: probabilities are thresholded to binary before evaluation. Not suitable as a training loss due to the
-    threshold operation having zero gradient almost everywhere.
+def iou_score(pred: torch.Tensor, target: torch.Tensor, threshold: float = 0.5, esp: float = 1e-6) -> torch.Tensor:
+    """IoU averaged over the batch.
+
+    Hard metric: probabilities are thresholded to binary before evaluation. Not suitable as a training
+    loss due to the threshold operation having zero gradient almost everywhere.
 
     Args:
         pred: Predicted probabilities (after sigmoid), shape (B, 1, H, W).
         target: Binary ground truth mask, shape (B, 1, H, W).
-        threshold: Decision boundry for converting probabilities to binary masks.
+        threshold: Decision boundary for converting probabilities to binary masks.
         esp: Smoothing constant to avoid division by zero on empty masks.
 
     Returns:
-        Detached scalar mean IoU in [0,1]. Higher is better
+        Detached scalar mean IoU in [0, 1]. Higher is better.
     """
-
     with torch.no_grad():
-        pred_binary = (pred >=threshold).float()
+        pred_binary = (pred >= threshold).float()
         pred_flat = pred_binary.view(pred_binary.size(0), -1)
         target_flat = target.view(target.size(0), -1)
 
@@ -70,16 +68,16 @@ def iou_score(pred: torch.Tensor, target: torch.Tensor, threshold: float = 0.5, 
         iou_per_sample = (intersection + esp) / (union + esp)
         return iou_per_sample.mean()
 
+
 def combined_loss(pred: torch.Tensor, target: torch.Tensor, alpha: float = 0.5) -> torch.Tensor:
-    """
-    Weighted sum of binary cross-entropy and Dice loss: Loss = alpha*BCE + (1-alpha)*Dice
+    """Weighted sum of binary cross-entropy and Dice loss: alpha * BCE + (1 - alpha) * Dice.
 
-    BCE penalizes per-pixel confidence error and provides stable, well-scaled gradients early in training.
-    Dice loss directly optimizes the overlap metric used at evaluation time and handles class imbalance.
-    Combining both converges faster than either alone.
+    BCE penalizes per-pixel confidence error and provides stable, well-scaled gradients early in
+    training. Dice loss directly optimizes the overlap metric used at evaluation time and handles
+    class imbalance. Combining both converges faster than either alone.
 
-    BCE is computed via F.binary_cross_entropy_with_logits for numerical stability, sigmoid is applied internally before
-    Dice.
+    BCE is computed via F.binary_cross_entropy_with_logits for numerical stability; sigmoid is
+    applied internally before Dice.
 
     Args:
         pred: Raw logits, shape (B, 1, H, W).
@@ -89,11 +87,11 @@ def combined_loss(pred: torch.Tensor, target: torch.Tensor, alpha: float = 0.5) 
     Returns:
         Scalar combined loss. Lower is better.
     """
-
     target = target.float()
     bce = F.binary_cross_entropy_with_logits(pred, target)
     dice = dice_loss(torch.sigmoid(pred), target)
     return alpha * bce + (1 - alpha) * dice
+
 
 if __name__ == "__main__":
     torch.manual_seed(0)
@@ -127,7 +125,3 @@ if __name__ == "__main__":
     print(f"iou_score:     {iou.item():.4f}")
     print(f"combined_loss: {loss.item():.4f}")
     print("\nAll assertions passed.")
-
-
-
-
