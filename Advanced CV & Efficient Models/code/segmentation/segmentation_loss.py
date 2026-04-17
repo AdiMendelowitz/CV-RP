@@ -82,7 +82,7 @@ def combined_loss(pred: torch.Tensor, target: torch.Tensor, alpha: float = 0.5) 
     Args:
         pred: Raw logits, shape (B, 1, H, W).
         target: Binary ground truth mask, shape (B, 1, H, W).
-        alpha: convex combination factor, default is 0.5.
+        alpha: Weight on the BCE term. The Dice term receives weight (1 - alpha).
 
     Returns:
         Scalar combined loss. Lower is better.
