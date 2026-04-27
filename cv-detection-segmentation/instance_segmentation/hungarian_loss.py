@@ -11,7 +11,6 @@ relative to image dimensions.
 
 import torch
 import torch.nn.functional as F
-from requests.packages import target
 from scipy.optimize import linear_sum_assignment
 from typing import Dict, List, Tuple
 
@@ -178,7 +177,7 @@ def set_prediction_loss(pred_logits: torch.Tensor, pred_boxes: torch.Tensor, tar
         pred_idx, target_idx = hungarian_match(cost_matrix)
         target_classes[b_s, pred_idx] = target_labels[target_idx]
         matched_pred_boxes.append(pred_boxes[b_s][pred_idx])
-        matched_target_boxes.append(target_boxes[b_s][target_idx])
+        matched_target_boxes.append(target_boxes[target_idx])
 
     # Classification loss: cross-entropy over B*N predictions.
     cls_weights = torch.ones(num_classes_plus_one, device=device)
