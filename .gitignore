@@ -76,5 +76,4 @@ results/
 *.tar.gz
 *.npy
 *.npz
-!/computer-vision-foundations/notebooks/
-/computer-vision-foundations/notebooks/
+
