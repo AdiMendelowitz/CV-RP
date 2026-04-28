@@ -12,7 +12,6 @@ relative to image dimensions.
 import torch
 import torch.nn.functional as F
 from scipy.optimize import linear_sum_assignment
-from typing import Dict, List, Tuple
 
 def compute_giou(boxes_a: torch.Tensor, boxes_b: torch.Tensor) -> torch.Tensor:
     """
@@ -70,7 +69,7 @@ def build_cost_matrix(pred_logit: torch.Tensor, pred_boxes: torch.Tensor, target
     Each C[i, j] entry is the cost of assigning prediction i to ground-truth j. The cost combines a classification
     term, an L1 box term and a GIoU box term, matching Carion et al. (2020) equation 2.
 
-    Classification cost uses softmax probability, not log-probability, to keep it bounded and cnosistent with the GIoU
+    Classification cost uses softmax probability, not log-probability, to keep it bounded and consistent with the GIoU
     and L1 terms in scale.
 
     Args:
@@ -102,7 +101,7 @@ def build_cost_matrix(pred_logit: torch.Tensor, pred_boxes: torch.Tensor, target
 
     return cost_matrix
 
-def hungarian_match(cost_matrix: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+def hungarian_match(cost_matrix: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
     """
     Find the minimum-cost one-to-one assignment via the hungarian algorithm.
 
@@ -111,7 +110,7 @@ def hungarian_match(cost_matrix: torch.Tensor) -> Tuple[torch.Tensor, torch.Tens
                      N >= M for a valid one-to-one assignment.
 
     Returns:
-        Tuple (pred_indices, tgt_indices), each a longTensor of length N.
+        Tuple (pred_indices, tgt_indices), each a longTensor of length M.
         pred_indices[k] is assigned to tgt_indices[k].
     """
 
@@ -121,13 +120,13 @@ def hungarian_match(cost_matrix: torch.Tensor) -> Tuple[torch.Tensor, torch.Tens
     target_indices = torch.as_tensor(col_idx, dtype=torch.long)
     return pred_indices, target_indices
 
-def set_prediction_loss(pred_logits: torch.Tensor, pred_boxes: torch.Tensor, targets: List[Dict[str, torch.Tensor]],
+def set_prediction_loss(pred_logits: torch.Tensor, pred_boxes: torch.Tensor, targets: list[dict[str, torch.Tensor]],
                         cost_class: float = 1.0, cost_bbox: float = 5.0, cost_giou: float = 2.0,
-                        eos_coef: float = 1.0) -> Dict[str, torch.Tensor]:
+                        eos_coef: float = 0.1) -> Dict[str, torch.Tensor]:
     """
-    Compute the full DETR ste prediction loss for a batch of images.
+    Compute the full DETR set prediction loss for a batch of images.
 
-    For each image, the Hungarian algorithm find the optimal 1-to-1 assignment prediction <-> ground-truth objects.
+    For each image, the Hungarian algorithm finds the optimal 1-to-1 assignment prediction <-> ground-truth objects.
     The loss is computed over the assignments, combining a classification term (cross-entropy over all N predictions)
     and box regression terms (L1 and GIoU, computed only on matched pairs).
 
@@ -161,8 +160,8 @@ def set_prediction_loss(pred_logits: torch.Tensor, pred_boxes: torch.Tensor, tar
     # Per-images Hungarian matching
     target_classes = torch.full((batch_size, num_queries), fill_value=num_classes, dtype=torch.long, device=device)
 
-    matched_pred_boxes: List[torch.Tensor] = []
-    matched_target_boxes: List[torch.Tensor] = []
+    matched_pred_boxes: list[torch.Tensor] = []
+    matched_target_boxes: list[torch.Tensor] = []
 
     for b_s in range(batch_size):
         target_labels = targets[b_s]["labels"].to(device) # (M,)
@@ -196,7 +195,10 @@ def set_prediction_loss(pred_logits: torch.Tensor, pred_boxes: torch.Tensor, tar
         all_target_boxes = torch.cat(matched_target_boxes, dim=0)   # (total_matched, 4)
 
         loss_bbox = F.l1_loss(all_pred_boxes, all_target_boxes, reduction="sum") / num_boxes
-        giou_values = compute_giou(all_pred_boxes, all_target_boxes).diagonal()
+
+        # NOTE: computes full (K, K) matrix, diagonal extracts the K matched pairs.
+        # A paired element-wise variant would reduce this to O(K) work.
+        giou_values = compute_giou(all_pred_boxes, all_target_boxes)
         loss_giou = (1.0 - giou_values).sum() / num_boxes
     else:
         zero = torch.tensor(0.0, device=device)
