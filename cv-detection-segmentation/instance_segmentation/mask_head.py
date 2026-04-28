@@ -23,7 +23,7 @@ class MaskHead(nn.Module):
 
     Args:
         in_channels: Number of channels in the input RoI feature map.
-        num_classes: Number of object classes, one binary nask per class.
+        num_classes: Number of object classes, one binary mask per class.
         hidden_channels: Number of channels in the hidden layers, default = 256,
     """
 
@@ -73,7 +73,7 @@ class MaskHead(nn.Module):
 if __name__ == "__main__":
     B, in_channels, num_classes = 4, 256, 80
     head = MaskHead(in_channels=in_channels, num_classes=num_classes)
-    dummy = torch.zeros(B, in_channels, 14, 14)  # was torch.zeros(B, num_classes, 14, 14)
+    dummy = torch.zeros(B, in_channels, 14, 14)
     out = head(dummy)
     assert out.shape == (B, num_classes, 28, 28), f"Unexpected output shape: {out.shape}"
     print(f"MaskHead output shape: {out.shape}")

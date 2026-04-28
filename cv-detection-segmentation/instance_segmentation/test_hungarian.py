@@ -14,10 +14,6 @@ from hungarian_loss import build_cost_matrix, compute_giou, hungarian_match, set
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _make_box(cx: float, cy: float, w: float, h: float) -> torch.Tensor:
-    """Returns a single box as a (1, 4) tensor in cx,cy,w,h format."""
-    return torch.tensor([[cx, cy, w, h]], dtype=torch.float32)
-
 def _make_boxes(*args: tuple) -> torch.Tensor:
     """Returns multiple boxes as an (N, 4) tensor. Each arg is (cx, cy, w, h)."""
     return torch.tensor(args, dtype=torch.float32)

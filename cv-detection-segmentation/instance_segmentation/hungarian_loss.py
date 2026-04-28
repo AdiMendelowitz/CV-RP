@@ -120,9 +120,48 @@ def hungarian_match(cost_matrix: torch.Tensor) -> tuple[torch.Tensor, torch.Tens
     target_indices = torch.as_tensor(col_idx, dtype=torch.long)
     return pred_indices, target_indices
 
+def compute_giou_paired(boxes_a: torch.Tensor, boxes_b: torch.Tensor) -> torch.Tensor:
+    """
+    Compute element-wise GIoU for K aligned box pairs, shape (K,).
+
+    Args:
+        boxes_a: Boxes in cx, cy, w, h format, shape (K, 4).
+        boxes_b: Boxes in cx, cy, w, h format, shape (K, 4).
+
+    Returns:
+        GIoU values of shape (K,), values in [-1, 1].
+    """
+    a_x1 = boxes_a[:, 0] - boxes_a[:, 2] / 2
+    a_y1 = boxes_a[:, 1] - boxes_a[:, 3] / 2
+    a_x2 = boxes_a[:, 0] + boxes_a[:, 2] / 2
+    a_y2 = boxes_a[:, 1] + boxes_a[:, 3] / 2
+
+    b_x1 = boxes_b[:, 0] - boxes_b[:, 2] / 2
+    b_y1 = boxes_b[:, 1] - boxes_b[:, 3] / 2
+    b_x2 = boxes_b[:, 0] + boxes_b[:, 2] / 2
+    b_y2 = boxes_b[:, 1] + boxes_b[:, 3] / 2
+
+    area_a = ((a_x2 - a_x1) * (a_y2 - a_y1)).clamp(min=0)
+    area_b = ((b_x2 - b_x1) * (b_y2 - b_y1)).clamp(min=0)
+
+    inter_area = (
+            (torch.min(a_x2, b_x2) - torch.max(a_x1, b_x1)).clamp(min=0) *
+            (torch.min(a_y2, b_y2) - torch.max(a_y1, b_y1).clamp(min=0))
+    )
+
+    area_enclose = (
+        (torch.max(a_x2, b_x2) - torch.min(a_x1, b_x1)).clamp(min=0) *
+        (torch.max(a_y2, b_y2) - torch.min(a_y1, b_y1).clamp(min=0))
+    )
+
+    union_area = area_a + area_b - inter_area
+    iou = inter_area / union_area.clamp(min=1e-7)
+
+    return iou - (area_enclose-union_area) / area_enclose.clamp(min=1e-7)
+
 def set_prediction_loss(pred_logits: torch.Tensor, pred_boxes: torch.Tensor, targets: list[dict[str, torch.Tensor]],
                         cost_class: float = 1.0, cost_bbox: float = 5.0, cost_giou: float = 2.0,
-                        eos_coef: float = 0.1) -> Dict[str, torch.Tensor]:
+                        eos_coef: float = 0.1) -> dict[str, torch.Tensor]:
     """
     Compute the full DETR set prediction loss for a batch of images.
 
@@ -196,10 +235,7 @@ def set_prediction_loss(pred_logits: torch.Tensor, pred_boxes: torch.Tensor, tar
 
         loss_bbox = F.l1_loss(all_pred_boxes, all_target_boxes, reduction="sum") / num_boxes
 
-        # NOTE: computes full (K, K) matrix, diagonal extracts the K matched pairs.
-        # A paired element-wise variant would reduce this to O(K) work.
-        giou_values = compute_giou(all_pred_boxes, all_target_boxes)
-        loss_giou = (1.0 - giou_values).sum() / num_boxes
+        loss_giou = (1.0 - compute_giou_paired(all_pred_boxes, all_target_boxes)).sum() / num_boxes
     else:
         zero = torch.tensor(0.0, device=device)
         loss_bbox, loss_giou = zero, zero
