@@ -82,14 +82,14 @@ def roi_align(feature_map: torch.Tensor, boxes: torch.Tensor, output_size: int,
         bin_h = roi_h / output_size
 
         # Build all sample point coordinates
-        bin_i = torch.aragne(output_size, device=device, dtype=torch.float32) # row
+        bin_i = torch.arange(output_size, device=device, dtype=torch.float32) # row
         bin_j = torch.arange(output_size, device=device, dtype=torch.float32) # column
         s = torch.arange(sampling_ratio, device=device, dtype=torch.float32)
 
         # Even spacing within the bin
         offset = (s + 0.5) / sampling_ratio
         sample_y = y1 + (bin_i.unsqueeze(1) + offset.unsqueeze(0)) * bin_h   # (output_size, sampling_ratio)
-        sample_x = x1 + (bin_i.unsqueeze(1) + offset.unsqueeze(0)) * bin_w   # (output_size, sampling_ratio)
+        sample_x = x1 + (bin_j.unsqueeze(1) + offset.unsqueeze(0)) * bin_w   # (output_size, sampling_ratio)
 
         # Expand to all (bin_i, bin_j, si, sj) combinations.
         # y depends on row bin and si, x on col bin and sj.
