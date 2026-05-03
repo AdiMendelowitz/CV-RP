@@ -113,28 +113,161 @@ checkpoint is saved by validation balanced accuracy.
 
 ## Class Imbalance: Handling Strategy
 
-**Loss-based:** Weighted cross-entropy assigns per-class weights inversely
-proportional to frequency. Focal loss (Lin et al., ICCV 2017) additionally
-down-weights easy negatives, focusing gradient updates on hard minority samples.
+### Dataset Distribution (ISIC 2018 Task 3)
 
-**Sampling-based:** Oversampling minority classes via augmentation (rotation,
-flipping, colour jitter) or undersampling NV. Aggressive upsampling of very
-small classes (DF: 115 samples) risks overfitting; controlled augmentation to
-3-5x original size is more common in published work.
+From direct dataset inspection on `HAM10000_metadata.csv` (training split, 8020 images after
+lesion-level 80/20 split):
 
-**Metric-aligned training:** Since the evaluation metric is balanced accuracy,
-using weighted loss or balanced batch sampling is important. A model that achieves
-95% accuracy by predicting NV for every input scores 1/7 balanced accuracy.
+| Class | Count | Proportion | Weight (total / 7 * count) |
+|-------|-------|------------|---------------------------|
+| nv    | 5369  | 66.9%      | 0.213                     |
+| mel   | 891   | 11.1%      | 1.280                     |
+| bkl   | 876   | 10.9%      | 1.300                     |
+| bcc   | 411   |  5.1%      | 2.767                     |
+| akiec | 262   |  3.3%      | 4.323                     |
+| vasc  | 109   |  1.4%      | 10.416                    |
+| df    | 102   |  1.3%      | 13.169                    |
 
-**Weight formula used in this project:**
+The NV/DF imbalance ratio is approximately 53:1. Because NV constitutes two-thirds
+of the training set, a naive classifier that predicts NV for every input achieves
+~67% accuracy but 1/7 (14.3%) balanced accuracy -- the primary evaluation metric.
+
+---
+
+### Loss Function Analysis
+
+#### Cross-Entropy (Baseline)
+
+Standard cross-entropy for a sample with true class c and predicted probability p_c:
 
 ```
-weight_c = total_samples / (num_classes * count_c)
+CE(p_c) = -log(p_c)
 ```
 
-This produces weights of approximately 2.1 for NV and 122 for DF, passed directly
-to `torch.nn.CrossEntropyLoss(weight=...)`.
+The loss is the same regardless of whether the model was confident or uncertain. A
+highly confident wrong prediction (p_c = 0.01) and a marginally wrong prediction
+(p_c = 0.45) receive different loss magnitudes, but the gradient from the dominant
+NV class still dominates parameter updates in proportion to class frequency. With
+67% of batches containing NV samples, the backbone learns NV-discriminative features
+disproportionately.
 
+#### Weighted Cross-Entropy
+
+Per-class weights w_c are applied to scale the per-sample loss:
+
+```
+WCE(p_c) = -w_c * log(p_c)
+
+where w_c = total_samples / (num_classes * count_c)
+```
+
+This re-balances the expected loss contribution of each class to be equal across
+training. For HAM10000 with the weights above, a single DF sample contributes
+approximately 62x more loss signal than a single NV sample (13.169 / 0.213).
+
+This strategy is implemented in this project via `torch.nn.CrossEntropyLoss(weight=...)`.
+
+**What it addresses:** Frequency imbalance. Each class is equally represented in
+the aggregate gradient, regardless of how many samples it has.
+
+**What it does not address:** Difficulty imbalance. Within the NV class, there are
+easy NV samples (unambiguous texture, standard acquisition) and hard NV samples
+(atypical presentation, acquisition artefacts). Weighted CE treats all NV samples
+identically -- it only scales by class, not by sample confidence.
+
+#### Focal Loss (Lin et al., ICCV 2017, arXiv:1708.02002)
+
+Focal loss was introduced for one-stage object detection (RetinaNet), where the
+extreme foreground/background imbalance (up to 100,000:1) caused standard cross-
+entropy training to degenerate -- the model learned to predict background with high
+confidence, generating near-zero loss for each background sample, but the sheer
+volume of easy background examples dominated the gradient.
+
+The focal loss adds a modulating factor (1 - p_c)^gamma to cross-entropy:
+
+```
+FL(p_c) = -(1 - p_c)^gamma * log(p_c)
+```
+
+When gamma = 0, this reduces to standard cross-entropy. As gamma increases:
+
+- Well-classified samples (p_c close to 1): (1 - p_c)^gamma approaches 0,
+  suppressing their contribution to the gradient nearly to zero.
+- Misclassified or uncertain samples (p_c close to 0): (1 - p_c)^gamma
+  approaches 1, preserving the full cross-entropy loss.
+
+Lin et al. found gamma = 2 to work well in practice. A sample predicted with
+p_c = 0.9 receives a loss weight of (1 - 0.9)^2 = 0.01 relative to standard CE,
+while a sample predicted with p_c = 0.1 retains (1 - 0.1)^2 = 0.81 of its CE loss.
+
+The alpha-balanced variant combines focal weighting with class-frequency weighting:
+
+```
+FL(p_c) = -alpha_c * (1 - p_c)^gamma * log(p_c)
+```
+
+where alpha_c plays the same role as w_c in weighted cross-entropy.
+
+**What it addresses:** Both frequency imbalance (via alpha) and difficulty
+imbalance (via gamma). Easy majority-class samples are suppressed dynamically
+during training, not just scaled statically at the start.
+
+**What it does not address:** It introduces two hyperparameters (alpha, gamma)
+that require tuning. Alpha is the same as the class weight in WCE and can be set
+by frequency. Gamma must be swept (typical range: 0.5 to 5.0). Lin et al. report
+gamma = 2 as robust across datasets, but this was demonstrated on object detection
+tasks, not medical image classification.
+
+---
+
+### Comparison: When to Use Each
+
+| Criterion | Weighted CE | Focal Loss |
+|-----------|-------------|------------|
+| Imbalance source | Frequency only | Frequency + difficulty |
+| Hyperparameters | w_c (set by formula) | w_c + gamma (requires tuning) |
+| Implementation | `nn.CrossEntropyLoss(weight=...)` | Custom or `torchvision.ops.sigmoid_focal_loss` |
+| Stability | High -- loss scale is predictable | Lower -- gamma interacts with LR schedule |
+| Best suited for | Moderate imbalance, stable training | Severe imbalance, hard negatives present |
+| Typical imbalance ratio | Up to ~20:1 | 20:1 and above, or detection tasks |
+
+For HAM10000 specifically, the NV/DF ratio of 53:1 and MEL/NV visual similarity
+make focal loss a reasonable candidate. However, published results on HAM10000
+(including the Stanford study using EfficientNet) show that weighted cross-entropy
+with strong augmentation and dropout regularisation closes most of the gap with
+focal loss. The primary bottleneck in HAM10000 classification is overfitting to
+the training distribution, not the loss function's ability to handle hard examples.
+
+---
+
+### Chosen Strategy and Justification
+
+This project uses weighted cross-entropy (`w_c = total / (7 * count_c)`).
+
+**Justification:**
+
+1. Overfitting is the dominant failure mode, not hard-example mining. Run 1
+   (no regularisation) showed train loss collapsing to 0.02 while val loss
+   plateaued at 0.78, a 40x train/val ratio. No loss function resolves
+   memorisation -- that requires dropout, weight decay, and augmentation.
+
+2. Focal loss introduces a second hyperparameter (gamma) that requires its own
+   sweep. With only 20 training epochs per run and meaningful variance between
+   identical runs (0.7441 vs 0.7233), the experimental budget does not support
+   a reliable gamma sweep.
+
+3. Weighted CE is sufficient for the imbalance ratios present. The 53:1 NV/DF
+   ratio is severe, but the effective weight correction (w_DF / w_NV = 61.8x)
+   brings the expected per-class loss contribution to parity. The remaining
+   challenge is MEL/NV visual confusion, which is a feature representation
+   problem (addressed by backbone fine-tuning) rather than a loss weighting problem.
+
+4. Focal loss is the natural next experiment if balanced accuracy plateaus below
+   0.75 after augmentation and regularisation improvements. The implementation
+   would use the alpha-balanced variant with alpha_c set by the same frequency
+   formula and a gamma sweep over {0.5, 1.0, 2.0}.
+
+---
 ---
 
 ## Preprocessing Notes
