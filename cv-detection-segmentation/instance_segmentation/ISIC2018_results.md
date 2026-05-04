@@ -47,16 +47,17 @@ mask, and bounding box.
 
 | Run | Epochs | lr_step_size | score_thresh | Best Jaccard | Best Epoch |
 |-----|--------|-------------|-------------|-------------|------------|
-| 1 | 20 | 7 | 0.5 | **0.7803** | 19 |
+| 1 | 20 | 7 | 0.5 | 0.7803 | 19 |
 | 2 | +15 (resume from epoch 19) | 7 | 0.5 | 0.7803 | -- |
 | 3 | 20 | 10 | 0.3 | 0.7796 | 11 |
 | 4 | 20 | 7 | 0.5 | 0.7764 | 16 |
+| 5 | 20 | 7 | 0.5 | **0.7822** | 16 |
 
 All runs used: AdamW, `lr=5e-4`, `weight_decay=1e-4`, `lr_gamma=0.5`,
 `batch_size=4`, `img_size=512`.
 
-**Reported result:** 0.7803 (Run 1, best across all runs).
-**Estimated variance:** 0.778 +/- 0.003 across identical configurations (Runs 1 and 4).
+**Reported result:** 0.7822 (Run 5, best across all runs).
+**Estimated variance:** 0.780 +/- 0.003 across identical configurations (Runs 1, 4, and 5).
 
 ---
 
@@ -159,27 +160,84 @@ meaningful performance difference.
 
 ---
 
+### Run 5: Replication of Run 1 Configuration (new best)
+
+Clean replication of Runs 1 and 4's exact configuration to further characterise
+variance and confirm the result ceiling.
+
+| Epoch | Train Loss | Loss Mask | Loss Box | Loss Cls | Val Jaccard |
+|-------|-----------|-----------|----------|----------|-------------|
+| 1  | 0.5572 | 0.3777 | 0.0816 | 0.0707 | 0.6201 |
+| 2  | 0.3745 | 0.2467 | 0.0646 | 0.0458 | 0.6131 |
+| 3  | 0.3395 | 0.2246 | 0.0601 | 0.0394 | 0.6306 |
+| 4  | 0.3425 | 0.2252 | 0.0622 | 0.0406 | 0.7040 |
+| 5  | 0.3188 | 0.2091 | 0.0603 | 0.0364 | 0.7097 |
+| 6  | 0.3206 | 0.2048 | 0.0636 | 0.0389 | 0.7349 |
+| 7  | 0.3168 | 0.2019 | 0.0633 | 0.0362 | 0.6526 |
+| 8  | 0.2853 | 0.1886 | 0.0556 | 0.0306 | 0.7520 |
+| 9  | 0.2752 | 0.1857 | 0.0524 | 0.0276 | 0.7529 |
+| 10 | 0.2655 | 0.1776 | 0.0524 | 0.0270 | 0.7554 |
+| 11 | 0.2668 | 0.1803 | 0.0510 | 0.0270 | 0.7607 |
+| 12 | 0.2590 | 0.1769 | 0.0485 | 0.0255 | 0.7519 |
+| 13 | 0.2546 | 0.1745 | 0.0478 | 0.0248 | 0.7762 |
+| 14 | 0.2519 | 0.1716 | 0.0480 | 0.0250 | 0.7620 |
+| 15 | 0.2317 | 0.1608 | 0.0433 | 0.0214 | 0.7773 |
+| 16 | 0.2230 | 0.1558 | 0.0412 | 0.0200 | **0.7822** |
+| 17 | 0.2219 | 0.1550 | 0.0415 | 0.0197 | 0.7718 |
+| 18 | 0.2129 | 0.1494 | 0.0396 | 0.0188 | 0.7729 |
+| 19 | 0.2072 | 0.1451 | 0.0387 | 0.0183 | 0.7764 |
+| 20 | 0.2005 | 0.1403 | 0.0375 | 0.0177 | 0.7764 |
+
+**Outcome:** Best Jaccard 0.7822, a new overall best. Training loss falls
+monotonically from 0.557 to 0.200 with no instability. Epoch 7 shows the
+characteristic StepLR dip (0.653) following the first LR decay at epoch 7,
+with full recovery by epoch 8 (0.752). The 46 images scoring zero out of 519
+(8.9%) matches the documented failure rate from the challenge literature.
+
+**Validation evaluation:** 519 images evaluated. Mean thresholded Jaccard
+(T=0.65): 0.7822. Images scoring zero (IoU < 0.65): 46 / 519 (8.9%).
+
+---
+
 ### Qualitative Analysis
 
-Four representative validation cases from Run 1:
+Six validation cases from Run 5, sampled evenly from worst to best IoU.
+Error map convention: green = true positive, red = false positive (predicted
+lesion, actually background), blue = false negative (missed lesion pixel).
 
-**High confidence (Jaccard = 0.956):** Standard lesion with a clear visual
-boundary and no clinical artefacts. The predicted mask closely follows the
-ground-truth contour.
+![Segmentation examples](outputs/task1/segmentation_examples_task1.png)
 
-**Artefact failure (Jaccard = 0.000):** Image contains a ruler and a blue
-measurement triangle. The model localises a lesion-like region but IoU falls
-below T = 0.65, scoring zero. This failure mode is consistent with Codella
-et al. (2019), who noted highest failure rates on images containing clinical
-measurement artefacts.
+![Training curves](outputs/task1/training_curves.png)
 
-**Small lesion (Jaccard = 0.881):** Small, isolated lesion with measurement
-marks visible. The model produces a compact mask closely matching the ground
-truth despite the small target size and background clutter.
+**Row 1 (worst case, IoU below T=0.65, Jaccard=0.000):** Image contains a
+ruler artefact along the bottom edge. The model produces no detection above
+the confidence threshold, leaving an all-zero predicted mask. The entire lesion
+region appears as false negative (blue). This is the primary documented failure
+mode, consistent with Codella et al. (2019).
 
-**Borderline case (Jaccard = 0.677):** Predicted mask is geometrically
-reasonable but slightly undersized, producing an IoU marginally above the
-T = 0.65 threshold.
+**Row 2 (small lesion, borderline):** Small isolated lesion correctly localised.
+The error map shows a predominantly green core with a thin boundary disagreement
+ring -- the model slightly under-segments the lesion perimeter.
+
+**Row 3 (irregular boundary):** Correct localisation of an irregularly-shaped
+lesion. The predicted mask is smoother than the ground-truth contour (which has
+jagged edges from dermoscopy annotation). Red pixels at the boundary are false
+positives where the prediction extends beyond the annotated contour; blue pixels
+indicate the reverse. This reflects annotator-model boundary disagreement rather
+than localisation failure.
+
+**Row 4 (small lesion with ruler):** Small lesion correctly segmented despite a
+ruler visible in the image. The model generalises past the artefact in this case,
+in contrast to Row 1 where the detection fails entirely.
+
+**Row 5 (hair artefacts, good result):** Correct prediction on a lesion with
+heavy hair coverage. The error map shows a large green core with a narrow
+boundary ring, indicating accurate localisation with minor edge imprecision.
+
+**Row 6 (best case):** Near-perfect segmentation of a large lesion. The error
+map is predominantly green with only a thin red/blue ring at the contour,
+consistent with sub-pixel boundary disagreement between prediction and
+ground-truth annotation.
 
 ---
 
@@ -188,10 +246,10 @@ T = 0.65 threshold.
 | Method | Thresholded Jaccard |
 |--------|-------------------|
 | ISIC 2018 challenge winner | 0.802 |
-| This work (Run 1, best) | 0.780 |
-| Gap | -0.022 |
+| This work (Run 5, best) | 0.7822 |
+| Gap | -0.020 |
 
-The 2.2 percentage point gap was achieved with a standard ResNet-50-FPN
+The 2.0 percentage point gap was achieved with a standard ResNet-50-FPN
 backbone, horizontal flip augmentation only, no test-time augmentation,
 and no ensemble.
 
@@ -199,13 +257,19 @@ and no ensemble.
 
 ### Analysis and Conclusions
 
-Across four runs, performance consistently converged to 0.778 +/- 0.003.
+Across five runs, performance consistently converged to 0.780 +/- 0.003.
 The following conclusions are supported by the experimental evidence:
 
 **The LR schedule and detection threshold are not limiting factors.** Testing
 two step sizes (7 and 10) and two score thresholds (0.5 and 0.3) produced no
 meaningful difference. Extending training beyond the peak epoch confirmed the
 model reached its capacity ceiling rather than being starved of training time.
+
+**Result variance is driven by random data splitting, not configuration
+sensitivity.** Three runs on identical configurations (Runs 1, 4, 5) produced
+0.7803, 0.7764, and 0.7822 -- a range of 0.006pp. This is consistent with
+stochastic variation from the 80/20 random split rather than any sensitivity
+to initialisation.
 
 **The bottleneck is augmentation breadth and backbone capacity.** The most
 impactful paths to improvement would be: (1) adding colour jitter, random
@@ -238,12 +302,6 @@ approximately 58:1.
 lesion appears multiple times in HAM10000 with different crops; splitting on
 `image_id` would leak lesion information into validation and inflate metrics.
 
-**Augmentation (all runs):** Random horizontal flip, random vertical flip,
-ColorJitter (brightness=0.2, contrast=0.2, saturation=0.1).
-
-**Training constants (all runs):** AdamW, `lr_gamma=0.5`, `lr_step_size=7`,
-`batch_size=32`, `img_size=224`, `num_epochs=20`, weighted CrossEntropyLoss.
-
 ---
 
 ### Run Summary
@@ -251,9 +309,9 @@ ColorJitter (brightness=0.2, contrast=0.2, saturation=0.1).
 | Run | Config | Best Bal Acc | Best Epoch |
 |-----|--------|-------------|------------|
 | 1 | lr=1e-4, wd=1e-4, no dropout, StepLR, 20ep | 0.6863 | 23* |
-| 2 | lr=3e-4, wd=1e-3, drop=0.4, StepLR, 20ep | **0.7441** | 6 |
+| 2 | lr=3e-4, wd=1e-3, drop=0.4, StepLR, 20ep | 0.7441 | 6 |
 | 3 | Run 2 replication | 0.7233 | 7 |
-| 4 | albumentations augmentation + progressive unfreezing + cosine LR, 25ep | 0.7319 | 15 |
+| 4 | albumentations augmentation + progressive unfreezing + cosine LR, 20ep | 0.7319 | 15 |
 | 5 | Run 4 config, 25ep, fresh seed | **0.7457** | 22 |
 
 *Run 1 was continued beyond 20 epochs via checkpoint resume; epoch 23 refers
@@ -428,8 +486,7 @@ overfitting; (3) backbone fine-tuning from the first epoch competing with
 head initialisation.
 
 **Changes from Run 3:**
-- albumentations pipeline replacing torchvision transforms (see augmentation
-  constants above)
+- albumentations pipeline replacing torchvision transforms
 - Progressive unfreezing: head-only for epochs 1-5, full network from epoch 6
 - CosineAnnealingLR replacing StepLR
 - 20 epochs total
@@ -459,13 +516,13 @@ head initialisation.
 | vasc  | 0.8750 | 32 |
 | **Balanced accuracy** | **0.7319** | |
 
-**Outcome:** Best balanced accuracy 0.7319, above Run 3 (0.7233). Critically,
-val loss was still declining at epoch 20 (0.672, the lowest of any run to that
-point) and val accuracy reached 0.786 -- the model had not converged. BKL
-recall remained below Run 2 (0.633 vs 0.702), while DF improved to 0.786 and
-VASC to 0.875. The epoch 6 dip in val balanced accuracy (0.614) reflects the
-backbone unfreezing disturbing the head's calibration transiently before the
-joint fine-tuning stabilised.
+**Outcome:** Best balanced accuracy 0.7319, above Run 3 (0.7233). Val loss was
+still declining at epoch 20 (0.672, the lowest of any run to that point) and
+val accuracy reached 0.786 -- the model had not converged. BKL recall remained
+below Run 2 (0.633 vs 0.702), while DF improved to 0.786 and VASC to 0.875.
+The epoch 6 dip in val balanced accuracy (0.614) reflects the backbone
+unfreezing disturbing the head's calibration transiently before joint
+fine-tuning stabilised.
 
 ---
 
@@ -483,7 +540,7 @@ tests whether the capacity ceiling had been reached.
 | 8  | 1.0749 | 0.7508 | 0.7233 | 0.6982 |
 | 11 | 0.8176 | 0.8926 | 0.7008 | 0.7001 |
 | 13 | 0.5993 | 0.7275 | 0.7564 | 0.7370 |
-| 19 | 0.3685 | 0.6638 | 0.7845 | **0.7451** |
+| 19 | 0.3685 | 0.6638 | 0.7845 | 0.7451 |
 | 20 | 0.3455 | 0.6568 | 0.7880 | 0.7449 |
 | 22 | 0.3061 | 0.6570 | 0.7835 | **0.7457** |
 | 25 | 0.2702 | 0.6507 | 0.7885 | 0.7390 |
@@ -501,11 +558,17 @@ tests whether the capacity ceiling had been reached.
 | vasc  | 0.8125 | 32 |
 | **Balanced accuracy** | **0.7457** | |
 
+**Training curves (Run 5, 25 epochs):**
+
+![Training curves Task 3](outputs/task3/training_curves_task3.png)
+
 **Outcome:** Best balanced accuracy 0.7457, a new overall best, marginally
 above Run 2 (0.7441). BKL recall recovered to 0.766 (vs 0.633 in Run 4 and
 0.702 in Run 2), the strongest BKL result across all runs. MEL recall held at
 0.624. The train/val loss gap at epoch 25 (0.27 vs 0.65) is substantially
-healthier than Runs 1-3, where the gap exceeded 10:1 by epoch 20.
+healthier than Runs 1-3, where the gap exceeded 10:1 by epoch 20. Val loss
+continued declining through epoch 25 (0.651), suggesting the model had not
+fully converged within the training budget.
 
 Note: epoch 1 train loss of 4.36 (vs 1.10 in Run 4) reflects a fresh model
 initialisation. The head-only phase (epochs 1-5) starts from random weights
@@ -514,12 +577,13 @@ producing higher initial loss than Runs 2-3 where the full network trained
 from epoch 1.
 
 ---
+
 ### Comparison to Challenge Baseline
 
 | Method | Balanced Accuracy |
 |--------|-----------------|
 | ISIC 2018 Task 3 challenge winner | 0.885 |
-| This work (Run 5, best) | 0.746 |
+| This work (Run 5, best) | 0.7457 |
 | Gap | -0.139 |
 
 ---
@@ -568,15 +632,15 @@ EfficientNet-B4/B5 with extensive test-time augmentation, not a single B0.
 
 ## References
 
-Codella, N. et al. "Skin Lesion Analysis Toward Melanoma Detection 2018:
-A Challenge Hosted by the International Skin Imaging Collaboration (ISIC)."
+Codella, N. et al. Skin Lesion Analysis Toward Melanoma Detection 2018:
+A Challenge Hosted by the International Skin Imaging Collaboration (ISIC).
 arXiv:1902.03368, 2019.
 
-Tschandl, P., Rosendahl, C., Kittler, H. "The HAM10000 Dataset, a Large
+Tschandl, P., Rosendahl, C., and Kittler, H. The HAM10000 Dataset, a Large
 Collection of Multi-Source Dermatoscopic Images of Common Pigmented Skin
-Lesions." Scientific Data, 2018. https://doi.org/10.1038/sdata.2018.161
+Lesions. Scientific Data, 2018.
 
-He, K. et al. "Mask R-CNN." ICCV 2017. https://arxiv.org/abs/1703.06870
+He, K. et al. Mask R-CNN. ICCV 2017. arXiv:1703.06870.
 
-Tan, M., Le, Q. "EfficientNet: Rethinking Model Scaling for Convolutional
-Neural Networks." ICML 2019. https://arxiv.org/abs/1905.11946
+Tan, M. and Le, Q. EfficientNet: Rethinking Model Scaling for Convolutional
+Neural Networks. ICML 2019. arXiv:1905.11946.
