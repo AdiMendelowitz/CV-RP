@@ -8,25 +8,27 @@
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #f5f0e8;
-    --bg-card: #fff8f2;
-    --text: #1c1917;
-    --muted: #78716c;
-    --faint: #ddd0be;
-    --orange: #ea580c;
-    --orange-light: #fff3ee;
-    --orange-border: #f4d4b8;
+    --bg:          #262422;
+    --bg-card:     #1e1c1a;
+    --bg-nav:      #232120;
+    --text:        #ece6dc;
+    --muted:       #968e84;
+    --faint:       #333;
+    --faint-2:     #302e2b;
+    --orange:      #bf6030;
+    --orange-dim:  #2e2420;
+    --orange-bdr:  #3d2e22;
+    --text-dim:    #635d57;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
-
   html { scroll-behavior: smooth; }
 
   body {
     background: var(--bg);
     color: var(--text);
     font-family: 'DM Sans', sans-serif;
-    font-size: 16px;
+    font-size: 18px;
     line-height: 1.7;
     -webkit-font-smoothing: antialiased;
   }
@@ -35,7 +37,7 @@
     position: sticky;
     top: 0;
     z-index: 100;
-    background: var(--bg);
+    background: var(--bg-nav);
     border-bottom: 0.5px solid var(--faint);
     padding: 0 2rem;
     display: flex;
@@ -46,21 +48,17 @@
 
   nav .logo {
     font-family: 'Lora', serif;
-    font-size: 15px;
+    font-size: 17px;
     font-weight: 600;
     color: var(--text);
     text-decoration: none;
+    letter-spacing: 0.01em;
   }
 
-  nav ul {
-    list-style: none;
-    display: flex;
-    gap: 2rem;
-  }
+  nav ul { list-style: none; display: flex; gap: 2rem; }
 
   nav ul a {
-    font-size: 13px;
-    font-weight: 400;
+    font-size: 15px;
     color: var(--muted);
     text-decoration: none;
     transition: color 0.15s;
@@ -68,29 +66,42 @@
 
   nav ul a:hover { color: var(--orange); }
 
-  .container {
-    max-width: 760px;
-    margin: 0 auto;
-    padding: 0 2rem;
+  .container { max-width: 760px; margin: 0 auto; padding: 0 2rem; }
+
+  section { padding: 64px 0; border-bottom: 0.5px solid var(--faint); }
+  section:last-of-type { border-bottom: none; }
+
+  .section-label {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 2.5px;
+    color: var(--orange);
+    text-transform: uppercase;
+    font-family: 'DM Sans', sans-serif;
+    margin-bottom: 6px;
   }
 
-  /* ── HERO ── */
-  .hero {
-    padding: 80px 0 64px;
-    border-bottom: 0.5px solid var(--faint);
+  .section-title {
+    font-family: 'Lora', serif;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 32px;
   }
 
-  .hero-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
+  .hero { padding: 80px 0 64px; }
+
+  .hero-rule {
+    width: 32px;
+    height: 2px;
     background: var(--orange);
     margin-bottom: 20px;
+    border-radius: 1px;
   }
 
   .hero h1 {
     font-family: 'Lora', serif;
-    font-size: clamp(32px, 5vw, 44px);
+    font-size: clamp(30px, 5vw, 42px);
     font-weight: 700;
     color: var(--text);
     line-height: 1.15;
@@ -99,142 +110,97 @@
 
   .hero-sub {
     font-family: 'Lora', serif;
-    font-size: 16px;
+    font-size: 17px;
     font-style: italic;
-    color: var(--muted);
+    color: var(--text-dim);
     margin-bottom: 28px;
   }
 
   .hero-bio {
-    font-size: 15px;
+    font-size: 16px;
     color: var(--muted);
-    max-width: 580px;
-    line-height: 1.8;
+    max-width: 600px;
+    line-height: 1.85;
     margin-bottom: 32px;
   }
 
   .hero-bio p + p { margin-top: 14px; }
 
-  .hero-actions {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    align-items: center;
-  }
+  .hero-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 
   .btn-primary {
     background: var(--orange);
-    color: #fff;
-    font-size: 13px;
+    color: #f5ede4;
+    font-size: 15px;
     font-weight: 500;
-    padding: 9px 20px;
-    border-radius: 5px;
+    padding: 10px 24px;
+    border-radius: 20px;
     text-decoration: none;
     transition: opacity 0.15s;
     font-family: 'DM Sans', sans-serif;
   }
 
-  .btn-primary:hover { opacity: 0.88; }
+  .btn-primary:hover { opacity: 0.85; }
 
   .btn-ghost {
     background: transparent;
-    color: var(--muted);
-    font-size: 13px;
-    font-weight: 400;
-    padding: 9px 20px;
-    border-radius: 5px;
+    color: var(--text-dim);
+    font-size: 15px;
+    padding: 10px 24px;
+    border-radius: 20px;
     border: 0.5px solid var(--faint);
     text-decoration: none;
     transition: border-color 0.15s, color 0.15s;
     font-family: 'DM Sans', sans-serif;
   }
 
-  .btn-ghost:hover { border-color: var(--muted); color: var(--text); }
+  .btn-ghost:hover { border-color: var(--muted); color: var(--muted); }
 
-  /* ── SECTIONS ── */
-  section {
-    padding: 64px 0;
-    border-bottom: 0.5px solid var(--faint);
-  }
-
-  .section-label {
-    font-family: 'Lora', serif;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 2.5px;
-    color: var(--orange);
-    text-transform: uppercase;
-    margin-bottom: 8px;
-  }
-
-  .section-title {
-    font-family: 'Lora', serif;
-    font-size: 24px;
-    font-weight: 700;
-    color: var(--text);
-    margin-bottom: 32px;
-  }
-
-  /* ── RESEARCH CARDS ── */
-  .research-grid {
-    display: grid;
-    gap: 14px;
-  }
+  .research-grid { display: grid; gap: 12px; }
 
   .research-card {
     background: var(--bg-card);
-    border: 0.5px solid var(--orange-border);
+    border: 0.5px solid var(--faint-2);
     border-radius: 8px;
     padding: 20px 24px;
-    transition: border-color 0.15s;
+    transition: border-color 0.2s;
   }
 
   .research-card:hover { border-color: var(--orange); }
 
   .research-card-title {
     font-family: 'Lora', serif;
-    font-size: 15px;
+    font-size: 17px;
     font-weight: 600;
     color: var(--text);
     margin-bottom: 5px;
   }
 
-  .research-card-stack {
-    font-size: 12px;
-    color: var(--muted);
-    margin-bottom: 10px;
-  }
+  .research-card-stack { font-size: 13px; color: var(--text-dim); margin-bottom: 10px; }
 
   .research-card-desc {
-    font-size: 13px;
+    font-size: 15px;
     color: var(--muted);
-    line-height: 1.65;
-    margin-bottom: 12px;
+    line-height: 1.7;
+    margin-bottom: 14px;
   }
 
-  .metrics {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
+  .metrics { display: flex; flex-wrap: wrap; gap: 6px; }
 
   .metric {
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 500;
     color: var(--orange);
-    background: var(--orange-light);
-    border: 0.5px solid var(--orange-border);
-    border-radius: 4px;
-    padding: 3px 9px;
+    background: var(--orange-dim);
+    border: 0.5px solid var(--orange-bdr);
+    border-radius: 3px;
+    padding: 3px 8px;
+    font-family: 'DM Sans', sans-serif;
   }
 
-  /* ── EXPERIENCE ── */
-  .exp-item {
-    padding: 20px 0;
-    border-bottom: 0.5px solid var(--faint);
-  }
-
-  .exp-item:last-child { border-bottom: none; }
+  .exp-item { padding: 22px 0; border-bottom: 0.5px solid var(--faint); }
+  .exp-item:first-child { padding-top: 0; }
+  .exp-item:last-child { border-bottom: none; padding-bottom: 0; }
 
   .exp-header {
     display: flex;
@@ -242,43 +208,34 @@
     align-items: baseline;
     gap: 16px;
     flex-wrap: wrap;
-    margin-bottom: 4px;
+    margin-bottom: 3px;
   }
 
   .exp-company {
     font-family: 'Lora', serif;
-    font-size: 15px;
+    font-size: 17px;
     font-weight: 600;
     color: var(--text);
   }
 
-  .exp-dates {
-    font-size: 12px;
-    color: var(--muted);
-    white-space: nowrap;
-  }
+  .exp-dates { font-size: 13px; color: var(--text-dim); white-space: nowrap; }
 
   .exp-role {
-    font-size: 13px;
+    font-size: 14px;
     font-style: italic;
-    color: var(--muted);
-    margin-bottom: 10px;
+    color: var(--text-dim);
+    margin-bottom: 12px;
     font-family: 'Lora', serif;
   }
 
-  .exp-bullets {
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-  }
+  .exp-bullets { list-style: none; display: flex; flex-direction: column; gap: 6px; }
 
   .exp-bullets li {
-    font-size: 13px;
+    font-size: 15px;
     color: var(--muted);
-    padding-left: 14px;
+    padding-left: 16px;
     position: relative;
-    line-height: 1.6;
+    line-height: 1.65;
   }
 
   .exp-bullets li::before {
@@ -287,91 +244,63 @@
     left: 0;
     color: var(--orange);
     font-weight: 700;
+    font-size: 16px;
+    line-height: 1.4;
   }
 
-  /* ── EDUCATION ── */
   .edu-row {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
     flex-wrap: wrap;
     gap: 8px;
+    margin-bottom: 4px;
   }
 
-  .edu-degree {
-    font-family: 'Lora', serif;
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--text);
-  }
+  .edu-degree { font-family: 'Lora', serif; font-size: 17px; font-weight: 600; color: var(--text); }
+  .edu-school { font-size: 15px; color: var(--muted); font-style: italic; font-family: 'Lora', serif; margin-top: 2px; }
+  .edu-note { font-size: 13px; color: var(--text-dim); margin-top: 4px; }
 
-  .edu-school {
-    font-size: 13px;
-    color: var(--muted);
-    font-style: italic;
-    font-family: 'Lora', serif;
-  }
-
-  .edu-note {
-    font-size: 12px;
-    color: var(--muted);
-    margin-top: 4px;
-  }
-
-  /* ── CONTACT ── */
-  .contact-row {
-    display: flex;
-    gap: 16px;
-    flex-wrap: wrap;
-    align-items: center;
-  }
+  .contact-links { display: flex; gap: 20px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
 
   .contact-link {
-    font-size: 14px;
+    font-size: 16px;
     color: var(--orange);
     text-decoration: none;
     font-weight: 500;
-    border-bottom: 1px solid var(--orange-border);
-    padding-bottom: 1px;
+    border-bottom: 1px solid var(--orange-bdr);
+    padding-bottom: 2px;
     transition: border-color 0.15s;
   }
 
   .contact-link:hover { border-color: var(--orange); }
 
-  /* ── FOOTER ── */
-  footer {
-    padding: 32px 0;
-    text-align: center;
-  }
+  footer { padding: 28px 0; text-align: center; border-top: 0.5px solid var(--faint); }
+  footer p { font-size: 13px; color: var(--text-dim); }
 
-  footer p {
-    font-size: 12px;
-    color: var(--muted);
-  }
-
-  /* ── ANIMATIONS ── */
   @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(16px); }
+    from { opacity: 0; transform: translateY(14px); }
     to   { opacity: 1; transform: translateY(0); }
   }
 
-  .hero-dot  { animation: fadeUp 0.4s ease both; }
-  .hero h1   { animation: fadeUp 0.4s 0.1s ease both; }
-  .hero-sub  { animation: fadeUp 0.4s 0.18s ease both; }
-  .hero-bio  { animation: fadeUp 0.4s 0.26s ease both; }
-  .hero-actions { animation: fadeUp 0.4s 0.34s ease both; }
+  .hero-rule    { animation: fadeUp 0.4s ease both; }
+  .hero h1      { animation: fadeUp 0.4s 0.08s ease both; }
+  .hero-sub     { animation: fadeUp 0.4s 0.16s ease both; }
+  .hero-bio     { animation: fadeUp 0.4s 0.24s ease both; }
+  .hero-actions { animation: fadeUp 0.4s 0.32s ease both; }
 
   @media (max-width: 600px) {
     nav ul { display: none; }
     .hero { padding: 52px 0 48px; }
     .exp-header { flex-direction: column; gap: 2px; }
+    .contact-links { gap: 14px; }
   }
 </style>
 </head>
 <body>
 
 <nav>
-  <a href="#" class="logo">Adi Mendelowitz</a>
+  <a href="#top" class="logo">Adi Mendelowitz</a>
   <ul>
     <li><a href="#research">Research</a></li>
     <li><a href="#experience">Experience</a></li>
@@ -381,9 +310,8 @@
 
 <div class="container">
 
-  <!-- HERO -->
   <section class="hero" id="top">
-    <div class="hero-dot"></div>
+    <div class="hero-rule"></div>
     <h1>Adi Mendelowitz</h1>
     <p class="hero-sub">Senior Data Scientist → ML Researcher</p>
     <div class="hero-bio">
@@ -398,7 +326,6 @@
     </div>
   </section>
 
-  <!-- RESEARCH -->
   <section id="research">
     <div class="section-label">Independent Research</div>
     <h2 class="section-title">Computer Vision & Deep Learning</h2>
@@ -418,7 +345,7 @@
       <div class="research-card">
         <div class="research-card-title">Medical image segmentation & classification</div>
         <div class="research-card-stack">Mask R-CNN · EfficientNet-B0 · ISIC 2018 · Kaggle T4</div>
-        <div class="research-card-desc">Mask R-CNN for skin lesion segmentation on ISIC 2018 Task 1. EfficientNet-B0 for 7-class disease classification on HAM10000. Challenge winner benchmarks included for reference.</div>
+        <div class="research-card-desc">Mask R-CNN for skin lesion segmentation on ISIC 2018 Task 1. EfficientNet-B0 for 7-class disease classification on HAM10000. Winner benchmark included for reference.</div>
         <div class="metrics">
           <span class="metric">Jaccard 0.782</span>
           <span class="metric">Balanced acc. 0.746</span>
@@ -450,10 +377,8 @@
     </div>
   </section>
 
-  <!-- EXPERIENCE -->
   <section id="experience">
     <div class="section-label">Professional Experience</div>
-    <h2 class="section-title">Six years in production data science</h2>
 
     <div class="exp-item">
       <div class="exp-header">
@@ -474,20 +399,19 @@
     <div class="exp-item">
       <div class="exp-header">
         <span class="exp-company">GE Healthcare – Life Care Solutions</span>
-        <span class="exp-dates">2019 – 2022</span>
+        <span class="exp-dates">Nov 2019 – Jan 2022</span>
       </div>
       <div class="exp-role">NLP Data Operations Engineer · Medical AI · MLOps</div>
       <ul class="exp-bullets">
         <li>Built NLP pipelines processing clinical speech and text from hospital teams across multiple sites; curated a 10,000+ utterance ground truth dataset to train and evaluate a conversational interface for medical professionals.</li>
         <li>Built MLOps pipelines for continuous model retraining with a production/shadow deployment pattern; automated performance diagnostics and drift detection determined whether new models replaced the live version.</li>
         <li>Automated annotation pipelines by routing utterances to cluster-specific tagging workflows based on intent domain; replaced a manual multi-step process with backend automation.</li>
-        <li>Supervised a team of 2-4 engineers and 10+ remote clinical domain experts across annotation, evaluation, and model development.</li>
+        <li>Supervised a team of 2–4 engineers and 10+ remote clinical domain experts across annotation, evaluation, and model development.</li>
       </ul>
     </div>
 
   </section>
 
-  <!-- EDUCATION -->
   <section id="education">
     <div class="section-label">Education</div>
     <div class="edu-row">
@@ -500,10 +424,9 @@
     <p class="edu-note">Part-time while employed full-time.</p>
   </section>
 
-  <!-- CONTACT -->
   <section id="contact">
     <div class="section-label">Contact</div>
-    <div class="contact-row" style="margin-top: 8px;">
+    <div class="contact-links">
       <a href="mailto:adimendelowitz@gmail.com" class="contact-link">adimendelowitz@gmail.com</a>
       <a href="https://linkedin.com/in/adimendelowitz" class="contact-link" target="_blank" rel="noopener">LinkedIn</a>
       <a href="https://github.com/AdiMendelowitz" class="contact-link" target="_blank" rel="noopener">GitHub</a>
