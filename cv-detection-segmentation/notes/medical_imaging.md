@@ -58,7 +58,7 @@ mask at dataset load time, as required by the Mask R-CNN target format. Predicte
 soft masks are binarised at 0.5; validation is scored with Thresholded Jaccard
 (T = 0.65). Best checkpoint is saved by validation Jaccard.
 
-**Result:** Best validation Thresholded Jaccard of 0.7803 (Run 1, epoch 19).
+**Result:** Best validation Thresholded Jaccard of 0.7822 (Run 5, epoch 16).
 
 ---
 
