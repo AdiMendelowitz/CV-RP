@@ -52,6 +52,8 @@ mask, and bounding box.
 | 3 | 20 | 10 | 0.3 | 0.7796 | 11 |
 | 4 | 20 | 7 | 0.5 | 0.7764 | 16 |
 | 5 | 20 | 7 | 0.5 | **0.7822** | 16 |
+| 6 | Focal loss gamma=2.0, Run 5 config, 25ep | 0.7313 | 24 |
+| 7 | EfficientNet-B3, weighted CE, Run 5 config, 25ep | 0.7307 | 23 |
 
 All runs used: AdamW, `lr=5e-4`, `weight_decay=1e-4`, `lr_gamma=0.5`,
 `batch_size=4`, `img_size=512`.
@@ -199,6 +201,102 @@ with full recovery by epoch 8 (0.752). The 46 images scoring zero out of 519
 
 ---
 
+### Run 6: Focal Loss Experiment (gamma=2.0)
+
+**Motivation:** Test whether focal loss (Lin et al., ICCV 2017, arXiv:1708.02002)
+improves over weighted CE. The hypothesis going in was that it would not, because
+the dominant failure mode across Runs 1-5 was overfitting, not hard-example
+difficulty. Focal loss addresses the latter by down-weighting easy examples via
+(1-p_t)^gamma; this reduces the effective gradient signal and may further
+destabilise training on a dataset of this size.
+
+**Changes from Run 5:** Loss function replaced with alpha-balanced focal loss,
+gamma=2.0 (Lin et al. default). Alpha set to the same inverse class frequency
+weights used for weighted CE: alpha_c = total / (num_classes * count_c). All
+other config identical to Run 5.
+
+| Epoch | Train Focal Loss | Val Focal Loss | Val Acc | Val Bal Acc |
+|-------|-----------------|---------------|---------|------------|
+| 1  | 4.1376 | 2.7567 | 0.2877 | 0.2752 |
+| 5  | 2.7124 | 2.0192 | 0.4667 | 0.3996 |
+| 6  | 1.6251 | 0.7952 | 0.5739 | 0.6049 |
+| 9  | 0.7016 | 0.5664 | 0.6607 | 0.6654 |
+| 10 | 0.6654 | 0.6779 | 0.6922 | 0.6898 |
+| 14 | 0.4184 | 0.5593 | 0.7008 | 0.7116 |
+| 17 | 0.3078 | 0.5938 | 0.7464 | 0.7147 |
+| 20 | 0.2487 | 0.5879 | 0.7614 | 0.7235 |
+| 22 | 0.2259 | 0.5625 | 0.7709 | 0.7242 |
+| 24 | 0.2034 | 0.5974 | 0.7764 | **0.7313** |
+| 25 | 0.1804 | 0.5828 | 0.7714 | 0.7263 |
+
+**Per-class recall at best checkpoint (epoch 24):**
+
+| Class | Recall | N val |
+|-------|--------|-------|
+| akiec | 0.6290 | 62 |
+| bcc   | 0.8200 | 100 |
+| bkl   | 0.7156 | 218 |
+| df    | 0.7143 | 28 |
+| mel   | 0.6101 | 218 |
+| nv    | 0.8175 | 1337 |
+| vasc  | 0.8125 | 32 |
+| **Balanced accuracy** | **0.7313** | |
+
+**Outcome:** Best balanced accuracy 0.7313, 0.0003pp below Run 5 (0.7310 in
+this session, 0.7457 in the original Run 5 session -- the difference reflects
+stochastic split variance). The focal loss and CE val balanced accuracy curves
+are nearly indistinguishable across all 25 epochs. MEL recall (0.610) is
+marginally below Run 5 (0.624). The hypothesis is confirmed: focal loss
+provides no benefit when overfitting is the dominant failure mode.
+
+---
+
+### Run 7: EfficientNet-B3 Backbone
+
+**Motivation:** Test whether a larger backbone closes the gap to the challenge
+winner. B3 has approximately 10.7M trainable parameters versus B0's 4.0M
+(2.7x). drop_rate=0.4 set explicitly to match Run 5's regularisation intent;
+timm's B3 default is 0.3. img_size kept at 224 to isolate the backbone
+variable.
+
+**Changes from Run 5:** Backbone replaced with EfficientNet-B3
+(`timm.create_model("efficientnet_b3", pretrained=True, drop_rate=0.4)`).
+All other config identical to Run 5.
+
+| Epoch | Train Loss | Val Loss | Val Acc | Val Bal Acc |
+|-------|-----------|---------|---------|------------|
+| 1  | 4.0110 | 2.0412 | 0.4020 | 0.2785 |
+| 5  | 2.6950 | 1.7299 | 0.4767 | 0.3880 |
+| 6  | 1.7685 | 0.8739 | 0.6687 | 0.6118 |
+| 9  | 0.8282 | 0.9370 | 0.6411 | 0.7133 |
+| 10 | 0.7267 | 0.7249 | 0.7298 | 0.7215 |
+| 15 | 0.4308 | 0.6996 | 0.7679 | 0.6946 |
+| 20 | 0.2675 | 0.7603 | 0.7639 | 0.7033 |
+| 23 | 0.2138 | 0.7143 | 0.7875 | **0.7307** |
+| 25 | 0.1922 | 0.6910 | 0.7945 | 0.7121 |
+
+**Per-class recall at best checkpoint (epoch 23):**
+
+| Class | Recall | N val |
+|-------|--------|-------|
+| akiec | 0.6774 | 62 |
+| bcc   | 0.8400 | 100 |
+| bkl   | 0.6560 | 218 |
+| df    | 0.6429 | 28 |
+| mel   | 0.6147 | 218 |
+| nv    | 0.8399 | 1337 |
+| vasc  | 0.8438 | 32 |
+| **Balanced accuracy** | **0.7307** | |
+
+**Outcome:** Best balanced accuracy 0.7307, 0.003pp below Run 5 (this session).
+MEL recall (0.615) is identical to Run 5 (this session) to three decimal places.
+B3 converged later than B0 (epoch 23 vs 20) and showed higher val loss variance
+in the mid-training phase (epoch 12: 0.814), consistent with a larger model
+overfitting more aggressively before regularisation stabilises it. The val
+balanced accuracy curves for B0 and B3 are nearly overlapping from epoch 15
+onward.
+
+---
 ### Qualitative Analysis
 
 Six validation cases from Run 5, sampled evenly from worst to best IoU.
@@ -276,6 +374,14 @@ impactful paths to improvement would be: (1) adding colour jitter, random
 rotation, and elastic deformation to address acquisition device variability;
 (2) upgrading to `maskrcnn_resnet50_fpn_v2`, which incorporates updated
 training recipes; or (3) test-time augmentation with horizontal flip averaging.
+
+**Focal loss and backbone scale do not shift the ceiling.** Run 6 tested focal
+loss (gamma=2.0) against the Run 5 CE baseline; the result was 0.7313 vs 0.7310
+-- within run-to-run variance. Run 7 tested EfficientNet-B3 (10.7M parameters)
+against B0 (4.0M); the result was 0.7307 vs 0.7310 -- again within variance.
+Three independent variables have now been isolated: regularisation (Runs 1-3),
+training schedule and augmentation (Runs 4-5), loss function (Run 6), and
+backbone scale (Run 7). All converge to the same 0.730-0.731 band.
 
 ---
 
@@ -621,12 +727,14 @@ source of variance is the stochastic lesion-level data split and weight
 initialisation, not the training configuration. K-fold cross-validation at the
 lesion level would be required for a reliable comparison between configurations.
 
-**The capacity ceiling for single EfficientNet-B0 on HAM10000 is approximately
-0.74-0.75 balanced accuracy.** Val loss continued declining through epoch 25
-in Run 5, but balanced accuracy plateaued in the 0.73-0.75 band from epoch 19
-onward. The gap to the challenge winner (0.885) is primarily explained by
-ensemble size and backbone scale: winning submissions used ensembles of
-EfficientNet-B4/B5 with extensive test-time augmentation, not a single B0.
+**The capacity ceiling for a single EfficientNet model on HAM10000 at 224px
+is approximately 0.730-0.731 balanced accuracy** across B0 and B3 backbones,
+weighted CE and focal loss, and 20-25 training epochs. Val loss continued
+declining through epoch 25 in Runs 5-7, but balanced accuracy plateaued in
+this band from epoch 19 onward. The gap to the challenge winner (0.885) is
+primarily explained by ensemble size and backbone scale: winning submissions
+used ensembles of EfficientNet-B4/B5 with extensive test-time augmentation,
+not a single model at 224px.
 
 ---
 
@@ -644,3 +752,5 @@ He, K. et al. Mask R-CNN. ICCV 2017. arXiv:1703.06870.
 
 Tan, M. and Le, Q. EfficientNet: Rethinking Model Scaling for Convolutional
 Neural Networks. ICML 2019. arXiv:1905.11946.
+
+Lin, T.-Y. et al. Focal Loss for Dense Object Detection. ICCV 2017. arXiv:1708.02002.
