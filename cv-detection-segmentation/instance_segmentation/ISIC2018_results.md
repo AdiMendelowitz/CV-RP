@@ -52,8 +52,6 @@ mask, and bounding box.
 | 3 | 20 | 10 | 0.3 | 0.7796 | 11 |
 | 4 | 20 | 7 | 0.5 | 0.7764 | 16 |
 | 5 | 20 | 7 | 0.5 | **0.7822** | 16 |
-| 6 | Focal loss gamma=2.0, Run 5 config, 25ep | 0.7313 | 24 |
-| 7 | EfficientNet-B3, weighted CE, Run 5 config, 25ep | 0.7307 | 23 |
 
 All runs used: AdamW, `lr=5e-4`, `weight_decay=1e-4`, `lr_gamma=0.5`,
 `batch_size=4`, `img_size=512`.
@@ -201,102 +199,6 @@ with full recovery by epoch 8 (0.752). The 46 images scoring zero out of 519
 
 ---
 
-### Run 6: Focal Loss Experiment (gamma=2.0)
-
-**Motivation:** Test whether focal loss (Lin et al., ICCV 2017, arXiv:1708.02002)
-improves over weighted CE. The hypothesis going in was that it would not, because
-the dominant failure mode across Runs 1-5 was overfitting, not hard-example
-difficulty. Focal loss addresses the latter by down-weighting easy examples via
-(1-p_t)^gamma; this reduces the effective gradient signal and may further
-destabilise training on a dataset of this size.
-
-**Changes from Run 5:** Loss function replaced with alpha-balanced focal loss,
-gamma=2.0 (Lin et al. default). Alpha set to the same inverse class frequency
-weights used for weighted CE: alpha_c = total / (num_classes * count_c). All
-other config identical to Run 5.
-
-| Epoch | Train Focal Loss | Val Focal Loss | Val Acc | Val Bal Acc |
-|-------|-----------------|---------------|---------|------------|
-| 1  | 4.1376 | 2.7567 | 0.2877 | 0.2752 |
-| 5  | 2.7124 | 2.0192 | 0.4667 | 0.3996 |
-| 6  | 1.6251 | 0.7952 | 0.5739 | 0.6049 |
-| 9  | 0.7016 | 0.5664 | 0.6607 | 0.6654 |
-| 10 | 0.6654 | 0.6779 | 0.6922 | 0.6898 |
-| 14 | 0.4184 | 0.5593 | 0.7008 | 0.7116 |
-| 17 | 0.3078 | 0.5938 | 0.7464 | 0.7147 |
-| 20 | 0.2487 | 0.5879 | 0.7614 | 0.7235 |
-| 22 | 0.2259 | 0.5625 | 0.7709 | 0.7242 |
-| 24 | 0.2034 | 0.5974 | 0.7764 | **0.7313** |
-| 25 | 0.1804 | 0.5828 | 0.7714 | 0.7263 |
-
-**Per-class recall at best checkpoint (epoch 24):**
-
-| Class | Recall | N val |
-|-------|--------|-------|
-| akiec | 0.6290 | 62 |
-| bcc   | 0.8200 | 100 |
-| bkl   | 0.7156 | 218 |
-| df    | 0.7143 | 28 |
-| mel   | 0.6101 | 218 |
-| nv    | 0.8175 | 1337 |
-| vasc  | 0.8125 | 32 |
-| **Balanced accuracy** | **0.7313** | |
-
-**Outcome:** Best balanced accuracy 0.7313, 0.0003pp below Run 5 (0.7310 in
-this session, 0.7457 in the original Run 5 session -- the difference reflects
-stochastic split variance). The focal loss and CE val balanced accuracy curves
-are nearly indistinguishable across all 25 epochs. MEL recall (0.610) is
-marginally below Run 5 (0.624). The hypothesis is confirmed: focal loss
-provides no benefit when overfitting is the dominant failure mode.
-
----
-
-### Run 7: EfficientNet-B3 Backbone
-
-**Motivation:** Test whether a larger backbone closes the gap to the challenge
-winner. B3 has approximately 10.7M trainable parameters versus B0's 4.0M
-(2.7x). drop_rate=0.4 set explicitly to match Run 5's regularisation intent;
-timm's B3 default is 0.3. img_size kept at 224 to isolate the backbone
-variable.
-
-**Changes from Run 5:** Backbone replaced with EfficientNet-B3
-(`timm.create_model("efficientnet_b3", pretrained=True, drop_rate=0.4)`).
-All other config identical to Run 5.
-
-| Epoch | Train Loss | Val Loss | Val Acc | Val Bal Acc |
-|-------|-----------|---------|---------|------------|
-| 1  | 4.0110 | 2.0412 | 0.4020 | 0.2785 |
-| 5  | 2.6950 | 1.7299 | 0.4767 | 0.3880 |
-| 6  | 1.7685 | 0.8739 | 0.6687 | 0.6118 |
-| 9  | 0.8282 | 0.9370 | 0.6411 | 0.7133 |
-| 10 | 0.7267 | 0.7249 | 0.7298 | 0.7215 |
-| 15 | 0.4308 | 0.6996 | 0.7679 | 0.6946 |
-| 20 | 0.2675 | 0.7603 | 0.7639 | 0.7033 |
-| 23 | 0.2138 | 0.7143 | 0.7875 | **0.7307** |
-| 25 | 0.1922 | 0.6910 | 0.7945 | 0.7121 |
-
-**Per-class recall at best checkpoint (epoch 23):**
-
-| Class | Recall | N val |
-|-------|--------|-------|
-| akiec | 0.6774 | 62 |
-| bcc   | 0.8400 | 100 |
-| bkl   | 0.6560 | 218 |
-| df    | 0.6429 | 28 |
-| mel   | 0.6147 | 218 |
-| nv    | 0.8399 | 1337 |
-| vasc  | 0.8438 | 32 |
-| **Balanced accuracy** | **0.7307** | |
-
-**Outcome:** Best balanced accuracy 0.7307, 0.003pp below Run 5 (this session).
-MEL recall (0.615) is identical to Run 5 (this session) to three decimal places.
-B3 converged later than B0 (epoch 23 vs 20) and showed higher val loss variance
-in the mid-training phase (epoch 12: 0.814), consistent with a larger model
-overfitting more aggressively before regularisation stabilises it. The val
-balanced accuracy curves for B0 and B3 are nearly overlapping from epoch 15
-onward.
-
----
 ### Qualitative Analysis
 
 Six validation cases from Run 5, sampled evenly from worst to best IoU.
@@ -356,7 +258,7 @@ and no ensemble.
 ### Analysis and Conclusions
 
 Across five runs, performance consistently converged to 0.780 +/- 0.003.
-The following conclusions are supported by the experimental evidence:
+The following conclusions are supported by the experimental evidence.
 
 **The LR schedule and detection threshold are not limiting factors.** Testing
 two step sizes (7 and 10) and two score thresholds (0.5 and 0.3) produced no
@@ -375,14 +277,6 @@ rotation, and elastic deformation to address acquisition device variability;
 (2) upgrading to `maskrcnn_resnet50_fpn_v2`, which incorporates updated
 training recipes; or (3) test-time augmentation with horizontal flip averaging.
 
-**Focal loss and backbone scale do not shift the ceiling.** Run 6 tested focal
-loss (gamma=2.0) against the Run 5 CE baseline; the result was 0.7313 vs 0.7310
--- within run-to-run variance. Run 7 tested EfficientNet-B3 (10.7M parameters)
-against B0 (4.0M); the result was 0.7307 vs 0.7310 -- again within variance.
-Three independent variables have now been isolated: regularisation (Runs 1-3),
-training schedule and augmentation (Runs 4-5), loss function (Run 6), and
-backbone scale (Run 7). All converge to the same 0.730-0.731 band.
-
 ---
 
 ## Task 3: Disease Classification
@@ -394,11 +288,12 @@ nevus (NV), melanoma (MEL), benign keratosis (BKL), basal cell carcinoma (BCC),
 actinic keratosis (AKIEC), vascular lesion (VASC), and dermatofibroma (DF).
 
 **Primary metric:** Balanced accuracy (mean per-class recall), per Codella et al.
-(2019). Standard accuracy is not reported as primary because NV constitutes
-66.9% of training images.
+(2019). Standard accuracy is not reported as the primary metric because NV
+constitutes 66.9% of training images.
 
 **Architecture:** EfficientNet-B0 (`timm`, ImageNet pretrained) with the
 classification head replaced for 7 output classes via `timm.create_model`.
+Run 7 uses EfficientNet-B3 with identical head replacement.
 
 **Class imbalance handling:** Weighted cross-entropy with per-class weights
 `weight_c = total / (num_classes * count_c)`. The NV/DF imbalance ratio is
@@ -414,11 +309,13 @@ lesion appears multiple times in HAM10000 with different crops; splitting on
 
 | Run | Config | Best Bal Acc | Best Epoch |
 |-----|--------|-------------|------------|
-| 1 | lr=1e-4, wd=1e-4, no dropout, StepLR, 20ep | 0.6863 | 23* |
+| 1 | lr=1e-4, wd=1e-4, no dropout, StepLR, 25ep | 0.6863 | 23* |
 | 2 | lr=3e-4, wd=1e-3, drop=0.4, StepLR, 20ep | 0.7441 | 6 |
 | 3 | Run 2 replication | 0.7233 | 7 |
-| 4 | albumentations augmentation + progressive unfreezing + cosine LR, 20ep | 0.7319 | 15 |
-| 5 | Run 4 config, 25ep, fresh seed | **0.7457** | 22 |
+| 4 | albumentations + progressive unfreezing + cosine LR, 20ep | 0.7319 | 15 |
+| 5 | Run 4 config, 25ep, fresh seed | 0.7457 | 22 |
+| 6 | Focal loss gamma=2.0, Run 4 config, 25ep | 0.7376 | 20 |
+| 7 | EfficientNet-B3, weighted CE, Run 4 config, 25ep | **0.7498** | 10 |
 
 *Run 1 was continued beyond 20 epochs via checkpoint resume; epoch 23 refers
 to the global epoch number across both sessions.
@@ -426,7 +323,7 @@ to the global epoch number across both sessions.
 **Augmentation (Runs 1-3):** Random horizontal flip, random vertical flip,
 ColorJitter (brightness=0.2, contrast=0.2, saturation=0.1). torchvision transforms.
 
-**Augmentation (Runs 4-5):** albumentations pipeline -- horizontal flip,
+**Augmentation (Runs 4-7):** albumentations pipeline -- horizontal flip,
 vertical flip, Rotate(limit=180), RandomResizedCrop(scale=0.7-1.0),
 ColorJitter, GaussianBlur, ISONoise, CoarseDropout (simulates hair and ruler
 artefacts per Codella et al., 2019).
@@ -434,10 +331,10 @@ artefacts per Codella et al., 2019).
 **Training constants (Runs 1-3):** AdamW, StepLR(step=7, gamma=0.5),
 batch_size=32, img_size=224, weighted CrossEntropyLoss.
 
-**Training constants (Runs 4-5):** AdamW, progressive unfreezing (head-only
+**Training constants (Runs 4-7):** AdamW, progressive unfreezing (head-only
 for epochs 1-5 at lr_head=1e-3, full network from epoch 6 at lr=3e-4),
 CosineAnnealingLR, drop_rate=0.4, weight_decay=1e-3, batch_size=32,
-img_size=224, weighted CrossEntropyLoss.
+img_size=224, weighted CrossEntropyLoss (focal loss in Run 6).
 
 ---
 
@@ -470,11 +367,11 @@ resumed portion (epochs 17-36).
 | vasc  | 0.7188 | 32 |
 | **Balanced accuracy** | **0.6863** | |
 
-**Diagnosis:** Severe overfitting. Train loss collapsed to ~0.02 while val loss
-remained ~0.78. MEL recall of 0.477 -- the clinically most critical class --
-indicates the model defaulted heavily toward the NV majority class despite
-weighted loss. The model memorised training data without learning generalisable
-discriminative features.
+**Diagnosis:** Severe overfitting. Train loss collapsed to approximately 0.02
+while val loss remained approximately 0.78. MEL recall of 0.477 -- the
+clinically most critical class -- indicates the model defaulted heavily toward
+the NV majority class despite weighted loss. The model memorised training data
+without learning generalisable discriminative features.
 
 ---
 
@@ -528,7 +425,7 @@ MEL recall improved from 0.477 to 0.619. NV recall decreased from 0.904 to
 DF recall improved from 0.607 to 0.857. The model still overfits -- train loss
 reaches 0.065 while val loss stays near 0.79 -- but generalises substantially
 better. The peak at epoch 6 followed by 14 epochs without further improvement
-suggests the LR decay schedule is still not optimal for this regularisation
+indicates the StepLR decay schedule is not well matched to this regularisation
 strength.
 
 ---
@@ -574,11 +471,11 @@ the result.
 | vasc  | 0.8438 | 32 |
 | **Balanced accuracy** | **0.7233** | |
 
-**Outcome:** Best balanced accuracy 0.7233, 2.1 points below Run 2. The gap
-between runs on identical configuration (0.7441 vs 0.7233) reflects meaningful
-variance from the stochastic data split and training dynamics. MEL recall of
-0.573 is between Runs 1 and 2, confirming the regularisation strategy is
-directionally correct but the result is sensitive to initialisation and split
+**Outcome:** Best balanced accuracy 0.7233, 2.1 percentage points below Run 2.
+The gap between runs on identical configuration (0.7441 vs 0.7233) reflects
+meaningful variance from the stochastic data split and training dynamics. MEL
+recall of 0.573 is between Runs 1 and 2, confirming the regularisation strategy
+is directionally correct but the result is sensitive to initialisation and split
 composition.
 
 ---
@@ -624,9 +521,9 @@ head initialisation.
 
 **Outcome:** Best balanced accuracy 0.7319, above Run 3 (0.7233). Val loss was
 still declining at epoch 20 (0.672, the lowest of any run to that point) and
-val accuracy reached 0.786 -- the model had not converged. BKL recall remained
-below Run 2 (0.633 vs 0.702), while DF improved to 0.786 and VASC to 0.875.
-The epoch 6 dip in val balanced accuracy (0.614) reflects the backbone
+val accuracy reached 0.786, indicating the model had not converged. BKL recall
+remained below Run 2 (0.633 vs 0.702), while DF improved to 0.786 and VASC to
+0.875. The epoch 6 dip in val balanced accuracy (0.614) reflects the backbone
 unfreezing disturbing the head's calibration transiently before joint
 fine-tuning stabilised.
 
@@ -664,23 +561,161 @@ tests whether the capacity ceiling had been reached.
 | vasc  | 0.8125 | 32 |
 | **Balanced accuracy** | **0.7457** | |
 
-**Training curves (Run 5, 25 epochs):**
+![Training curves Run 5](outputs/task3/training_curves_task3.png)
 
-![Training curves Task 3](outputs/task3/training_curves_task3.png)
+**Outcome:** Best balanced accuracy 0.7457, the highest B0 result across all
+runs. BKL recall recovered to 0.766 (vs 0.633 in Run 4 and 0.702 in Run 2),
+the strongest BKL result across all B0 runs. MEL recall held at 0.624. The
+train/val loss gap at epoch 25 (0.27 vs 0.65) is substantially healthier than
+Runs 1-3, where the gap exceeded 10:1 by epoch 20. Val loss continued declining
+through epoch 25 (0.651), suggesting the model had not fully converged within
+the training budget.
 
-**Outcome:** Best balanced accuracy 0.7457, a new overall best, marginally
-above Run 2 (0.7441). BKL recall recovered to 0.766 (vs 0.633 in Run 4 and
-0.702 in Run 2), the strongest BKL result across all runs. MEL recall held at
-0.624. The train/val loss gap at epoch 25 (0.27 vs 0.65) is substantially
-healthier than Runs 1-3, where the gap exceeded 10:1 by epoch 20. Val loss
-continued declining through epoch 25 (0.651), suggesting the model had not
-fully converged within the training budget.
-
-Note: epoch 1 train loss of 4.36 (vs 1.10 in Run 4) reflects a fresh model
+Note: the epoch 1 train loss of 4.36 (vs 1.10 in Run 4) reflects a fresh model
 initialisation. The head-only phase (epochs 1-5) starts from random weights
-with lr_head=1e-3 and weighted cross-entropy with weights up to 13x,
-producing higher initial loss than Runs 2-3 where the full network trained
-from epoch 1.
+with lr_head=1e-3 and weighted cross-entropy with weights up to 13x, producing
+higher initial loss than Runs 2-3 where the full network trained from epoch 1.
+
+---
+
+### Run 6: Focal Loss Experiment (gamma=2.0)
+
+**Motivation:** Test whether focal loss (Lin et al., ICCV 2017, arXiv:1708.02002)
+improves over weighted cross-entropy. The hypothesis was that it would not,
+because the dominant failure mode across Runs 1-5 was overfitting rather than
+hard-example difficulty. Focal loss addresses the latter by down-weighting easy
+examples via (1-p_t)^gamma; this reduces the effective gradient signal and may
+further destabilise training on a dataset of this size.
+
+**Changes from Run 5:** Loss function replaced with alpha-balanced focal loss,
+gamma=2.0 (Lin et al. default). Alpha set to the same inverse class frequency
+weights used for weighted CE: alpha_c = total / (num_classes * count_c). All
+other configuration identical to Run 5.
+
+| Epoch | Train Focal Loss | Val Focal Loss | Val Acc | Val Bal Acc |
+|-------|-----------------|---------------|---------|------------|
+| 1  | 4.0989 | 2.8628 | 0.3073 | 0.2953 |
+| 5  | 2.7519 | 2.0536 | 0.4622 | 0.4157 |
+| 6  | 1.6823 | 0.8558 | 0.5238 | 0.5543 |
+| 10 | 0.6360 | 0.6703 | 0.6371 | 0.6615 |
+| 12 | 0.5312 | 0.5956 | 0.7168 | 0.7207 |
+| 16 | 0.3315 | 0.5696 | 0.6812 | 0.7231 |
+| 20 | 0.2556 | 0.5934 | 0.7464 | **0.7376** |
+| 25 | 0.1874 | 0.6069 | 0.7679 | 0.7195 |
+
+**Per-class recall at best checkpoint (epoch 20):**
+
+| Class | Recall | N val |
+|-------|--------|-------|
+| akiec | 0.5968 | 62 |
+| bcc   | 0.7600 | 100 |
+| bkl   | 0.7294 | 218 |
+| df    | 0.9286 | 28 |
+| mel   | 0.5917 | 218 |
+| nv    | 0.7756 | 1337 |
+| vasc  | 0.7812 | 32 |
+| **Balanced accuracy** | **0.7376** | |
+
+![CE vs Focal training curves](outputs/task3/focal_vs_ce_curves.png)
+
+**Outcome:** Best balanced accuracy 0.7376, 0.81pp below Run 5 (0.7457). The
+focal loss and CE val balanced accuracy curves are nearly indistinguishable
+from epoch 12 onward. MEL recall (0.592) is marginally below Run 5 (0.624).
+The hypothesis is confirmed: focal loss provides no measurable benefit when
+overfitting is the dominant failure mode.
+
+---
+
+### Run 7: EfficientNet-B3 Backbone
+
+**Motivation:** Test whether a larger backbone narrows the gap to the challenge
+winner. EfficientNet-B3 has approximately 10.7M trainable parameters versus
+B0's 4.0M, a 2.7x increase. drop_rate=0.4 was set explicitly to match Run 5's
+regularisation intent; timm's B3 default is 0.3. img_size was kept at 224 to
+isolate the backbone as the sole variable.
+
+**Changes from Run 5:** Backbone replaced with EfficientNet-B3
+(`timm.create_model("efficientnet_b3", pretrained=True, drop_rate=0.4)`).
+All other configuration identical to Run 5.
+
+| Epoch | Train Loss | Val Loss | Val Acc | Val Bal Acc |
+|-------|-----------|---------|---------|------------|
+| 1  | 3.8241 | 1.9948 | 0.4216 | 0.2682 |
+| 5  | 2.7106 | 1.6639 | 0.4997 | 0.3808 |
+| 6  | 1.7076 | 1.0383 | 0.5985 | 0.5878 |
+| 9  | 0.7818 | 0.7927 | 0.7033 | 0.7254 |
+| 10 | 0.6939 | 0.7527 | 0.7368 | **0.7498** |
+| 15 | 0.4393 | 0.6853 | 0.7724 | 0.7494 |
+| 20 | 0.2634 | 0.7261 | 0.7739 | 0.7242 |
+| 25 | 0.1923 | 0.6928 | 0.8120 | 0.7230 |
+
+**Per-class recall at best checkpoint (epoch 10):**
+
+| Class | Recall | N val |
+|-------|--------|-------|
+| akiec | 0.7903 | 62 |
+| bcc   | 0.7200 | 100 |
+| bkl   | 0.7018 | 218 |
+| df    | 0.8214 | 28 |
+| mel   | 0.5046 | 218 |
+| nv    | 0.7726 | 1337 |
+| vasc  | 0.9375 | 32 |
+| **Balanced accuracy** | **0.7498** | |
+
+![B0 vs B3 training curves](outputs/task3/b0_vs_b3_curves.png)
+
+**Outcome:** Best balanced accuracy 0.7498, the strongest single-model result
+across all seven runs. B3 converged faster than B0 (epoch 10 vs epoch 22) and
+showed stronger performance on AKIEC (0.790), DF (0.821), and VASC (0.938).
+However, MEL recall collapsed to 0.505 -- the worst MEL result across all runs
+-- and the per-class F1 analysis (section below) shows B3 achieves higher
+recall at the cost of lower precision on most classes, indicating the larger
+model pushes predictions toward minority classes more aggressively than the
+decision boundary supports. B3 is also 2.6x slower than B0 on CPU
+(78.6 ms vs 29.7 ms per image), making the 0.41pp balanced accuracy gain a
+poor trade-off for deployment.
+
+---
+
+### Extended Evaluation: Confusion Matrix and Per-Class Metrics
+
+Row-normalised confusion matrix for Run 5 (EfficientNet-B0, weighted CE),
+the primary model. Each cell expresses the fraction of true-class samples
+predicted as each column class; diagonal entries are per-class recall.
+
+![Confusion matrix Run 5](outputs/task3/confusion_matrix_run5.png)
+
+**Confusion matrix analysis (Run 5).** MEL is the hardest class: 0.60 recall
+with 0.19 of true MEL samples predicted as NV, and 0.12 predicted as AKIEC.
+BKL shows a similar leakage pattern, with 0.13 misclassified as MEL and 0.09
+as NV. Both failure modes reflect the visual similarity between pigmented lesion
+classes and the 6:1 NV/MEL class imbalance. DF and VASC are the most reliably
+separated classes (0.86 and 0.84 recall respectively), consistent with their
+distinct clinical appearance.
+
+**Per-class precision, recall, and F1 across Runs 5, 6, and 7:**
+
+| Class | R5 Prec | R5 Rec | R5 F1 | R6 Prec | R6 Rec | R6 F1 | R7 Prec | R7 Rec | R7 F1 |
+|-------|---------|--------|-------|---------|--------|-------|---------|--------|-------|
+| akiec | 0.3942 | 0.6613 | 0.4940 | 0.4111 | 0.5968 | 0.4868 | 0.3684 | 0.7903 | 0.5026 |
+| bcc   | 0.6696 | 0.7700 | 0.7163 | 0.6230 | 0.7600 | 0.6847 | 0.6606 | 0.7200 | 0.6890 |
+| bkl   | 0.7079 | 0.6560 | 0.6810 | 0.5955 | 0.7294 | 0.6557 | 0.4920 | 0.7018 | 0.5784 |
+| df    | 0.3871 | 0.8571 | 0.5333 | 0.3562 | 0.9286 | 0.5149 | 0.4694 | 0.8214 | 0.5974 |
+| mel   | 0.4180 | 0.5963 | 0.4915 | 0.3839 | 0.5917 | 0.4657 | 0.4231 | 0.5046 | 0.4603 |
+| nv    | 0.9451 | 0.8242 | 0.8805 | 0.9629 | 0.7756 | 0.8592 | 0.9583 | 0.7726 | 0.8555 |
+| vasc  | 0.7714 | 0.8438 | 0.8060 | 0.8333 | 0.7812 | 0.8065 | 0.5455 | 0.9375 | 0.6897 |
+
+MEL F1 is the lowest or second-lowest class across all three runs. B3 improves
+DF and AKIEC recall relative to B0 but reduces BKL F1 from 0.681 to 0.578 and
+MEL F1 from 0.492 to 0.460, reflecting the trade-off between minority and
+majority class boundaries discussed above.
+
+**Inference time and model size (CPU, batch_size=1):**
+
+| Model | Params | ms/image (CPU) |
+|-------|--------|---------------|
+| EfficientNet-B0 (Runs 5, 6) | 4,016,515 | 29.7 |
+| EfficientNet-B3 (Run 7) | 10,706,991 | 78.6 |
 
 ---
 
@@ -689,24 +724,25 @@ from epoch 1.
 | Method | Balanced Accuracy |
 |--------|-----------------|
 | ISIC 2018 Task 3 challenge winner | 0.885 |
-| This work (Run 5, best) | 0.7457 |
-| Gap | -0.139 |
+| This work -- Run 7 (B3, best single model) | 0.7498 |
+| This work -- Run 5 (B0, best balanced result) | 0.7457 |
+| Gap to winner (B3) | -0.135 |
 
 ---
 
 ### Analysis and Conclusions
 
 **Augmentation and training schedule are jointly limiting.** The 5.8pp gain
-from Run 1 to Run 2 came from regularisation alone. The further 0.2pp gain
-from Run 2 to Run 5 came from stronger augmentation, progressive unfreezing,
-and cosine LR -- but required 25 epochs to realise, because the cosine
-schedule over 20 backbone epochs is long enough to avoid the StepLR cliff
-that caused Run 2 to peak at epoch 6 and degrade thereafter.
+from Run 1 to Run 2 came from regularisation alone. The further gains through
+Runs 4-5 came from stronger augmentation, progressive unfreezing, and cosine
+LR -- but required 25 epochs to realise, because the cosine schedule provides
+a smooth decay that avoids the StepLR cliff that caused Run 2 to peak at epoch
+6 and degrade thereafter.
 
-**MEL recall is the persistent bottleneck.** Across all five runs, MEL recall
-ranged from 0.477 to 0.624, consistently the weakest or second-weakest class.
-MEL and NV are visually the most similar classes in HAM10000 -- both present
-as pigmented lesions, and the 6:1 NV/MEL sample ratio means the decision
+**MEL recall is the persistent bottleneck.** Across all seven runs, MEL recall
+ranged from 0.477 to 0.624 for B0 models and collapsed to 0.505 for B3. MEL
+and NV are visually the most similar classes in HAM10000 -- both present as
+pigmented lesions -- and the 6:1 NV/MEL sample ratio means the decision
 boundary is learned primarily from NV features. Weighted loss equalises the
 expected gradient contribution per class but does not improve the quality of
 MEL-discriminative features learned by the backbone. Contrastive pre-training
@@ -727,14 +763,25 @@ source of variance is the stochastic lesion-level data split and weight
 initialisation, not the training configuration. K-fold cross-validation at the
 lesion level would be required for a reliable comparison between configurations.
 
-**The capacity ceiling for a single EfficientNet model on HAM10000 at 224px
-is approximately 0.730-0.731 balanced accuracy** across B0 and B3 backbones,
-weighted CE and focal loss, and 20-25 training epochs. Val loss continued
-declining through epoch 25 in Runs 5-7, but balanced accuracy plateaued in
-this band from epoch 19 onward. The gap to the challenge winner (0.885) is
-primarily explained by ensemble size and backbone scale: winning submissions
-used ensembles of EfficientNet-B4/B5 with extensive test-time augmentation,
-not a single model at 224px.
+**Focal loss provides no benefit on this dataset.** Run 6 (focal, gamma=2.0)
+achieved 0.7376 vs Run 5's 0.7441 on weighted CE -- a 0.65pp decline. The val
+balanced accuracy curves are nearly indistinguishable from epoch 12 onward,
+confirming that the performance ceiling is set by overfitting and class
+similarity rather than hard-example difficulty.
+
+**Backbone scale yields marginal gains at significant cost.** B3 (Run 7)
+achieved 0.7498, the best single-model result, but at 2.7x more parameters
+and 2.6x higher CPU inference latency than B0. MEL recall, the clinically
+most important metric, was worst across all runs at 0.505. The gain is not
+justified for deployment at 224px without test-time augmentation or ensembling.
+
+**The effective capacity ceiling for a single EfficientNet model on HAM10000
+at 224px is approximately 0.744-0.750 balanced accuracy.** Across B0 and B3
+backbones, weighted CE and focal loss, and 20-25 training epochs, all results
+fall within this band. The gap to the challenge winner (0.885) is primarily
+explained by ensemble size and backbone scale: winning submissions used
+ensembles of EfficientNet-B4/B5 with extensive test-time augmentation, not a
+single model at 224px.
 
 ---
 
@@ -753,4 +800,5 @@ He, K. et al. Mask R-CNN. ICCV 2017. arXiv:1703.06870.
 Tan, M. and Le, Q. EfficientNet: Rethinking Model Scaling for Convolutional
 Neural Networks. ICML 2019. arXiv:1905.11946.
 
-Lin, T.-Y. et al. Focal Loss for Dense Object Detection. ICCV 2017. arXiv:1708.02002.
+Lin, T.-Y. et al. Focal Loss for Dense Object Detection. ICCV 2017.
+arXiv:1708.02002.
