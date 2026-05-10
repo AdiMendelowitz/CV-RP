@@ -440,6 +440,34 @@
     <p>adimendelowitz.dev</p>
   </div>
 </footer>
+<script>
+  // GitHub repository base URL
+  const repoBaseUrl = 'https://github.com/AdiMendelowitz/CV-RP/blob/main';
 
+  // Map each card title to its corresponding README path
+  const readmeMappings = {
+    'Architecture implementations': 'computer-vision-foundations/README.md',
+    'Medical image segmentation & classification': 'cv-detection-segmentation/instance_segmentation/ISIC2018_results.md',
+    'Object detection': 'Advanced%20CV%20%26%20Efficient%20Models/README.md',
+    'Model compression': 'Advanced%20CV%20%26%20Efficient%20Models/README.md'
+  };
+
+  // Add click event listeners to all research cards
+  document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.research-card');
+
+    cards.forEach(card => {
+      const title = card.querySelector('.research-card-title').textContent.trim();
+      const readmePath = readmeMappings[title];
+
+      if (readmePath) {
+        card.style.cursor = 'pointer';
+        card.addEventListener('click', function() {
+          window.open(`${repoBaseUrl}/${readmePath}`, '_blank');
+        });
+      }
+    });
+  });
+</script>
 </body>
 </html>

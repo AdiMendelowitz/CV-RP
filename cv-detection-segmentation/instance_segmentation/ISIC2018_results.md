@@ -188,6 +188,7 @@ variance and confirm the result ceiling.
 | 19 | 0.2072 | 0.1451 | 0.0387 | 0.0183 | 0.7764 |
 | 20 | 0.2005 | 0.1403 | 0.0375 | 0.0177 | 0.7764 |
 
+![Training curves](outputs/task1/training_curves.png)
 **Outcome:** Best Jaccard 0.7822, a new overall best. Training loss falls
 monotonically from 0.557 to 0.200 with no instability. Epoch 7 shows the
 characteristic StepLR dip (0.653) following the first LR decay at epoch 7,
@@ -207,7 +208,6 @@ lesion, actually background), blue = false negative (missed lesion pixel).
 
 ![Segmentation examples](outputs/task1/segmentation_examples_task1.png)
 
-![Training curves](outputs/task1/training_curves.png)
 
 **Row 1 (worst case, IoU below T=0.65, Jaccard=0.000):** Image contains a
 ruler artefact along the bottom edge. The model produces no detection above
