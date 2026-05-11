@@ -134,11 +134,10 @@ class ISICPipeline:
             score: Confidence of selected detection. 0.0 if failed.
         """
 
-        H, W = image.shape[1], image.shape[2]
         output = self.segment_model([image])[0]
-
         keep = output["scores"] >= self.score_threshold
         if not keep.any():
+            H, W = image.shape[1], image.shape[2]
             return np.zeros((H, W), dtype=bool), None, 0.0
 
         best_idx = output["scores"][keep].argmax()
@@ -248,7 +247,7 @@ class ISICPipeline:
         )
 
     @torch.no_grad()
-    def evaluate(self, dataloader: torch.utils.data.DataLoader) -> PredictionResult:
+    def evaluate(self, dataloader: torch.utils.data.DataLoader) -> EvaluationResult:
         """
         Evaluate the full pipeline on a validation set.
 
