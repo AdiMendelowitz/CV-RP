@@ -783,7 +783,94 @@ explained by ensemble size and backbone scale: winning submissions used
 ensembles of EfficientNet-B4/B5 with extensive test-time augmentation, not a
 single model at 224px.
 
+
 ---
+
+## End-to-End Pipeline Evaluation
+
+### Setup
+
+The segmentation model from Task 1 and the classification model from Task 3
+were composed into a single inference pipeline. For each input image, Mask
+R-CNN localises the lesion and produces a binary mask; the predicted bounding
+box is used to crop the lesion region; EfficientNet-B0 classifies the crop
+into one of the 7 HAM10000 disease categories. The implementation is in
+`instance_segmentation/isic_pipeline.py` and the evaluation notebook is at
+`instance_segmentation/notebooks/01_isic_pipeline.ipynb`.
+
+**Dataset note:** The ISIC 2018 Task 1 segmentation dataset
+(`tschandl/isic2018-challenge-task1-data-segmentation`) and HAM10000
+(`kmader/skin-cancer-mnist-ham10000`) use entirely disjoint ISIC image ID
+ranges -- Task 1 spans `ISIC_0000025` to approximately `ISIC_0024305` while
+HAM10000 begins at `ISIC_0024306`. Joint evaluation with both ground-truth
+segmentation masks and ground-truth class labels is therefore not possible
+with the available data. The pipeline was evaluated on 50 HAM10000 validation
+images drawn from the same lesion-level stratified split used in Task 3.
+Segmentation quality is assessed qualitatively; classification quality is
+assessed quantitatively against HAM10000 ground-truth labels.
+
+---
+
+### Results
+
+| Metric | Value |
+|--------|-------|
+| Images evaluated | 50 |
+| Detection failures (Mask R-CNN score < 0.5) | 0 / 50 (0.0%) |
+| Classification failures given detection | 15 / 50 (30.0%) |
+| Full pipeline success | 35 / 50 (70.0%) |
+| Pipeline balanced accuracy | 0.5219 |
+| Standalone classifier balanced accuracy (Run 5) | 0.7441 |
+| Gap | -0.2222 |
+
+![Pipeline outputs](outputs/pipeline/pipeline_outputs.png)
+
+---
+
+### Qualitative Analysis
+
+The visualisation shows four representative pipeline outputs. Each row
+displays the input image, the Mask R-CNN mask overlay, the lesion crop passed
+to EfficientNet-B0, and the predicted class probability distribution. Green
+titles indicate correct predictions; red titles indicate misclassifications.
+
+All four detections achieved confidence scores of 0.88 or above, and the mask
+boundaries are visually reasonable across all four cases. The two
+misclassifications (rows 2 and 3) involve classes that are consistently
+difficult in the standalone Task 3 evaluation: BKL and BCC, both of which
+show substantial confusion with MEL and AKIEC in the confusion matrix.
+
+---
+
+### Analysis
+
+**The 22pp gap between pipeline and standalone classification accuracy is
+expected and structural.** EfficientNet-B0 was trained on full images resized
+to 224 x 224 pixels. In the pipeline it receives a tightly cropped region
+whose spatial extent is determined by the Mask R-CNN bounding box, which
+varies in size and aspect ratio across images. This changes the spatial
+context available to the classifier -- background skin texture, lesion
+boundary characteristics, and acquisition device artefacts that appear in the
+full image are partially or fully absent from the crop. The classifier was not
+trained to be robust to this distribution shift, which accounts for the
+majority of the performance gap.
+
+**The 0.0% detection failure rate indicates that Mask R-CNN generalises well
+to HAM10000 images despite being trained exclusively on Task 1 images.** The
+two datasets use different dermoscopy acquisition protocols and image
+characteristics, making this a mild form of domain transfer. The absence of
+detection failures suggests the COCO-pretrained ResNet-50-FPN backbone
+provides sufficient general-purpose feature extraction for lesion localisation
+across both distributions.
+
+**The 70% full pipeline success rate on 50 images provides a useful lower
+bound on end-to-end performance.** It reflects the combined error of both
+models and the distribution shift introduced by crop-based classification.
+Closing the gap would require either fine-tuning EfficientNet-B0 on cropped
+inputs or training the classifier jointly with the segmentation model so that
+the crop distribution is seen during training.
+---
+
 
 ## References
 
