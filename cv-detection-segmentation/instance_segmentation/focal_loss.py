@@ -7,7 +7,8 @@ Reference: Lin et al. "Focal loss for Dense Object Detection." ICCV 2017.  arXiv
 import torch
 import torch.nn.functional as F
 
-def focal_loss(logits:torch.Tensor, targets: torch.Tensor, alpha: torch.Tensor, gamma: float = 2.0) -> torch.Tensor:
+
+def focal_loss(logits: torch.Tensor, targets: torch.Tensor, alpha: torch.Tensor, gamma: float = 2.0) -> torch.Tensor:
     """
     Compute alpha-balanced multi-clas focal loss.
     When gamma=0 this reduces exactly to weighted cross-entropy with the same alpha weights, matching
@@ -34,16 +35,16 @@ def focal_loss(logits:torch.Tensor, targets: torch.Tensor, alpha: torch.Tensor, 
         raise ValueError(f"gamma must be >= 0, got {gamma}")
 
     # log_softmax is numerically stable, avoids log(softmax(x)) cancellation
-    log_p = F.log_softmax(logits, dim=1)    # (N, C)
-    log_pt = log_p[torch.arange(len(targets)), targets]     # (N,)
+    log_p = F.log_softmax(logits, dim=1)  # (N, C)
+    log_pt = log_p[torch.arange(len(targets)), targets]  # (N,)
 
     # Per-sample alpha weight from the true class
-    alpha_t = alpha[targets]    # (N,)
+    alpha_t = alpha[targets]  # (N,)
 
     if gamma == 0.0:
         return -(alpha_t * log_pt).sum() / alpha_t.sum()
 
-    p_t = log_pt.exp()      # Safe because log_pt<=0 always. (N,) in [0,1]
-    focal_weight = (1.0 - p_t) ** gamma     # (N,)
+    p_t = log_pt.exp()  # Safe because log_pt<=0 always. (N,) in [0,1]
+    focal_weight = (1.0 - p_t) ** gamma  # (N,)
 
     return -(alpha_t * focal_weight * log_pt).sum() / alpha_t.sum()

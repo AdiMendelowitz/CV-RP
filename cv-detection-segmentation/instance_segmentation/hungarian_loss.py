@@ -13,6 +13,7 @@ import torch
 import torch.nn.functional as F
 from scipy.optimize import linear_sum_assignment
 
+
 def compute_giou(boxes_a: torch.Tensor, boxes_b: torch.Tensor) -> torch.Tensor:
     """
     Compute pairwise Generalized IoU (GIoU) between two sets of boxes.
@@ -39,14 +40,14 @@ def compute_giou(boxes_a: torch.Tensor, boxes_b: torch.Tensor) -> torch.Tensor:
     b_x2 = (boxes_b[:, 0] + boxes_b[:, 2] / 2).unsqueeze(0)
     b_y2 = (boxes_b[:, 1] + boxes_b[:, 3] / 2).unsqueeze(0)
 
-    area_a = ((a_x2 - a_x1) * (a_y2 - a_y1)).clamp(min=0) # (N, 1)
-    area_b = ((b_x2 - b_x1) * (b_y2 - b_y1)).clamp(min=0) # (1, M)
+    area_a = ((a_x2 - a_x1) * (a_y2 - a_y1)).clamp(min=0)  # (N, 1)
+    area_b = ((b_x2 - b_x1) * (b_y2 - b_y1)).clamp(min=0)  # (1, M)
 
     inter_x1 = torch.max(a_x1, b_x1)
     inter_y1 = torch.max(a_y1, b_y1)
     inter_x2 = torch.min(a_x2, b_x2)
     inter_y2 = torch.min(a_y2, b_y2)
-    inter_area = ((inter_x2 - inter_x1).clamp(min=0) * (inter_y2 - inter_y1).clamp(min=0)) # (N, M)
+    inter_area = (inter_x2 - inter_x1).clamp(min=0) * (inter_y2 - inter_y1).clamp(min=0)  # (N, M)
 
     union_area = area_a + area_b - inter_area
     iou = inter_area / union_area.clamp(min=1e-7)
@@ -55,14 +56,21 @@ def compute_giou(boxes_a: torch.Tensor, boxes_b: torch.Tensor) -> torch.Tensor:
     enclose_y1 = torch.min(a_y1, b_y1)
     enclose_x2 = torch.max(a_x2, b_x2)
     enclose_y2 = torch.max(a_y2, b_y2)
-    area_enclose = ((enclose_x2 - enclose_x1).clamp(min=0) * (enclose_y2 - enclose_y1).clamp(min=0))
+    area_enclose = (enclose_x2 - enclose_x1).clamp(min=0) * (enclose_y2 - enclose_y1).clamp(min=0)
 
     giou = iou - (area_enclose - union_area) / area_enclose.clamp(min=1e-7)
     return giou
 
-def build_cost_matrix(pred_logit: torch.Tensor, pred_boxes: torch.Tensor, target_labels: torch.Tensor,
-                      target_boxes: torch.Tensor, cost_class: float = 1.0, cost_bbox: float = 5.0,
-                      cost_giou: float = 2.0) -> torch.Tensor:
+
+def build_cost_matrix(
+    pred_logit: torch.Tensor,
+    pred_boxes: torch.Tensor,
+    target_labels: torch.Tensor,
+    target_boxes: torch.Tensor,
+    cost_class: float = 1.0,
+    cost_bbox: float = 5.0,
+    cost_giou: float = 2.0,
+) -> torch.Tensor:
     """
     Construct the NxM assignment cost matrix for a single image.
 
@@ -93,13 +101,14 @@ def build_cost_matrix(pred_logit: torch.Tensor, pred_boxes: torch.Tensor, target
 
     # L1 box cost: pairwise L1 distance between predicted and target boxes.
     # torch.cdist with p=1 give L1 norm
-    cost_l1 = torch.cdist(pred_boxes, target_boxes, p=1) # (N, M)
+    cost_l1 = torch.cdist(pred_boxes, target_boxes, p=1)  # (N, M)
 
-    cost_giou_matrix = 1.0 - compute_giou(pred_boxes, target_boxes) # (N, M)
+    cost_giou_matrix = 1.0 - compute_giou(pred_boxes, target_boxes)  # (N, M)
 
     cost_matrix = (cost_class * cost_cls) + (cost_bbox * cost_l1) + (cost_giou * cost_giou_matrix)
 
     return cost_matrix
+
 
 def hungarian_match(cost_matrix: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
     """
@@ -119,6 +128,7 @@ def hungarian_match(cost_matrix: torch.Tensor) -> tuple[torch.Tensor, torch.Tens
     pred_indices = torch.as_tensor(row_idx, dtype=torch.long)
     target_indices = torch.as_tensor(col_idx, dtype=torch.long)
     return pred_indices, target_indices
+
 
 def compute_giou_paired(boxes_a: torch.Tensor, boxes_b: torch.Tensor) -> torch.Tensor:
     """
@@ -144,24 +154,29 @@ def compute_giou_paired(boxes_a: torch.Tensor, boxes_b: torch.Tensor) -> torch.T
     area_a = ((a_x2 - a_x1) * (a_y2 - a_y1)).clamp(min=0)
     area_b = ((b_x2 - b_x1) * (b_y2 - b_y1)).clamp(min=0)
 
-    inter_area = (
-            (torch.min(a_x2, b_x2) - torch.max(a_x1, b_x1)).clamp(min=0) *
-            (torch.min(a_y2, b_y2) - torch.max(a_y1, b_y1).clamp(min=0))
+    inter_area = (torch.min(a_x2, b_x2) - torch.max(a_x1, b_x1)).clamp(min=0) * (
+        torch.min(a_y2, b_y2) - torch.max(a_y1, b_y1).clamp(min=0)
     )
 
-    area_enclose = (
-        (torch.max(a_x2, b_x2) - torch.min(a_x1, b_x1)).clamp(min=0) *
-        (torch.max(a_y2, b_y2) - torch.min(a_y1, b_y1).clamp(min=0))
+    area_enclose = (torch.max(a_x2, b_x2) - torch.min(a_x1, b_x1)).clamp(min=0) * (
+        torch.max(a_y2, b_y2) - torch.min(a_y1, b_y1).clamp(min=0)
     )
 
     union_area = area_a + area_b - inter_area
     iou = inter_area / union_area.clamp(min=1e-7)
 
-    return iou - (area_enclose-union_area) / area_enclose.clamp(min=1e-7)
+    return iou - (area_enclose - union_area) / area_enclose.clamp(min=1e-7)
 
-def set_prediction_loss(pred_logits: torch.Tensor, pred_boxes: torch.Tensor, targets: list[dict[str, torch.Tensor]],
-                        cost_class: float = 1.0, cost_bbox: float = 5.0, cost_giou: float = 2.0,
-                        eos_coef: float = 0.1) -> dict[str, torch.Tensor]:
+
+def set_prediction_loss(
+    pred_logits: torch.Tensor,
+    pred_boxes: torch.Tensor,
+    targets: list[dict[str, torch.Tensor]],
+    cost_class: float = 1.0,
+    cost_bbox: float = 5.0,
+    cost_giou: float = 2.0,
+    eos_coef: float = 0.1,
+) -> dict[str, torch.Tensor]:
     """
     Compute the full DETR set prediction loss for a batch of images.
 
@@ -203,14 +218,21 @@ def set_prediction_loss(pred_logits: torch.Tensor, pred_boxes: torch.Tensor, tar
     matched_target_boxes: list[torch.Tensor] = []
 
     for b_s in range(batch_size):
-        target_labels = targets[b_s]["labels"].to(device) # (M,)
+        target_labels = targets[b_s]["labels"].to(device)  # (M,)
         target_boxes = targets[b_s]["boxes"].to(device)
 
-        if target_labels.numel() == 0: # No ground-truth objects in this image, all predictions are no-objects
+        if target_labels.numel() == 0:  # No ground-truth objects in this image, all predictions are no-objects
             continue
 
-        cost_matrix = build_cost_matrix(pred_logits[b_s], pred_boxes[b_s], target_labels, target_boxes,
-                                        cost_class=cost_class, cost_bbox=cost_bbox, cost_giou=cost_giou)
+        cost_matrix = build_cost_matrix(
+            pred_logits[b_s],
+            pred_boxes[b_s],
+            target_labels,
+            target_boxes,
+            cost_class=cost_class,
+            cost_bbox=cost_bbox,
+            cost_giou=cost_giou,
+        )
 
         pred_idx, target_idx = hungarian_match(cost_matrix)
         target_classes[b_s, pred_idx] = target_labels[target_idx]
@@ -221,8 +243,8 @@ def set_prediction_loss(pred_logits: torch.Tensor, pred_boxes: torch.Tensor, tar
     cls_weights = torch.ones(num_classes_plus_one, device=device)
     cls_weights[num_classes] = eos_coef
     loss_ce = F.cross_entropy(
-        pred_logits.flatten(0, 1),   # (B*N, num_classes + 1)
-        target_classes.flatten(0, 1),   # (B*N,)
+        pred_logits.flatten(0, 1),  # (B*N, num_classes + 1)
+        target_classes.flatten(0, 1),  # (B*N,)
         weight=cls_weights,
     )
 
@@ -230,8 +252,8 @@ def set_prediction_loss(pred_logits: torch.Tensor, pred_boxes: torch.Tensor, tar
     num_boxes = max(sum(t["labels"].numel() for t in targets), 1)
 
     if matched_pred_boxes:
-        all_pred_boxes = torch.cat(matched_pred_boxes, dim=0)   # (total_matched, 4)
-        all_target_boxes = torch.cat(matched_target_boxes, dim=0)   # (total_matched, 4)
+        all_pred_boxes = torch.cat(matched_pred_boxes, dim=0)  # (total_matched, 4)
+        all_target_boxes = torch.cat(matched_target_boxes, dim=0)  # (total_matched, 4)
 
         loss_bbox = F.l1_loss(all_pred_boxes, all_target_boxes, reduction="sum") / num_boxes
 
@@ -241,8 +263,3 @@ def set_prediction_loss(pred_logits: torch.Tensor, pred_boxes: torch.Tensor, tar
         loss_bbox, loss_giou = zero, zero
 
     return {"loss_ce": loss_ce, "loss_bbox": loss_bbox, "loss_giou": loss_giou}
-
-
-
-
-

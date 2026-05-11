@@ -14,10 +14,10 @@ import torch.nn as nn
 
 from focal_loss import focal_loss
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def batch() -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
@@ -34,19 +34,21 @@ def batch() -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
 # Correctness: gamma=0 must recover weighted CE exactly
 # ---------------------------------------------------------------------------
 
+
 class TestGammaZeroEquivalence:
     def test_scalar_equals_weighted_ce(self, batch: tuple) -> None:
         logits, targets, alpha = batch
         fl = focal_loss(logits, targets, alpha, gamma=0.0)
         ce = nn.CrossEntropyLoss(weight=alpha)(logits, targets)
-        assert torch.allclose(fl, ce, atol=1e-6), (f"focal_loss(gamma=0) = {fl.item():.8f}, "
-                                                   f"CrossEntropyLoss    = {ce.item():.8f}")
+        assert torch.allclose(fl, ce, atol=1e-6), (
+            f"focal_loss(gamma=0) = {fl.item():.8f}, " f"CrossEntropyLoss    = {ce.item():.8f}"
+        )
 
     def test_equivalence_single_class_dominant(self) -> None:
         """Holds even when alpha weights are highly imbalanced."""
         torch.manual_seed(1)
         logits = torch.randn(16, 7)
-        targets = torch.zeros(16, dtype=torch.long)   # all same class
+        targets = torch.zeros(16, dtype=torch.long)  # all same class
         alpha = torch.tensor([0.1, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0])
         fl = focal_loss(logits, targets, alpha, gamma=0.0)
         ce = nn.CrossEntropyLoss(weight=alpha)(logits, targets)
@@ -67,6 +69,7 @@ class TestGammaZeroEquivalence:
 # Correctness: focal weight decreases monotonically with gamma
 # ---------------------------------------------------------------------------
 
+
 class TestFocalWeightMonotonicity:
     def test_loss_decreases_as_gamma_increases_for_easy_examples(self) -> None:
         """
@@ -78,10 +81,10 @@ class TestFocalWeightMonotonicity:
         torch.manual_seed(3)
         N, C = 32, 7
         # Large logit for class 0 so p_t is high for all samples.
-        logits  = torch.full((N, C), -5.0)
+        logits = torch.full((N, C), -5.0)
         logits[:, 0] = 10.0
         targets = torch.zeros(N, dtype=torch.long)
-        alpha   = torch.ones(C)
+        alpha = torch.ones(C)
 
         gammas = [0.0, 0.5, 1.0, 2.0, 3.0, 5.0]
         losses = [focal_loss(logits, targets, alpha, gamma=g).item() for g in gammas]
@@ -102,14 +105,13 @@ class TestFocalWeightMonotonicity:
         for pt in p_t:
             weights = [(1.0 - pt.item()) ** g for g in gammas]
             for i in range(len(weights) - 1):
-                assert weights[i] >= weights[i + 1], (
-                    f"p_t={pt.item()}: weight not decreasing at gamma={gammas[i+1]}"
-                )
+                assert weights[i] >= weights[i + 1], f"p_t={pt.item()}: weight not decreasing at gamma={gammas[i+1]}"
 
 
 # ---------------------------------------------------------------------------
 # Output properties
 # ---------------------------------------------------------------------------
+
 
 class TestOutputProperties:
     def test_output_is_scalar(self, batch: tuple) -> None:
@@ -132,9 +134,9 @@ class TestOutputProperties:
     def test_perfect_predictions_low_loss(self) -> None:
         """With very confident correct predictions, focal loss should be near zero."""
         C = 7
-        logits  = torch.eye(C) * 50.0         # one-hot style, 7 samples
+        logits = torch.eye(C) * 50.0  # one-hot style, 7 samples
         targets = torch.arange(C)
-        alpha   = torch.ones(C)
+        alpha = torch.ones(C)
         loss = focal_loss(logits, targets, alpha, gamma=2.0)
         assert loss.item() < 1e-3
 
@@ -142,6 +144,7 @@ class TestOutputProperties:
 # ---------------------------------------------------------------------------
 # Input validation
 # ---------------------------------------------------------------------------
+
 
 class TestInputValidation:
     def test_wrong_logits_ndim(self, batch: tuple) -> None:

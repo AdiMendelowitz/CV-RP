@@ -11,6 +11,7 @@ prediction (28x28)
 import torch
 import torch.nn as nn
 
+
 class MaskHead(nn.Module):
     """
     Fully convolutional mask prediction head.
@@ -52,7 +53,7 @@ class MaskHead(nn.Module):
         """Initializes all conv weights with Kaiming normal and zero biases."""
         for module in self.modules():
             if isinstance(module, (nn.Conv2d, nn.ConvTranspose2d)):
-                nn.init.kaiming_normal_(module.weight, mode='fan_out', nonlinearity='relu')
+                nn.init.kaiming_normal_(module.weight, mode="fan_out", nonlinearity="relu")
                 if module.bias is not None:
                     nn.init.zeros_(module.bias)
 
@@ -69,6 +70,7 @@ class MaskHead(nn.Module):
         x = self.conv_layers(x)
         x = self.upsample_relu(self.upsample(x))
         return self.predict(x)
+
 
 if __name__ == "__main__":
     B, in_channels, num_classes = 4, 256, 80

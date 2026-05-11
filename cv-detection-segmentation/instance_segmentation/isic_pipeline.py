@@ -17,11 +17,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 from sklearn.metrics import balanced_accuracy_score
 
-__all__ = ["ISICPipeline", "PredicctionResult", "EvaluationResult"]
+__all__ = ["ISICPipeline", "PredictionResult", "EvaluationResult"]
 
 # -----------------------------------------------------------------------------------------------------------
 # Return types
 # -----------------------------------------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class PredictionResult:
@@ -36,11 +37,13 @@ class PredictionResult:
                           classification metrics exclude this image.
         score: Mask R-CNN confidence score of the selected detection. 0.0 if detection failed.
     """
+
     mask: np.ndarray
     class_label: int
     class_probabilities: np.ndarray | None
     detection_failed: bool
     score: float
+
 
 @dataclass(frozen=True)
 class EvaluationResult:
@@ -54,6 +57,7 @@ class EvaluationResult:
         n_total: Total number of images evaluated.
         n_detection_failed: Number of images where Mask R-CNN produced no detection.
     """
+
     mean_jaccard: float
     balanced_accuracy: float | None
     combined_score: float | None
@@ -64,6 +68,7 @@ class EvaluationResult:
 # -----------------------------------------------------------------------------------------------------------
 # Pipeline
 # -----------------------------------------------------------------------------------------------------------
+
 
 class ISICPipeline:
     """
@@ -91,10 +96,17 @@ class ISICPipeline:
         class_std: ImageNet normalization std applied to classifier crops. Default: (0.229, 0.224, 0.225).
     """
 
-    def __init__(self, segment_model: nn.Module, class_model: nn.Module, img_size: int = 224,
-                 score_threshold: float = 0.5, mask_threshold: float = 0.5, jaccard_threshold: float = 0.65,
-                 class_mean: tuple[float, float, float] = (0.485, 0.456, 0.406),
-                 class_std: tuple[float, float, float] = (0.229, 0.224, 0.225)) -> None:
+    def __init__(
+        self,
+        segment_model: nn.Module,
+        class_model: nn.Module,
+        img_size: int = 224,
+        score_threshold: float = 0.5,
+        mask_threshold: float = 0.5,
+        jaccard_threshold: float = 0.65,
+        class_mean: tuple[float, float, float] = (0.485, 0.456, 0.406),
+        class_std: tuple[float, float, float] = (0.229, 0.224, 0.225),
+    ) -> None:
         self.segment_model = segment_model.eval()
         self.class_model = class_model.eval()
         self.img_size = img_size
@@ -104,7 +116,6 @@ class ISICPipeline:
         self.class_mean = class_mean
         self.class_std = class_std
         self.device = next(segment_model.parameters()).device
-
 
     # --------------------------------------------------------------------------------------------------------
     # Internal helpers
@@ -123,7 +134,7 @@ class ISICPipeline:
             score: Confidence of selected detection. 0.0 if failed.
         """
 
-        H, W  = image.shape[1], image.shape[2]
+        H, W = image.shape[1], image.shape[2]
         output = self.segment_model([image])[0]
 
         keep = output["scores"] >= self.score_threshold
@@ -164,8 +175,9 @@ class ISICPipeline:
             return None
 
         crop = image[:, y1:y2, x1:x2]
-        crop = F.interpolate(crop.unsqueeze(0), size=(self.img_size, self.img_size),
-                             mode="bilinear", align_corners=False)
+        crop = F.interpolate(
+            crop.unsqueeze(0), size=(self.img_size, self.img_size), mode="bilinear", align_corners=False
+        )
         mean = torch.tensor(self.class_mean, device=self.device).view(1, 3, 1, 1)
         std = torch.tensor(self.class_std, device=self.device).view(1, 3, 1, 1)
 
@@ -195,15 +207,14 @@ class ISICPipeline:
             return 0.0
 
         iou = float((pred & gt).sum() / union)
-        return iou if iou>= threshold else 0.0
-
+        return iou if iou >= threshold else 0.0
 
     # --------------------------------------------------------------------------------------------------------
     # Public API
     # --------------------------------------------------------------------------------------------------------
 
     @torch.no_grad()
-    def predict(self, image: torch.Tensor)  -> PredictionResult:
+    def predict(self, image: torch.Tensor) -> PredictionResult:
         """
         Run the full pipeline on a single image.
 
@@ -213,26 +224,28 @@ class ISICPipeline:
         Returns:
             PredictionResult with mask, class_label, class_probabilities, detection_failed and score fields.
         """
-        H, W = image.shape[1], image.shape[2]
         image = image.to(self.device)
 
         binary_mask, box, score = self._run_segmentation(image)
 
         if box is None:
-            return PredictionResult(mask=binary_mask, class_label=-1, class_probabilities=None,
-                                    detection_failed=True, score=0.0)
+            return PredictionResult(
+                mask=binary_mask, class_label=-1, class_probabilities=None, detection_failed=True, score=0.0
+            )
 
         crop = self._crop_and_preprocess(image, box)
         if crop is None:
-            return PredictionResult(mask=binary_mask, class_label=-1, class_probabilities=None,
-                                    detection_failed=True, score=0.0)
+            return PredictionResult(
+                mask=binary_mask, class_label=-1, class_probabilities=None, detection_failed=True, score=0.0
+            )
 
         logit = self.class_model(crop)
         probs = torch.softmax(logit, dim=1)[0].cpu().numpy()
         label = int(probs.argmax())
 
-        return PredictionResult(mask=binary_mask, class_label=label, class_probabilities=probs,
-                                detection_failed=False, score=score)
+        return PredictionResult(
+            mask=binary_mask, class_label=label, class_probabilities=probs, detection_failed=False, score=score
+        )
 
     @torch.no_grad()
     def evaluate(self, dataloader: torch.utils.data.DataLoader) -> PredictionResult:
@@ -268,12 +281,13 @@ class ISICPipeline:
             image, gt_mask, gt_class_label = batch
 
             if image.shape[0] != 1:
-                raise ValueError(f"evaluate() requires batch_size=1, got {image.shape[0]}."
-                                 "predict() processes one image at a time")
+                raise ValueError(
+                    f"evaluate() requires batch_size=1, got {image.shape[0]}." "predict() processes one image at a time"
+                )
 
             image = image[0]
             gt_mask = gt_mask[0].numpy().astype(bool)
-            gt_label = int(gt_label.item()) if isinstance(gt_label, torch.Tensor) else int(gt_label)
+            gt_label = int(gt_class_label.item()) if isinstance(gt_class_label, torch.Tensor) else int(gt_class_label)
 
             result = self.predict(image)
 
@@ -283,7 +297,7 @@ class ISICPipeline:
                 n_detection_failed += 1
             else:
                 class_preds.append(result.class_label)
-                class_labels.append(result.class_label)
+                class_labels.append(gt_label)
 
         n_total = len(jaccard_scores)
         mean_jaccard = float(np.mean(jaccard_scores)) if jaccard_scores else 0.0
@@ -292,15 +306,12 @@ class ISICPipeline:
             bal_acc = float(balanced_accuracy_score(class_labels, class_preds))
             combined = (mean_jaccard + bal_acc) / 2
         else:
-            bal_acc = combined = 0.0
+            bal_acc, combined = None, None
 
-        return EvaluationResult(mean_jaccard=mean_jaccard, balanced_accuracy=bal_acc, combined_score=combined,
-                                n_total=n_total, n_detection_failed=n_detection_failed)
-
-
-
-
-
-
-
-
+        return EvaluationResult(
+            mean_jaccard=mean_jaccard,
+            balanced_accuracy=bal_acc,
+            combined_score=combined,
+            n_total=n_total,
+            n_detection_failed=n_detection_failed,
+        )

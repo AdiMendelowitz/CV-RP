@@ -9,6 +9,7 @@ All box coordinates are in absolute feature-map space (pre scaled).
 
 import torch
 
+
 def bilinear_interpolation(feature_map: torch.Tensor, row_c: torch.Tensor, col_c: torch.Tensor) -> torch.Tensor:
     """
     Sample a feature map at continuous (x, y) coordinates using bilinear interpolation.
@@ -31,8 +32,8 @@ def bilinear_interpolation(feature_map: torch.Tensor, row_c: torch.Tensor, col_c
 
     x0 = row_c.floor().long()
     y0 = col_c.floor().long()
-    x1 = (x0 + 1).clamp(max=H-1)
-    y1 = (y0 + 1).clamp(max=W-1)
+    x1 = (x0 + 1).clamp(max=H - 1)
+    y1 = (y0 + 1).clamp(max=W - 1)
 
     # Bilinear weights: fractional distance from the upper-left neighbour.
     w_x1 = (row_c - x0.float()).unsqueeze(0)  # (1, N)
@@ -46,10 +47,12 @@ def bilinear_interpolation(feature_map: torch.Tensor, row_c: torch.Tensor, col_c
     n10 = feature_map[:, x1, y0]
     n11 = feature_map[:, x1, y1]
 
-    return w_x0*w_y0*n00 + w_x0*w_y1*n01 + w_x1*w_y0*n10 + w_x1*w_y1*n11
+    return w_x0 * w_y0 * n00 + w_x0 * w_y1 * n01 + w_x1 * w_y0 * n10 + w_x1 * w_y1 * n11
 
-def roi_align(feature_map: torch.Tensor, boxes: torch.Tensor, output_size: int,
-              sampling_ratio: int = 2) -> torch.Tensor:
+
+def roi_align(
+    feature_map: torch.Tensor, boxes: torch.Tensor, output_size: int, sampling_ratio: int = 2
+) -> torch.Tensor:
     """
     Extract fixed-sized features for a set of RoI boxes using RoI Align.
 
@@ -82,29 +85,35 @@ def roi_align(feature_map: torch.Tensor, boxes: torch.Tensor, output_size: int,
         bin_h = roi_h / output_size
 
         # Build all sample point coordinates
-        bin_i = torch.arange(output_size, device=device, dtype=torch.float32) # row
-        bin_j = torch.arange(output_size, device=device, dtype=torch.float32) # column
+        bin_i = torch.arange(output_size, device=device, dtype=torch.float32)  # row
+        bin_j = torch.arange(output_size, device=device, dtype=torch.float32)  # column
         s = torch.arange(sampling_ratio, device=device, dtype=torch.float32)
 
         # Even spacing within the bin
         offset = (s + 0.5) / sampling_ratio
-        sample_y = y1 + (bin_i.unsqueeze(1) + offset.unsqueeze(0)) * bin_h   # (output_size, sampling_ratio)
-        sample_x = x1 + (bin_j.unsqueeze(1) + offset.unsqueeze(0)) * bin_w   # (output_size, sampling_ratio)
+        sample_y = y1 + (bin_i.unsqueeze(1) + offset.unsqueeze(0)) * bin_h  # (output_size, sampling_ratio)
+        sample_x = x1 + (bin_j.unsqueeze(1) + offset.unsqueeze(0)) * bin_w  # (output_size, sampling_ratio)
 
         # Expand to all (bin_i, bin_j, si, sj) combinations.
         # y depends on row bin and si, x on col bin and sj.
         # Flatten to 1D of (output_size^2)*(sampling_ratio^2) length for a single batched interpolation call
-        y_coords = sample_y.unsqueeze(1).unsqueeze(3).expand(
-            output_size, output_size, sampling_ratio, sampling_ratio
-        ).reshape(-1)
-        x_coords = sample_x.unsqueeze(0).unsqueeze(2).expand(
-            output_size, output_size, sampling_ratio, sampling_ratio
-        ).reshape(-1)
+        y_coords = (
+            sample_y.unsqueeze(1)
+            .unsqueeze(3)
+            .expand(output_size, output_size, sampling_ratio, sampling_ratio)
+            .reshape(-1)
+        )
+        x_coords = (
+            sample_x.unsqueeze(0)
+            .unsqueeze(2)
+            .expand(output_size, output_size, sampling_ratio, sampling_ratio)
+            .reshape(-1)
+        )
 
         # Interpolate all sample points at once, (C, total_samples)
         samples = bilinear_interpolation(feature_map, y_coords, x_coords)
 
-        samples = samples.reshape(C, output_size, output_size, sampling_ratio*sampling_ratio)
+        samples = samples.reshape(C, output_size, output_size, sampling_ratio * sampling_ratio)
 
         output[r] = samples.mean(dim=-1)
 

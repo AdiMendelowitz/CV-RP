@@ -8,10 +8,10 @@ import torch
 from roi_align import bilinear_interpolation, roi_align
 from mask_head import MaskHead
 
-
 # ---------------------------------------------------------------------------
 # roi_align
 # ---------------------------------------------------------------------------
+
 
 class TestRoIAlign:
 
@@ -20,17 +20,22 @@ class TestRoIAlign:
         C, H, W = 32, 64, 64
         R, output_size = 5, 7
         feature_map = torch.rand(C, H, W)
-        boxes = torch.tensor([
-            [5.0, 5.0, 20.0, 20.0],
-            [10.0, 10.0, 40.0, 40.0],
-            [0.0, 0.0, 63.0, 63.0],
-            [15.0, 8.0, 30.0, 50.0],
-            [2.0, 2.0, 10.0, 10.0],
-        ])
-        out = roi_align(feature_map, boxes, output_size=output_size)
-        assert out.shape == (R, C, output_size, output_size), (
-            f"Expected shape ({R}, {C}, {output_size}, {output_size}), got {out.shape}"
+        boxes = torch.tensor(
+            [
+                [5.0, 5.0, 20.0, 20.0],
+                [10.0, 10.0, 40.0, 40.0],
+                [0.0, 0.0, 63.0, 63.0],
+                [15.0, 8.0, 30.0, 50.0],
+                [2.0, 2.0, 10.0, 10.0],
+            ]
         )
+        out = roi_align(feature_map, boxes, output_size=output_size)
+        assert out.shape == (
+            R,
+            C,
+            output_size,
+            output_size,
+        ), f"Expected shape ({R}, {C}, {output_size}, {output_size}), got {out.shape}"
 
     def test_float_coords_differ_from_snapped_integer_coords(self):
         """Bilinear interpolation at fractional coordinates must differ from nearest-integer sampling."""
@@ -59,9 +64,9 @@ class TestRoIAlign:
         boxes = box.expand(3, -1)  # three identical boxes
 
         out = roi_align(feature_map, boxes, output_size=7)
-        assert torch.allclose(out[0], out[1], atol=1e-6) and torch.allclose(out[1], out[2], atol=1e-6), (
-            "Identical boxes produced different pooled features."
-        )
+        assert torch.allclose(out[0], out[1], atol=1e-6) and torch.allclose(
+            out[1], out[2], atol=1e-6
+        ), "Identical boxes produced different pooled features."
 
     def test_output_values_finite(self):
         """All output values must be finite for valid inputs."""
@@ -78,14 +83,15 @@ class TestRoIAlign:
         feature_map = torch.full((C, H, W), fill_value)
         boxes = torch.tensor([[2.0, 2.0, 12.0, 12.0]])
         out = roi_align(feature_map, boxes, output_size=5)
-        assert torch.allclose(out, torch.full_like(out, fill_value), atol=1e-5), (
-            "Constant feature map did not produce constant RoI output."
-        )
+        assert torch.allclose(
+            out, torch.full_like(out, fill_value), atol=1e-5
+        ), "Constant feature map did not produce constant RoI output."
 
 
 # ---------------------------------------------------------------------------
 # bilinear_interpolate
 # ---------------------------------------------------------------------------
+
 
 class TestBilinearInterpolate:
 
@@ -106,14 +112,15 @@ class TestBilinearInterpolate:
         xs = torch.tensor([3.0, 7.0, 1.0])
         out = bilinear_interpolation(feature_map, ys, xs)
         for i, (r, c) in enumerate(zip([2, 5, 10], [3, 7, 1])):
-            assert torch.allclose(out[:, i], feature_map[:, r, c], atol=1e-6), (
-                f"Interpolated value at integer coord ({r},{c}) does not match direct lookup."
-            )
+            assert torch.allclose(
+                out[:, i], feature_map[:, r, c], atol=1e-6
+            ), f"Interpolated value at integer coord ({r},{c}) does not match direct lookup."
 
 
 # ---------------------------------------------------------------------------
 # MaskHead
 # ---------------------------------------------------------------------------
+
 
 class TestMaskHead:
 
@@ -123,9 +130,7 @@ class TestMaskHead:
         head = MaskHead(in_channels=in_channels, num_classes=num_classes)
         x = torch.rand(B, in_channels, 14, 14)
         out = head(x)
-        assert out.shape == (B, num_classes, 28, 28), (
-            f"Expected shape ({B}, {num_classes}, 28, 28), got {out.shape}"
-        )
+        assert out.shape == (B, num_classes, 28, 28), f"Expected shape ({B}, {num_classes}, 28, 28), got {out.shape}"
 
     def test_gradient_flows_to_all_parameters(self):
         """A backward pass must produce non-None, non-zero gradients for every parameter."""
@@ -137,9 +142,7 @@ class TestMaskHead:
 
         for name, param in head.named_parameters():
             assert param.grad is not None, f"No gradient for parameter: {name}"
-            assert param.grad.abs().sum().item() > 0.0, (
-                f"Zero gradient for parameter: {name}"
-            )
+            assert param.grad.abs().sum().item() > 0.0, f"Zero gradient for parameter: {name}"
 
     def test_hidden_channels_respected(self):
         """Custom hidden_channels must not raise and must produce the correct output shape."""
@@ -147,9 +150,7 @@ class TestMaskHead:
         head = MaskHead(in_channels=in_channels, num_classes=num_classes, hidden_channels=hidden)
         x = torch.rand(B, in_channels, 14, 14)
         out = head(x)
-        assert out.shape == (B, num_classes, 28, 28), (
-            f"Expected shape ({B}, {num_classes}, 28, 28), got {out.shape}"
-        )
+        assert out.shape == (B, num_classes, 28, 28), f"Expected shape ({B}, {num_classes}, 28, 28), got {out.shape}"
 
     def test_output_is_raw_logits(self):
         """Output must be unbounded raw logits, not probabilities in [0, 1]."""
@@ -158,9 +159,9 @@ class TestMaskHead:
         x = torch.rand(B, in_channels, 14, 14)
         out = head(x)
         has_values_outside_unit = (out.abs() > 1.0).any()
-        assert has_values_outside_unit, (
-            "All output values are in [-1, 1]; expected raw logits with values outside this range."
-        )
+        assert (
+            has_values_outside_unit
+        ), "All output values are in [-1, 1]; expected raw logits with values outside this range."
 
     def test_output_values_finite(self):
         """Output must not contain NaN or Inf for valid inputs."""

@@ -9,18 +9,20 @@ import torch
 import pytest
 from hungarian_loss import build_cost_matrix, compute_giou, hungarian_match, set_prediction_loss
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_boxes(*args: tuple) -> torch.Tensor:
     """Returns multiple boxes as an (N, 4) tensor. Each arg is (cx, cy, w, h)."""
     return torch.tensor(args, dtype=torch.float32)
 
+
 # ---------------------------------------------------------------------------
 # compute_giou
 # ---------------------------------------------------------------------------
+
 
 class TestComputeGIoU:
 
@@ -32,9 +34,7 @@ class TestComputeGIoU:
         )
         result = compute_giou(boxes, boxes)  # (2, 2)
         diagonal = result.diagonal()
-        assert torch.allclose(diagonal, torch.ones(2), atol=1e-5), (
-            f"Expected diagonal GIoU = 1.0, got {diagonal}"
-        )
+        assert torch.allclose(diagonal, torch.ones(2), atol=1e-5), f"Expected diagonal GIoU = 1.0, got {diagonal}"
 
     def test_non_overlapping_boxes_leq_zero(self):
         """Boxes with no intersection must give GIoU <= 0."""
@@ -42,18 +42,14 @@ class TestComputeGIoU:
         box_a = _make_boxes((0.1, 0.1, 0.1, 0.1))
         box_b = _make_boxes((0.9, 0.9, 0.1, 0.1))
         result = compute_giou(box_a, box_b)  # (1, 1)
-        assert result.item() <= 0.0, (
-            f"Expected GIoU <= 0 for non-overlapping boxes, got {result.item():.4f}"
-        )
+        assert result.item() <= 0.0, f"Expected GIoU <= 0 for non-overlapping boxes, got {result.item():.4f}"
 
     def test_non_overlapping_boxes_geq_minus_one(self):
         """GIoU must stay within the valid range [-1, 1]."""
         box_a = _make_boxes((0.1, 0.1, 0.1, 0.1))
         box_b = _make_boxes((0.9, 0.9, 0.1, 0.1))
         result = compute_giou(box_a, box_b)
-        assert result.item() >= -1.0, (
-            f"GIoU below -1.0: {result.item():.4f}"
-        )
+        assert result.item() >= -1.0, f"GIoU below -1.0: {result.item():.4f}"
 
     def test_symmetry(self):
         """GIoU(A, B) must equal GIoU(B, A)^T."""
@@ -68,9 +64,7 @@ class TestComputeGIoU:
         )
         ab = compute_giou(boxes_a, boxes_b)  # (2, 3)
         ba = compute_giou(boxes_b, boxes_a)  # (3, 2)
-        assert torch.allclose(ab, ba.T, atol=1e-5), (
-            "GIoU matrix is not symmetric under transposition."
-        )
+        assert torch.allclose(ab, ba.T, atol=1e-5), "GIoU matrix is not symmetric under transposition."
 
     def test_output_shape(self):
         """Output shape must be (N, M) for inputs of shape (N, 4) and (M, 4)."""
@@ -86,6 +80,7 @@ class TestComputeGIoU:
 # ---------------------------------------------------------------------------
 # build_cost_matrix
 # ---------------------------------------------------------------------------
+
 
 class TestBuildCostMatrix:
 
@@ -126,21 +121,32 @@ class TestBuildCostMatrix:
         target_boxes[:, 2:] = 0.2
 
         cost_base = build_cost_matrix(
-            pred_logits, pred_boxes, target_labels, target_boxes,
-            cost_class=0.0, cost_bbox=1.0, cost_giou=0.0,
+            pred_logits,
+            pred_boxes,
+            target_labels,
+            target_boxes,
+            cost_class=0.0,
+            cost_bbox=1.0,
+            cost_giou=0.0,
         )
         cost_double = build_cost_matrix(
-            pred_logits, pred_boxes, target_labels, target_boxes,
-            cost_class=0.0, cost_bbox=2.0, cost_giou=0.0,
+            pred_logits,
+            pred_boxes,
+            target_labels,
+            target_boxes,
+            cost_class=0.0,
+            cost_bbox=2.0,
+            cost_giou=0.0,
         )
-        assert torch.allclose(cost_double, 2.0 * cost_base, atol=1e-5), (
-            "Doubling cost_bbox did not double the cost matrix."
-        )
+        assert torch.allclose(
+            cost_double, 2.0 * cost_base, atol=1e-5
+        ), "Doubling cost_bbox did not double the cost matrix."
 
 
 # ---------------------------------------------------------------------------
 # hungarian_match
 # ---------------------------------------------------------------------------
+
 
 class TestHungarianMatch:
 
@@ -150,12 +156,10 @@ class TestHungarianMatch:
         cost_matrix = torch.ones(M, M) - torch.eye(M)  # 0 on diagonal, 1 elsewhere
         pred_idx, tgt_idx = hungarian_match(cost_matrix)
 
-        assert torch.equal(pred_idx, torch.arange(M)), (
-            f"Expected pred_indices = {list(range(M))}, got {pred_idx.tolist()}"
-        )
-        assert torch.equal(tgt_idx, torch.arange(M)), (
-            f"Expected tgt_indices = {list(range(M))}, got {tgt_idx.tolist()}"
-        )
+        assert torch.equal(
+            pred_idx, torch.arange(M)
+        ), f"Expected pred_indices = {list(range(M))}, got {pred_idx.tolist()}"
+        assert torch.equal(tgt_idx, torch.arange(M)), f"Expected tgt_indices = {list(range(M))}, got {tgt_idx.tolist()}"
 
     def test_assignment_is_one_to_one(self):
         """No prediction index must appear more than once in the result."""
@@ -164,12 +168,8 @@ class TestHungarianMatch:
         pred_idx, tgt_idx = hungarian_match(cost_matrix)
 
         assert len(pred_idx) == M, f"Expected {M} assignments, got {len(pred_idx)}"
-        assert len(pred_idx.unique()) == M, (
-            f"Duplicate prediction indices in assignment: {pred_idx.tolist()}"
-        )
-        assert len(tgt_idx.unique()) == M, (
-            f"Duplicate target indices in assignment: {tgt_idx.tolist()}"
-        )
+        assert len(pred_idx.unique()) == M, f"Duplicate prediction indices in assignment: {pred_idx.tolist()}"
+        assert len(tgt_idx.unique()) == M, f"Duplicate target indices in assignment: {tgt_idx.tolist()}"
 
     def test_returns_long_tensors(self):
         """Returned indices must be LongTensors."""
@@ -181,22 +181,23 @@ class TestHungarianMatch:
     def test_minimum_cost_assignment(self):
         """The matched assignment must have lower total cost than a known suboptimal one."""
         # Cost matrix where the optimal assignment is anti-diagonal.
-        cost_matrix = torch.tensor([
-            [10.0, 1.0],
-            [1.0, 10.0],
-        ])
+        cost_matrix = torch.tensor(
+            [
+                [10.0, 1.0],
+                [1.0, 10.0],
+            ]
+        )
         pred_idx, tgt_idx = hungarian_match(cost_matrix)
         optimal_cost = cost_matrix[pred_idx, tgt_idx].sum().item()
         # Anti-diagonal: pred 0 -> tgt 1, pred 1 -> tgt 0, total cost = 2.0
         # Diagonal:      pred 0 -> tgt 0, pred 1 -> tgt 1, total cost = 20.0
-        assert optimal_cost == pytest.approx(2.0), (
-            f"Expected optimal cost 2.0, got {optimal_cost}"
-        )
+        assert optimal_cost == pytest.approx(2.0), f"Expected optimal cost 2.0, got {optimal_cost}"
 
 
 # ---------------------------------------------------------------------------
 # set_prediction_loss
 # ---------------------------------------------------------------------------
+
 
 class TestSetPredictionLoss:
 
@@ -210,11 +211,15 @@ class TestSetPredictionLoss:
         - Query 2 predicts no-object with certainty.
         """
         logit_scale = 100.0
-        pred_logits = torch.tensor([[
-            [logit_scale, -logit_scale, -logit_scale],  # strongly class 0
-            [-logit_scale, logit_scale, -logit_scale],  # strongly class 1
-            [-logit_scale, -logit_scale, logit_scale],  # strongly no-object
-        ]])  # (1, 3, 3)
+        pred_logits = torch.tensor(
+            [
+                [
+                    [logit_scale, -logit_scale, -logit_scale],  # strongly class 0
+                    [-logit_scale, logit_scale, -logit_scale],  # strongly class 1
+                    [-logit_scale, -logit_scale, logit_scale],  # strongly no-object
+                ]
+            ]
+        )  # (1, 3, 3)
 
         tgt_boxes = _make_boxes(
             (0.25, 0.25, 0.2, 0.2),
@@ -223,10 +228,12 @@ class TestSetPredictionLoss:
         pred_boxes = torch.cat([tgt_boxes, _make_boxes((0.5, 0.5, 0.1, 0.1))], dim=0)
         pred_boxes = pred_boxes.unsqueeze(0)  # (1, 3, 4)
 
-        targets = [{
-            "labels": torch.tensor([0, 1], dtype=torch.long),
-            "boxes": tgt_boxes,
-        }]
+        targets = [
+            {
+                "labels": torch.tensor([0, 1], dtype=torch.long),
+                "boxes": tgt_boxes,
+            }
+        ]
         return pred_logits, pred_boxes, targets
 
     def test_near_zero_loss_on_perfect_predictions(self):
@@ -235,9 +242,9 @@ class TestSetPredictionLoss:
         losses = set_prediction_loss(pred_logits, pred_boxes, targets)
 
         for name, value in losses.items():
-            assert value.item() == pytest.approx(0.0, abs=1e-3), (
-                f"{name} = {value.item():.6f}, expected near zero for perfect predictions."
-            )
+            assert value.item() == pytest.approx(
+                0.0, abs=1e-3
+            ), f"{name} = {value.item():.6f}, expected near zero for perfect predictions."
 
     def test_positive_loss_on_random_predictions(self):
         """All three loss components must be strictly positive for random predictions."""
@@ -260,17 +267,17 @@ class TestSetPredictionLoss:
         losses = set_prediction_loss(pred_logits, pred_boxes, targets)
 
         for name, value in losses.items():
-            assert value.item() > 0.0, (
-                f"{name} = {value.item():.6f}, expected strictly positive for random inputs."
-            )
+            assert value.item() > 0.0, f"{name} = {value.item():.6f}, expected strictly positive for random inputs."
 
     def test_output_keys(self):
         """Return dict must contain exactly loss_ce, loss_bbox, and loss_giou."""
         pred_logits, pred_boxes, targets = self._make_perfect_inputs()
         losses = set_prediction_loss(pred_logits, pred_boxes, targets)
-        assert set(losses.keys()) == {"loss_ce", "loss_bbox", "loss_giou"}, (
-            f"Unexpected loss keys: {set(losses.keys())}"
-        )
+        assert set(losses.keys()) == {
+            "loss_ce",
+            "loss_bbox",
+            "loss_giou",
+        }, f"Unexpected loss keys: {set(losses.keys())}"
 
     def test_all_losses_are_scalar_tensors(self):
         """Each returned loss must be a zero-dimensional tensor."""
