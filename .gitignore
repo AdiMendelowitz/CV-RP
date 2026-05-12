@@ -79,3 +79,5 @@ results/
 
 /cv-detection-segmentation/instance_segmentation/outputs/task1/checkpoints/
 /cv-detection-segmentation/instance_segmentation/outputs/task3/checkpoints/
+time-series-forecasting/results/*.csv
+time-series-forecasting/results/checkpoints/

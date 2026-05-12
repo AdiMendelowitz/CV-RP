@@ -2,8 +2,7 @@
 ETTh1 dataset for long-horizon multivariate time series forecasting.
 
 Dataset: Electricity Transformer Temperature, hourly (ETTh1).
-Source: thuml/iTransformer repository, datasets/ETT-small/ETTh1.csv.
-  https://github.com/thuml/iTransformer/tree/main/dataset/ETT-small
+Source: https://github.com/zhouhaoyi/ETDataset/blob/main/ETT-small/ETTh1.csv
 
 Split protocol: (matches PatchTST, iTransformer, TimeMixer papers):
     Train: first 12 months -> rows [0, 8640)
@@ -36,7 +35,7 @@ Split = Literal["train", "val", "test"]
 
 class ETTh1Dataset(Dataset):
     """
-    Sliding window dataset over the ETTH1 time series.
+    Sliding window dataset over the ETTh1 time series.
 
     Args:
         csv_path: Path to ETTh1.csv.
@@ -89,7 +88,7 @@ class ETTh1Dataset(Dataset):
         if idx <0 or idx >= self._num_samples:
             raise IndexError(f"Index {idx} out of range [0, {self._num_samples})")
         x = self._data[idx : idx + self.seq_len]    # (seq_len, C)
-        y = self._data[idx + self.seq_len : idx + self.seq_len + self.pred_len]  # (seq_len, C)
+        y = self._data[idx + self.seq_len : idx + self.seq_len + self.pred_len]  # (pred_len, C)
         return torch.from_numpy(x), torch.from_numpy(y)
 
     # ----------------------------------------------------------------------------
@@ -98,7 +97,7 @@ class ETTh1Dataset(Dataset):
 
     @property
     def num_features(self) -> int:
-        """Number of channels / variants."""
+        """Number of channels / variates."""
         return self._data.shape[1]
 
     @property
@@ -121,9 +120,9 @@ class ETTh1Dataset(Dataset):
         if not path.exists():
             raise FileNotFoundError(
                 f"ETTh1.csv not found {path}. Please download from "
-                "https://github.com/thuml/iTransformer/tree/main/dataset/ETT-small"
+                "https://github.com/zhouhaoyi/ETDataset"
             )
-        df = pd.read_csv(path, parse_dates=["date"])
+        df = pd.read_csv(path)
         numeric = df.drop(columns=["date"])
         if numeric.isnull().any().any():
             raise ValueError("ETHH1.csv contains NaN values, preprocess required.")
@@ -134,7 +133,7 @@ class ETTh1Dataset(Dataset):
         if len(data) < _TEST_END:
             raise ValueError(
                 f"ETTH1.csv has {len(data)} rows but at least {_TEST_END} are required for"
-                "the standard 12/4/4 month split"
+                " the standard 12/4/4 month split"
             )
 
     @staticmethod
