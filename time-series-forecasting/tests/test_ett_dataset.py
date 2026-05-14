@@ -11,7 +11,6 @@ ensuring the split arithmetic is exercised with realistic lengths.
 
 from __future__ import annotations
 
-import tempfile
 from pathlib import Path
 
 import numpy as np
