@@ -1,102 +1,121 @@
 # Medical Imaging: ISIC 2018 Skin Lesion Dataset
 
-**Reference:** Codella et al., "Skin Lesion Analysis Toward Melanoma Detection 2018:
-A Challenge Hosted by the International Skin Imaging Collaboration (ISIC),"
-arXiv:1902.03368, 2019.
-
-**Underlying dataset:** Tschandl et al., "The HAM10000 Dataset, a Large Collection
-of Multi-Source Dermatoscopic Images of Common Pigmented Skin Lesions,"
-Scientific Data, 2018. https://doi.org/10.1038/sdata.2018.161
+**Challenge reference:** Codella et al., “Skin Lesion Analysis Toward Melanoma Detection 2018: A Challenge Hosted by the International Skin Imaging Collaboration (ISIC),” arXiv:1902.03368, 2019.[file:235][web:233]  
+**Underlying dataset:** Tschandl et al., “The HAM10000 Dataset, a Large Collection of Multi‑Source Dermatoscopic Images of Common Pigmented Skin Lesions,” *Scientific Data*, 2018.[file:235]
 
 ---
 
-## Challenge Overview
+## Challenge overview
 
-The ISIC 2018 challenge was hosted at MICCAI 2018 in Granada, Spain. It comprised
-three tasks: lesion segmentation (Task 1), lesion attribute detection (Task 2), and
-disease classification (Task 3). This project implements Tasks 1 and 3. Over 900
-users registered for data download, with 115 and 159 teams submitting to the
-segmentation and classification tasks respectively.
+The ISIC 2018 challenge (MICCAI 2018, Granada) comprised three tasks:[file:235][web:233]
 
----
+- Task 1: Lesion segmentation.  
+- Task 2: Lesion attribute detection.  
+- Task 3: Disease classification.
 
-## Task 1: Lesion Segmentation
-
-**Dataset:** `tschandl/isic2018-challenge-task1-data-segmentation` (Kaggle)
-
-**Official dataset size:**
-- Training: 2,594 dermoscopic images with binary segmentation masks
-- Validation: 100 images (official; not used in this project)
-- Test: 1,000 images (official; not used in this project)
-
-**Project split:** 80/20 random split of the 2,594 training images, yielding
-approximately 2,075 training images and 519 validation images. No official
-validation split is provided by the challenge organisers.
-
-**Image resolution:** 600 x 450 pixels (native). Resized to 512 x 512 in this
-project; 256 x 256 and 512 x 512 are both standard in published work.
-
-**Evaluation metric:** Thresholded Jaccard index (T = 0.65). Standard Jaccard
-(intersection over union) is computed per image; values below T = 0.65 are set
-to zero before averaging across the validation set. This threshold was derived
-from inter-observer variability measurements on the 2016 challenge data, where
-the lowest pairwise annotator agreement was 0.743. The thresholded variant
-penalises gross segmentation failures more directly than mean Jaccard alone.
-
-The top submission in 2018 achieved a Thresholded Jaccard of 0.802. Even the
-best algorithms failed on more than 10% of images, with failure rates highest
-for images containing clinical measurement artefacts such as rulers and ink marks
-(Codella et al., 2019).
-
-**Implementation approach:** Mask R-CNN with a ResNet-50-FPN backbone pretrained
-on COCO (`torchvision.models.detection.maskrcnn_resnet50_fpn`,
-`weights=MaskRCNN_ResNet50_FPN_Weights.DEFAULT`). Both the box predictor head
-and the mask predictor head were replaced for 2 output classes (background and
-lesion). The backbone and FPN weights were retained from COCO pretraining.
-Bounding boxes are derived from the tight bounding rectangle of each ground-truth
-mask at dataset load time, as required by the Mask R-CNN target format. Predicted
-soft masks are binarised at 0.5; validation is scored with Thresholded Jaccard
-(T = 0.65). Best checkpoint is saved by validation Jaccard.
-
-**Result:** Best validation Thresholded Jaccard of 0.7822 (Run 5, epoch 16).
+This project implements **Task 1 (segmentation)** and **Task 3 (classification)**.[file:235] Over 900 users registered for data download; 115 teams submitted for segmentation and 159 for classification.[file:235][web:233]
 
 ---
 
-## Task 3: Disease Classification
+## Task 1: Lesion segmentation
 
-**Dataset:** `kmader/skin-cancer-mnist-ham10000` (Kaggle)
+**Dataset:** `tschandl/isic2018-challenge-task1-data-segmentation` (Kaggle wrap of ISIC 2018 Task 1).[file:235]
 
-**Official dataset size:**
-- Training: 10,015 images with ground-truth class labels
-- Validation: 193 images (official; not used in this project)
-- Test: 1,512 images split into internal (1,196) and external (316) partitions
+### Dataset and splits
 
-The external test partition was drawn from institutions not represented in
-training (Turkey, New Zealand, Sweden, Argentina), specifically to test
-generalisation beyond the source distribution.
+Official ISIC 2018 Task 1 sizes:[file:235][web:233]
 
-**Project split:** Lesion-level stratified 80/20 split of the 10,015 training
-images, yielding 8,020 training images and 1,995 validation images. The split
-is performed on `lesion_id`, not `image_id`, because the same lesion appears
-multiple times in HAM10000 with different crops. Splitting on `image_id` would
-leak lesion information into validation and inflate metrics.
+- Training: 2,594 dermoscopic images with corresponding binary masks.  
+- Validation: 100 images (challenge validation; not used in this project).  
+- Test: 1,000 images (held out by organisers; not used here).
 
-**Image resolution:** 600 x 450 pixels native. Resized to 224 x 224, the
-canonical input size for EfficientNet-B0 pretrained on ImageNet.
+Project split:
 
-**Classes (7):**
+- Random 80/20 split of the 2,594 training images → ≈2,075 train / 519 validation.[file:235]  
+- No official training/validation split is provided; this internal split is standard practice.
 
-| Code  | Full Name                                                                        |
-|-------|----------------------------------------------------------------------------------|
-| NV    | Melanocytic nevus                                                                |
-| MEL   | Melanoma                                                                         |
-| BKL   | Benign keratosis (solar lentigo / seborrheic keratosis / lichen planus-like keratosis) |
-| BCC   | Basal cell carcinoma                                                             |
-| AKIEC | Actinic keratosis / Bowen's disease (intraepithelial carcinoma)                 |
-| VASC  | Vascular lesion                                                                  |
-| DF    | Dermatofibroma                                                                   |
+Image resolution:
 
-**Class distribution (full dataset, 10,015 images):**
+- Native images: 600×450 pixels.  
+- Resized to **512×512** for this project; 256×256 and 512×512 are both common in published work.[file:235]
+
+### Metric: thresholded Jaccard
+
+The official ISIC 2018 segmentation metric is **thresholded Jaccard index** \(T = 0.65\):[file:235][web:233]
+
+1. Compute standard Jaccard (IoU) per image between prediction and ground truth.  
+2. For each image, if IoU < 0.65, set that image’s score to 0.  
+3. Average over the dataset.
+
+The 0.65 threshold derives from inter‑observer variability on ISIC 2016: the lowest pairwise expert IoU was ≈0.743.[file:235][web:233] Thresholding penalises gross failures (e.g. missing the lesion entirely) much more strongly than mean IoU alone.[file:235]
+
+Top 2018 submission:
+
+- Best thresholded Jaccard ≈0.802; even top methods failed on >10% of images.[file:235][web:233]  
+- Failure rates were highest for images with artefacts such as rulers, ink marks, and occluding hair.[file:235][web:233]
+
+### Implementation: Mask R‑CNN
+
+Model:
+
+- **Mask R‑CNN** with ResNet‑50‑FPN backbone pretrained on COCO.  
+- Implementation: `torchvision.models.detection.maskrcnn_resnet50_fpn(weights=MaskRCNN_ResNet50_FPN_Weights.DEFAULT)`.  
+- Box and mask heads replaced to output 2 classes: background and lesion.[file:235]
+
+Targets:
+
+- Bounding boxes derived from the tight bounding rectangle of each ground‑truth mask at load time, matching Mask R‑CNN’s expected target format.[file:235]  
+- Predicted soft masks binarised at 0.5; validation scored with thresholded Jaccard (T = 0.65).[file:235]
+
+Training:
+
+- COCO‑pretrained backbone + FPN frozen or fine‑tuned; best checkpoint selected by validation thresholded Jaccard.[file:235]
+
+Result:
+
+- Best validation **thresholded Jaccard = 0.7822** (Run 5, epoch 16), close to the original challenge SOTA given differences in data splits and model variants.[file:235][web:233]
+
+---
+
+## Task 3: Disease classification
+
+**Dataset:** `kmader/skin-cancer-mnist-ham10000` (Kaggle mirror of HAM10000).[file:235]
+
+### Dataset and splits
+
+Official HAM10000 / ISIC Task 3 sizes:[file:235][web:233]
+
+- Training: 10,015 images with ground‑truth labels.  
+- Validation: 193 images (challenge validation set; not used here).  
+- Test: 1,512 images, split into:  
+  - Internal test: 1,196 images from training institutions.  
+  - External test: 316 images from new institutions (Turkey, New Zealand, Sweden, Argentina) to test cross‑site generalisation.
+
+Project split:
+
+- **Lesion‑level** stratified 80/20 split of the 10,015 training images → 8,020 train / 1,995 validation.[file:235]  
+- Splitting by `lesion_id` (not `image_id`) prevents the same lesion (multiple crops) from appearing in both train and validation, which would inflate validation metrics.[file:235]
+
+Image resolution:
+
+- Native: 600×450 pixels.  
+- Resized to **224×224**, the canonical input size for EfficientNet‑B0 pretrained on ImageNet.[file:235]
+
+### Classes and imbalance
+
+Seven diagnostic categories:[file:235][web:233]
+
+| Code | Full name                                                                 |
+|------|---------------------------------------------------------------------------|
+| NV   | Melanocytic nevus                                                         |
+| MEL  | Melanoma                                                                  |
+| BKL  | Benign keratosis (solar lentigo / seborrheic keratosis / LPLK)           |
+| BCC  | Basal cell carcinoma                                                      |
+| AKIEC| Actinic keratosis / Bowen’s disease (intraepithelial carcinoma)          |
+| VASC | Vascular lesion                                                           |
+| DF   | Dermatofibroma                                                            |
+
+Full 10,015‑image distribution:[file:235][web:233]
 
 | Class | Count | Proportion |
 |-------|-------|------------|
@@ -109,241 +128,131 @@ canonical input size for EfficientNet-B0 pretrained on ImageNet.
 | DF    |   115 |  1.1%      |
 | **Total** | **10,015** | |
 
-NV constitutes 67% of the full dataset. DF and VASC together account for roughly
-2.5%. This is a heavily long-tailed distribution. The NV/DF ratio in the full
-dataset is 58:1; in the project training split (8,020 images) it is approximately
-53:1.
+NV forms ~67% of the dataset; DF and VASC together are ~2.5%.[file:235] This induces a long‑tailed distribution with NV:DF ≈58:1 overall, ≈53:1 in the project training split.[file:235]
 
-**Evaluation metric:** Balanced accuracy (mean per-class recall), per Codella et
-al. (2019). Standard accuracy is not used because it is dominated by NV
-performance -- a model that predicts NV for every input achieves 67% accuracy
-but 1/7 (14.3%) balanced accuracy.
+### Metric: balanced accuracy
 
-**Implementation approach:** EfficientNet-B0 (`timm`, ImageNet pretrained) with
-the classification head replaced for 7 output classes via `timm.create_model`.
-Loss is weighted cross-entropy with per-class weights `weight_c = total /
-(num_classes * count_c)`. Best checkpoint is saved by validation balanced
-accuracy.
+Following Codella et al. and the challenge design, the primary metric is **balanced accuracy** (mean per‑class recall):[file:235][web:233]
 
-**Result:** Best validation balanced accuracy of 0.7457 (Run 5, epoch 22).
+- Standard accuracy is dominated by NV; a “predict NV always” classifier reaches ~67% accuracy but only 1/7 ≈14.3% balanced accuracy.  
+- Balanced accuracy treats each class equally, which is more clinically meaningful given severe class imbalance.[file:235][web:233]
 
----
+### Implementation: EfficientNet‑B0
 
-## Class Imbalance: Handling Strategy
+Model:
 
-### Dataset Distribution (Project Training Split, 8,020 images)
+- EfficientNet‑B0 from `timm`, pretrained on ImageNet.  
+- Final classification head replaced with a linear layer producing 7 logits (one per class).[file:235][web:234][web:231]
 
-From direct inspection of `HAM10000_metadata.csv` after the lesion-level 80/20
-split:
+Preprocessing:
 
-| Class | Count | Proportion | Weight (total / 7 * count) |
-|-------|-------|------------|---------------------------|
-| nv    | 5,369 | 66.9%      | 0.213                     |
-| mel   |   891 | 11.1%      | 1.280                     |
-| bkl   |   876 | 10.9%      | 1.300                     |
-| bcc   |   411 |  5.1%      | 2.767                     |
-| akiec |   262 |  3.3%      | 4.323                     |
-| vasc  |   109 |  1.4%      | 10.416                    |
-| df    |   102 |  1.3%      | 13.169                    |
+- Resize to 224×224.  
+- ImageNet normalisation (mean [0.485, 0.456, 0.406], std [0.229, 0.224, 0.225]).[file:235]  
+- Labels loaded from `HAM10000_metadata.csv` with `dx` codes (nv, mel, bkl, bcc, akiec, vasc, df).[file:235]
 
-The NV/DF imbalance ratio in the training split is approximately 53:1. A naive
-classifier predicting NV for every input achieves ~67% accuracy but 1/7 (14.3%)
-balanced accuracy -- the primary evaluation metric.
+Loss:
+
+- **Weighted cross‑entropy** with per‑class weights  
+  \(w_c = \frac{\text{total\_samples}}{\text{num\_classes} \cdot \text{count}_c}\), implemented via `torch.nn.CrossEntropyLoss(weight=...)`.[file:235]  
+- This rebalances expected loss contributions so all classes contribute equally in expectation.
+
+Result:
+
+- Best validation balanced accuracy **0.7457** (Run 5, epoch 22).[file:235]  
+- A naive “always NV” classifier would be at ~14.3% balanced accuracy, so this represents substantial improvement in minority‑class performance.
 
 ---
 
-### Loss Function Analysis
+## Class imbalance strategy
 
-#### Cross-Entropy (Baseline)
+### Training split distribution (8,020 images)
 
-Standard cross-entropy for a sample with true class c and predicted probability
-p_c:
+From `HAM10000_metadata.csv` after lesion‑level 80/20 split:[file:235]
 
-```
+| Class | Count | Proportion | Weight \(w_c\) |
+|-------|-------|------------|----------------|
+| nv    | 5,369 | 66.9%      | 0.213          |
+| mel   |   891 | 11.1%      | 1.280          |
+| bkl   |   876 | 10.9%      | 1.300          |
+| bcc   |   411 |  5.1%      | 2.767          |
+| akiec |   262 |  3.3%      | 4.323          |
+| vasc  |   109 |  1.4%      | 10.416         |
+| df    |   102 |  1.3%      | 13.169         |
+
+A single DF sample contributes ≈13.169 / 0.213 ≈ 62× more loss than a single NV sample under this weighting, equalising expected per‑class contributions.[file:235]
+
+### Cross-entropy vs weighted CE vs focal loss
+
+**Standard cross‑entropy** for true class c with predicted probability \(p_c\):[file:235]
+
+```text
 CE(p_c) = -log(p_c)
 ```
 
-The loss magnitude is determined solely by p_c, with no scaling by class
-frequency. With 67% of batches containing NV samples, the backbone learns
-NV-discriminative features disproportionately, and gradient updates are dominated
-by the majority class regardless of whether individual NV predictions are correct.
+- No accounting for class frequency; majority classes dominate gradients simply by being more frequent.[file:235]
 
-#### Weighted Cross-Entropy
+**Weighted cross‑entropy**:[file:235]
 
-Per-class weights w_c scale the per-sample loss:
-
-```
-WCE(p_c) = -w_c * log(p_c)
-
-where w_c = total_samples / (num_classes * count_c)
+```text
+WCE(p_c) = - w_c · log(p_c)
+w_c = total_samples / (num_classes · count_c)
 ```
 
-This re-balances the expected loss contribution of each class to be equal in
-expectation across training. For the project training split, a single DF sample
-contributes approximately 62x more loss signal than a single NV sample
-(13.169 / 0.213).
+- Addresses **frequency imbalance** by up‑weighting rare classes so that each class contributes roughly equally in expectation.[file:235]  
+- Does *not* address **difficulty imbalance** (easy vs hard samples within a class).
 
-Implemented via `torch.nn.CrossEntropyLoss(weight=...)`.
+**Focal loss** (Lin et al. 2017):[file:235][web:231]
 
-**What it addresses:** Frequency imbalance. Each class contributes equally to
-the aggregate gradient in expectation, regardless of sample count.
-
-**What it does not address:** Difficulty imbalance. Within a class, easy and
-hard samples are treated identically -- the loss is scaled by class membership,
-not by prediction confidence.
-
-#### Focal Loss (Lin et al., ICCV 2017, arXiv:1708.02002)
-
-Focal loss was introduced for one-stage object detection (RetinaNet), where the
-extreme foreground/background imbalance (up to 100,000:1 in dense detection)
-caused standard cross-entropy training to degenerate -- easy background examples
-generated near-zero loss individually but dominated the gradient in aggregate.
-
-The focal loss adds a modulating factor (1 - p_c)^gamma to cross-entropy:
-
-```
-FL(p_c) = -(1 - p_c)^gamma * log(p_c)
+```text
+FL(p_c) = - (1 - p_c)^γ · log(p_c)
 ```
 
-When gamma = 0 this reduces to standard cross-entropy. As gamma increases:
+- γ > 0 down‑weights well‑classified samples (p_c near 1) and focuses on hard or misclassified examples (p_c near 0).  
+- The α‑balanced variant combines focal modulation with class weighting:  
+  \(FL(p_c) = - \alpha_c (1 - p_c)^γ \log p_c\).[file:235][web:231]  
+- Addresses both **frequency (α_c)** and **difficulty (γ)** imbalance, but introduces additional hyperparameters.
 
-- Well-classified samples (p_c close to 1): (1 - p_c)^gamma approaches 0,
-  suppressing their loss contribution to near zero.
-- Misclassified or uncertain samples (p_c close to 0): (1 - p_c)^gamma
-  approaches 1, preserving the full cross-entropy loss.
+### Chosen approach and rationale
 
-Lin et al. found gamma = 2 to work well in practice. A sample predicted with
-p_c = 0.9 receives a loss weight of (1 - 0.9)^2 = 0.01 relative to standard
-CE; a sample predicted with p_c = 0.1 retains (1 - 0.1)^2 = 0.81 of its CE
-loss.
+This project uses **weighted cross‑entropy** with \(w_c = \frac{N}{7 \cdot \text{count}_c}\).[file:235]
 
-The alpha-balanced variant combines focal weighting with class-frequency
-weighting:
+Rationale:[file:235]
 
-```
-FL(p_c) = -alpha_c * (1 - p_c)^gamma * log(p_c)
-```
-
-where alpha_c plays the same role as w_c in weighted cross-entropy.
-
-**What it addresses:** Both frequency imbalance (via alpha) and difficulty
-imbalance (via gamma). Easy majority-class samples are suppressed dynamically
-during training rather than scaled statically.
-
-**What it does not address:** It introduces two hyperparameters (alpha, gamma)
-requiring tuning. Alpha can be set by the same frequency formula as weighted CE.
-Gamma requires a sweep; Lin et al. report gamma = 2 as robust across datasets,
-but this was demonstrated on object detection, not medical image classification.
+1. **Overfitting dominates:** Initial runs showed training loss collapsing while validation loss plateaued (strong train/val gap), indicating memorisation; this is best addressed with augmentation, dropout, and weight decay, not a more complex loss.  
+2. **Hyperparameter budget:** Focal loss adds γ (and often α) which require sweeps; given run‑to‑run variance in balanced accuracy, there is limited budget for reliable γ tuning.  
+3. **Imbalance handled sufficiently:** For NV/DF ≈53:1, weighting alone yields ~60× weight ratio, which largely corrects frequency imbalance; remaining errors are due to MEL/NV visual similarity, which is fundamentally a representation problem.  
+4. **Focal loss as follow‑up:** If balanced accuracy plateaus <0.75 even after stronger regularisation and augmentation, an α‑balanced focal loss with γ ∈ {0.5,1,2} would be a natural next experiment.[file:235][web:231]
 
 ---
 
-### Comparison: When to Use Each
+## Preprocessing notes
 
-| Criterion | Weighted CE | Focal Loss |
-|-----------|-------------|------------|
-| Imbalance source | Frequency only | Frequency + difficulty |
-| Hyperparameters | w_c (set by formula) | w_c + gamma (requires sweep) |
-| PyTorch implementation | `nn.CrossEntropyLoss(weight=...)` | Custom or `torchvision.ops.sigmoid_focal_loss` |
-| Training stability | High -- loss scale is predictable | Lower -- gamma interacts with LR schedule |
-| Best suited for | Moderate imbalance, stable training | Severe imbalance, overconfident predictions |
-| Typical imbalance ratio | Up to ~20:1 | 20:1 and above |
+**Task 1 (segmentation):**[file:235]
 
-For HAM10000, the NV/DF ratio of 53:1 and MEL/NV visual similarity make focal
-loss a reasonable candidate. However, published results on HAM10000 show that
-weighted cross-entropy with strong augmentation and dropout regularisation closes
-most of the gap with focal loss (Butskova, 2020; Lin et al., arXiv:2009.05977).
-The primary bottleneck in HAM10000 classification is overfitting to the training
-distribution, not the loss function's ability to handle hard examples.
+- Resize from 600×450 to 512×512.  
+- Ground‑truth masks: binary PNGs (e.g. 0/255); any pixel >127 treated as lesion.  
+- Inputs scaled to [0,1]; ImageNet normalisation is not required for torchvision’s COCO‑pretrained Mask R‑CNN.
+
+**Task 3 (classification):**[file:235]
+
+- Resize from 600×450 to 224×224.  
+- Apply ImageNet normalisation (mean/std as above) to match EfficientNet‑B0’s pretrained weights.  
+- Optional hair removal and illumination correction are possible, but with modern augmentation and regularisation they often yield only marginal gains.
 
 ---
 
-### Chosen Strategy and Justification
+## Key technical and clinical considerations
 
-This project uses weighted cross-entropy (`w_c = total / (7 * count_c)`).
-
-**Justification:**
-
-1. Overfitting is the dominant failure mode. Run 1 (no regularisation) showed
-   train loss collapsing to 0.02 while val loss plateaued at 0.78 -- a 40:1
-   train/val ratio. No loss function resolves memorisation; that requires
-   dropout, weight decay, and augmentation.
-
-2. Focal loss introduces gamma as a second hyperparameter requiring its own
-   sweep. With meaningful variance between identical runs (0.7441 vs 0.7233 on
-   the same configuration), the experimental budget does not support a reliable
-   gamma sweep on a single Kaggle session.
-
-3. Weighted CE is sufficient for the imbalance ratios present. The 53:1 NV/DF
-   ratio is severe, but the weight correction (w_DF / w_NV = 61.8x) brings the
-   expected per-class loss contribution to parity. The remaining challenge is
-   MEL/NV visual confusion -- a feature representation problem addressed by
-   backbone fine-tuning, not a loss weighting problem.
-
-4. Focal loss is the natural next experiment if balanced accuracy plateaus below
-   0.75 after augmentation and regularisation improvements. The implementation
-   would use the alpha-balanced variant with alpha_c set by the frequency formula
-   and a gamma sweep over {0.5, 1.0, 2.0}.
-
----
-
-## Preprocessing Notes
-
-**Task 1 (Segmentation):**
-- Native resolution is 600 x 450. Resized to 512 x 512 in this project.
-- Ground truth is stored as binary PNG masks: 255 indicates lesion, 0 indicates
-  background. Pixels with value > 127 are treated as foreground.
-- No colour normalisation applied. COCO-pretrained Mask R-CNN expects pixel
-  values in [0, 1] without ImageNet normalisation.
-
-**Task 3 (Classification):**
-- Native resolution is 600 x 450. Resized to 224 x 224 for EfficientNet-B0.
-- Dermoscopic images often contain hair artefacts and vignetting at image
-  borders. Hair removal is an optional preprocessing step; the gain is marginal
-  with modern augmentation pipelines.
-- ImageNet normalisation applied (mean = [0.485, 0.456, 0.406],
-  std = [0.229, 0.224, 0.225]), matching the timm EfficientNet-B0 pretrained
-  weights.
-- Labels are stored in `HAM10000_metadata.csv` with a `dx` column containing
-  the lowercase class code (nv, mel, bkl, bcc, akiec, vasc, df).
-
----
-
-## Key Technical Considerations
-
-**Domain shift:** The challenge explicitly tested generalisation by holding out
-images from institutions unseen during training. Algorithms with equal internal
-test performance showed substantially different external test performance,
-highlighting the risk of overfitting to acquisition device or institution style.
-This motivates strong augmentation policies and colour normalisation.
-
-**Label quality:** Task 3 ground truth was established by histopathology,
-reflectance confocal microscopy, or expert consensus -- a higher standard than
-crowdsourced labels. Segmentation masks for Task 1 reflect single-annotator
-labels; inter-observer Jaccard among experts averages approximately 0.786
-(Codella et al., 2019).
-
-**Clinical context:** Melanoma early detection is the primary motivation. The
-5-year survival rate for melanoma exceeds 99% when caught early, dropping to
-23% at late stages. This clinical asymmetry justifies treating false negatives
-for MEL as more costly than false positives, which can be encoded explicitly in
-the loss function rather than relying on balanced accuracy alone.
+- **Domain shift:** ISIC’s external test set (institutions unseen during training) reveals large drops in performance for some methods, underlining the importance of strong augmentation and potentially domain‑invariant representations.[file:235][web:233]  
+- **Label quality:** HAM10000 labels are based on histopathology, reflectance confocal microscopy, or expert consensus, giving relatively high label reliability; segmentation masks, however, reflect single‑annotator boundaries and inter‑observer Jaccard is ≈0.78, which is itself an upper‑bound reference for algorithm performance.[file:235][web:233]  
+- **Clinical risk asymmetry:** Early melanoma detection has a massive impact on survival; late‑stage melanoma outcomes are far worse than benign false positives.[file:235][web:233] In a deployment setting, class weights or decision thresholds could be further skewed to penalise MEL false negatives more heavily than other errors.
 
 ---
 
 ## References
 
-Codella, N. et al. "Skin Lesion Analysis Toward Melanoma Detection 2018:
-A Challenge Hosted by the International Skin Imaging Collaboration (ISIC)."
-arXiv:1902.03368, 2019.
-
-Tschandl, P., Rosendahl, C., Kittler, H. "The HAM10000 Dataset, a Large
-Collection of Multi-Source Dermatoscopic Images of Common Pigmented Skin
-Lesions." Scientific Data, 2018. https://doi.org/10.1038/sdata.2018.161
-
-Lin, T.-Y. et al. "Focal Loss for Dense Object Detection." ICCV, 2017.
-arXiv:1708.02002.
-
-Tan, M., Le, Q. "EfficientNet: Rethinking Model Scaling for Convolutional
-Neural Networks." ICML, 2019. arXiv:1905.11946.
-
-He, K. et al. "Mask R-CNN." ICCV, 2017. arXiv:1703.06870.
+- Codella, N. et al. “Skin Lesion Analysis Toward Melanoma Detection 2018: A Challenge Hosted by the ISIC.” arXiv:1902.03368, 2019.[file:235][web:233]  
+- Tschandl, P., Rosendahl, C., Kittler, H. “The HAM10000 Dataset, a Large Collection of Multi‑Source Dermatoscopic Images of Common Pigmented Skin Lesions.” *Scientific Data*, 2018.[file:235]  
+- Lin, T.-Y. et al. “Focal Loss for Dense Object Detection.” ICCV 2017, arXiv:1708.02002.[file:235][web:231]  
+- Tan, M., Le, Q. “EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks.” ICML 2019, arXiv:1905.11946.[web:231]  
+- He, K. et al. “Mask R‑CNN.” ICCV 2017, arXiv:1703.06870.[web:211][web:212]

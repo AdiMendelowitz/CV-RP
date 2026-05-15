@@ -130,7 +130,8 @@ def _plot_val_mse_curves(results_dir: Path, plots_dir: Path, model_type: str) ->
     print(f"Saved: {out}")
 
 
-def _plot_per_channel_mse(model: nn.Module, test_ds: ETTh1Dataset, pred_len: int, model_type: str, plots_dir: Path, device: torch.device) -> None:
+def _plot_per_channel_mse(model: nn.Module, test_ds: ETTh1Dataset, pred_len: int, model_type: str, plots_dir: Path,
+                          device: torch.device) -> None:
     """Compute and plot per-channel test MSE.
 
     Args:
@@ -190,7 +191,7 @@ def analyze(model_type: str, pred_len: int) -> None:
 
     checkpoint_path = results_dir / "checkpoints" / f"{model_type}_pred{pred_len}_best.pt"
     if not checkpoint_path.exists():
-        raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}. Run train.py first.")
+        raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}. Run the Kaggle training notebook first.")
 
     data_path = ROOT / "data" / "ETTh1.csv"
     test_ds = ETTh1Dataset(data_path, split="test", seq_len=seq_len, pred_len=pred_len)

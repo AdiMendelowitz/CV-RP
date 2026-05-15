@@ -1,71 +1,93 @@
 # Deformable DETR: Deformable Transformers for End-to-End Object Detection
 
-**Reference:** Zhu et al., ICLR 2021 (Oral). arXiv:2010.04159.  
-**Focus:** Section 3 -- Revisiting Transformers and DETR; deformable attention module.
+**Reference:** Zhu et al., “Deformable DETR: Deformable Transformers for End-to-End Object Detection,” ICLR 2021 (Oral), arXiv:2010.04159.[file:192][web:193][web:195]  
+**Focus:** Section 3 – revisiting Transformers and DETR; deformable attention module.[file:192][web:194]
 
 ---
 
 ## Why is vanilla DETR slow to train?
 
-DETR (Carion et al., ECCV 2020) applies standard Transformer self-attention directly
-over image feature map pixels. In the encoder, both query and key elements are pixels,
-so the self-attention complexity is O(H^2 * W^2 * C) -- quadratic in the number of
-spatial positions. On a typical ResNet feature map this means attending to every pixel
-against every other pixel in the same map.
+DETR (Carion et al., ECCV 2020) applies standard Transformer self‑attention directly over image feature map elements.[file:192][web:198][web:204] In the encoder, both queries and keys are spatial positions in the flattened feature map, so the self‑attention complexity is \(O(N_q N_k C)\), where \(N_q\) and \(N_k\) are the numbers of query and key positions, and \(C\) is the channel dimension.[file:192][web:194][web:197] When queries and keys are all pixels on a feature map (so \(N_q = N_k = HW\)), this becomes quadratic in spatial resolution: \(O((HW)^2 C)\).[file:192][web:194][web:200]
 
-The consequence is two-fold. First, at initialization the attention weights are nearly
-uniform across all Nk pixel positions (Amqk ~ 1/Nk when Nk is large), producing
-ambiguous gradients that give no useful learning signal about which spatial locations
-matter. The model must learn from scratch, over many epochs, to concentrate attention
-on sparse meaningful regions. Second, the quadratic complexity makes high-resolution
-feature maps computationally infeasible, which forces DETR to operate on a single
-low-resolution feature map and limits its ability to detect small objects.
+Two main consequences:
 
-On COCO, vanilla DETR requires 500 training epochs to converge -- approximately
-10 to 20 times longer than Faster R-CNN.
+- **Uniform, uninformative attention at initialization.**  
+  With dense attention over many positions, randomly initialized query–key dot products tend to produce near‑uniform attention distributions over all \(N_k\) spatial locations (i.e. each weight \(\approx 1/N_k\)), which provides little guidance about which locations matter.[file:192][web:200] The model must learn to sharpen these weights over many epochs before strong, sparse correspondences emerge.
+
+- **Quadratic complexity prevents high‑resolution features.**  
+  Because cost grows as \(O((HW)^2)\), using high‑resolution feature maps is computationally and memory‑prohibitive.[file:192][web:197][web:200] In practice, DETR works on a single low‑resolution feature map (e.g. from a downsampled stage of ResNet), which limits performance on small objects that benefit from finer spatial detail.[web:198]
+
+On COCO, vanilla DETR typically requires **400–500 training epochs** to match Faster R‑CNN performance—roughly **10–20× more epochs** than standard detector schedules.[file:192][web:198][web:204][web:207]
 
 ---
 
 ## What does deformable attention do differently?
 
-Deformable attention replaces the dense all-pairs attention with a learned sparse
-sampling scheme. For each query element q with feature z_q and a reference point p_q
-on the feature map, the module predicts K sampling offsets Delta p_mqk relative to
-that reference point. Attention weights A_mqk are predicted from z_q alone (not from
-query-key dot products). The output for attention head m is then:
+Deformable attention replaces dense all‑pairs attention with a **learned sparse sampling scheme** around a small set of reference points.[file:192][web:193][web:194][web:195]
 
-    DeformAttn(z_q, p_q, x) =
-        sum_m W_m * sum_{k=1}^{K} A_mqk * W_m' * x(p_q + Delta p_mqk)
+For each query element \(q\) with feature \(z_q\) and a reference point \(p_q\) in (normalized) spatial coordinates, deformable attention predicts:
 
-where K is a small fixed number of sampling points (K=4 in the paper), independent
-of feature map resolution. The attention weights satisfy sum_k A_mqk = 1.
+- For each attention head \(m\), a set of **K sampling offsets** \(\Delta p_{mqk}\) relative to \(p_q\).  
+- Corresponding attention weights \(A_{mqk}\), predicted from the query feature (and head) rather than from pairwise query–key dot products.[file:192][web:194][web:199]
 
-This eliminates the quadratic dependence on spatial size: complexity is now O(2*Nq*C^2 + K*Nq*C*M), linear in both query count and sampling points. Because the model learns
-which K locations to attend to rather than computing compatibility against all pixels,
-the attention weights are no longer initialized to a near-uniform distribution, and
-the convergence problem is resolved structurally rather than through extended training.
+The output for head \(m\) can be written (conceptually) as:
 
-The module extends naturally to multi-scale feature maps by attending across all
-scales simultaneously, aggregating features from {l=1..L} levels without requiring
-a separate FPN. This directly addresses DETR's small-object weakness.
+```text
+DeformAttn(z_q, p_q, x) =
+    Σ_{m=1}^M W_m · Σ_{k=1}^K A_{mqk} · W_m' x(p_q + Δp_{mqk})
+```
+
+where:
+
+- \(x(\cdot)\) samples the feature map(s) at (potentially fractional) locations via bilinear interpolation.  
+- \(K\) is a small fixed number of sampling points per head (e.g., K = 4 or 8 in the paper).  
+- The weights per head satisfy \(\sum_{k} A_{mqk} = 1\).[file:192][web:194][web:199]
+
+**Complexity.**  
+
+- Standard multi‑head attention over N queries and N keys has complexity \(O(2 N C^2 + N^2 C)\) in the formulation of Zhu et al.[web:194]  
+- Deformable attention reduces this to \(O(2 N_q C^2 + K N_q C M)\) when each query attends to only K sampled positions per head, independent of feature map resolution.[file:192][web:194][web:197]
+
+Thus, deformable attention is **linear in the number of queries** and in K, rather than quadratic in spatial positions, making it much more scalable to high‑resolution features.[file:192][web:194][web:197][web:200]
+
+**Convergence behaviour.**  
+
+Because attention weights are predicted directly from each query feature over a small set of locations, attention is not forced to be uniform over thousands of keys at initialization.[file:192][web:195][web:200] The architecture structurally encourages sparse, localised focus around reference points from the beginning, which improves gradient signal and greatly speeds up training convergence.
+
+**Multi‑scale extension.**  
+
+Deformable DETR generalises the attention to **multi‑scale feature maps**:\[file:192][web:193][web:195][web:199]
+
+- It uses multiple backbone feature levels (e.g., from different ResNet stages).  
+- Queries attend to a small number of sampling points across *all* levels simultaneously (multi‑scale deformable attention), without requiring an explicit FPN neck.  
+
+This multi‑scale design directly addresses DETR’s small‑object weakness by allowing the model to aggregate information from higher‑resolution feature maps without incurring a quadratic attention cost.[file:192][web:193][web:195][web:197]
 
 ---
 
 ## Practical training speedup
 
-Deformable DETR matches or exceeds DETR's COCO detection performance using 10x
-fewer training epochs. Where DETR requires 500 epochs, Deformable DETR converges
-in 50 epochs. The improvement is particularly pronounced on small objects, where
-multi-scale deformable attention enables high-resolution feature processing that was
-computationally infeasible for vanilla DETR.
+Empirically, Deformable DETR:[file:192][web:193][web:195][web:196][web:202][web:203]
+
+- Achieves **better COCO AP** than vanilla DETR, particularly on small objects.  
+- Converges in **≈50 epochs**, roughly a **10× reduction** compared to a 500‑epoch DETR schedule used to match Faster R‑CNN.  
+- Offers substantial wall‑clock savings; reported experiments show up to **10× fewer epochs, ≈20× less training time, and ~1.6× faster inference** for comparable backbones and settings.[web:195][web:196][web:200][web:202]
+
+The improvement is especially pronounced on small objects because multi‑scale deformable attention lets the detector leverage high‑resolution features that standard DETR could not afford.[file:192][web:193][web:195][web:197]
 
 ---
 
 ## Summary
 
-The core insight is that global dense attention is the wrong prior for image feature
-maps. Most spatial locations are irrelevant to any given query; forcing the model to
-attend to all of them creates an initialization problem (uniform weights, ambiguous
-gradients) and a complexity problem (quadratic scaling). Deformable attention sidesteps
-both by learning which sparse locations to attend to, directly from the query feature,
-producing a module that is both faster and better-behaved during optimization.
+The core insight is that **global dense attention is a poor inductive bias for image feature maps** in detection:[file:192][web:193][web:195]
+
+- Most spatial locations are irrelevant to any given query; dense attention forces the model to score all of them, causing initial attention to be nearly uniform and gradients to be ambiguous.  
+- Quadratic complexity in spatial resolution makes it impractical to use multi‑scale, high‑resolution features, hurting small‑object detection.
+
+Deformable attention resolves both issues by:
+
+- Letting each query attend to a **small, learned set of sampling points** near a reference location, predicted directly from query features.  
+- Making attention complexity **linear in the number of queries and sampling points**, rather than quadratic in the number of pixels.  
+- Extending naturally to **multi‑scale** feature maps, improving small‑object performance without an explicit FPN.[file:192][web:193][web:194][web:195][web:199]
+
+This yields a DETR‑style detector that is both faster to train and better‑behaved computationally, while preserving the elegance of end‑to‑end set prediction.

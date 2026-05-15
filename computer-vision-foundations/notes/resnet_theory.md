@@ -1,122 +1,136 @@
-# ResNet Theory - Why Residual Connections Solve Vanishing Gradients
- 
-**Topic:** The mathematical and practical explanation of how skip connections enable deep network training  
+# ResNet Theory – Why Residual Connections Solve Vanishing Gradients
+
+**Topic:** Mathematical and practical explanation of how skip connections enable deep network training  
 **Status:** ✅ Completed
 
 ---
 
 ## The Vanishing Gradient Problem
 
-In deep neural networks (20+ layers), gradients become exponentially smaller as they propagate backward through layers during backpropagation.
+In deep neural networks (dozens of layers or more), gradients can become exponentially smaller as they propagate backward, especially with saturating nonlinearities (sigmoid, tanh).[file:131][web:162]
 
 During backpropagation, gradients are computed via the chain rule:
 
-```
+```text
 ∂L/∂w₁ = (∂L/∂w_n) × (∂w_n/∂w_{n-1}) × ... × (∂w₂/∂w₁)
 ```
 
 For a network with sigmoid activations:
-- Sigmoid derivative: `σ'(x) = σ(x)(1 - σ(x))` 
-- Maximum value: `σ'(0) = 0.25`
-- For large |x|, `σ'(x) ≈ 0` (saturation)
 
-**Example:** 20-layer network with sigmoid
+- Sigmoid derivative: \(\sigma'(x) = \sigma(x)(1 - \sigma(x))\).  
+- Maximum value: \(\sigma'(0) = 0.25\).  
+- For large |x|, \(\sigma'(x) \approx 0\) (saturation).[file:131]
+
+**Example: 20‑layer network with sigmoids**
+
+```text
+gradient ≈ 0.25 × 0.25 × ... × 0.25   (20 times)
+        = 0.25²⁰
+        ≈ 9 × 10⁻¹³   # essentially zero
 ```
-gradient = 0.25 × 0.25 × 0.25 × ... × 0.25  (20 times)
-         ≈ 0.25²⁰
-         ≈ 9 × 10⁻¹³  (practically zero)
-```
+
+Even if weights are well‑behaved, multiplying many derivatives in (0, 1) drives the gradient magnitude toward zero.[file:131]
 
 ### Consequences
 
-1. **Early layers don't learn**: Gradients reaching first layers are near-zero
-2. **Optimization failure**: Network can't find good solutions even when capacity exists
-3. **Deeper ≠ Better**: Adding more layers makes performance *worse*, not better
+1. **Early layers barely learn.** Gradients arriving at first layers are near zero, leading to very slow updates.  
+2. **Optimization failure.** Networks can have enough capacity but fail to fit even the training set well.  
+3. **Deeper ≠ better (pre‑ResNet).** Simply stacking more layers can increase training error, not just test error.[file:131][web:162][web:168]
 
-### Pre-ResNet Solutions (Partial)
+### Pre‑ResNet Partial Solutions
 
-- **ReLU activations**: Gradient = 1 for positive inputs (better than sigmoid's 0.25)
-- **Batch Normalization**: Stabilizes gradient magnitudes
-- **Careful initialization**: Kaiming/Xavier prevents initial explosion/vanishing
+- **ReLU activations:** derivative is 1 for positive inputs (no saturation in that region).  
+- **Batch Normalization:** stabilises activations and gradients, reducing internal covariate shift.[web:162]  
+- **Careful initialization (Xavier/He):** keeps variance of activations/gradients roughly constant at start.[web:63]
 
-**But these weren't enough for very deep networks (50+ layers).**
+These helped but did not fully solve training very deep plain networks (e.g., 50+ layers) on ImageNet or CIFAR‑10.[file:131][web:162]
 
 ---
 
-## How Residual Connections Solve It
+## How Residual Connections Help
 
-### The Core Idea
+### Core Idea
 
-Instead of learning `H(x)` directly, learn the **residual** `F(x) = H(x) - x`.
+Instead of learning a mapping \(H(x)\) directly, a residual block learns a **residual** function:
+
+\[
+F(x) = H(x) - x
+\]
+
+and the block outputs:
 
 ```python
-# Standard network
+# Standard block (plain network)
 output = H(x)
 
-# Residual network
+# Residual block
 output = F(x) + x
 ```
 
-Where `F(x)` is what the layers learn (2-3 conv layers), and `x` is the skip connection.
+Here, `F(x)` is the learned residual (typically 2–3 conv–BN–ReLU layers), and `x` is the skip/identity connection.[file:131][web:162]
 
 ### The Gradient Highway
 
-**During forward pass:**
-```
+Forward pass for one residual unit:
+
+```text
 y = F(x, W) + x
 ```
 
-**During backward pass:**
-```
-∂L/∂x = ∂L/∂y × (∂F/∂x + 1)
-      = ∂L/∂y × ∂F/∂x + ∂L/∂y
-```
+Backward:
 
-**Key insight:** The `∂L/∂y` term flows directly backward through the identity connection, **undiminished**.
-
-### Mathematical Proof
-
-Consider a residual block:
-```
-x_{l+1} = x_l + F(x_l, W_l)
+```text
+∂L/∂x = ∂L/∂y · (∂F/∂x + I)
+      = ∂L/∂y · ∂F/∂x + ∂L/∂y
 ```
 
-Gradient at layer `l`:
-```
-∂L/∂x_l = ∂L/∂x_{l+1} × ∂x_{l+1}/∂x_l
-        = ∂L/∂x_{l+1} × (1 + ∂F/∂x_l)
-```
+**Key insight:** The term \(\partial L / \partial y\) flows directly through the identity addition (the `+ x`) and does not get multiplied by small derivatives in F.[file:131][web:172] Even if \(\partial F / \partial x\) is small or ill‑conditioned, the additive identity term provides a robust gradient path.
 
-For `L` layers:
-```
-∂L/∂x_0 = ∂L/∂x_L × ∏(1 + ∂F_l/∂x_l)
-```
+### Layer‑wise Formulation
 
-**Critical observation:**
-- Standard network: `∏ ∂F_l/∂x_l` (product of derivatives, can vanish)
-- Residual network: `∏ (1 + ∂F_l/∂x_l)` (sum includes identity, **cannot vanish**)
+Consider a sequence of residual blocks:
 
-Even if all `∂F_l/∂x_l ≈ 0`, the gradient is at least:
-```
-∂L/∂x_0 ≈ ∂L/∂x_L  (direct path exists)
+```text
+x_{l+1} = x_l + F_l(x_l, W_l)
 ```
 
-### Visualization
+Backward at layer \(l\):
 
+```text
+∂L/∂x_l = ∂L/∂x_{l+1} · (I + ∂F_l/∂x_l)
 ```
-Standard Network (20 layers):
-Input ──→ Layer1 ──→ Layer2 ──→ ... ──→ Layer20 ──→ Output
-        (grad × 0.3) (grad × 0.3)      (grad × 0.3)
-        
-After 20 layers: gradient ≈ 0.3²⁰ ≈ 3×10⁻¹¹ 💀
 
+Stacking across L blocks:
 
-ResNet (20 blocks):
-Input ──→ [F₁ + identity] ──→ [F₂ + identity] ──→ ... ──→ Output
-          ↓                    ↓
-       (grad path)          (grad path)
-       
-Skip connections provide highway: gradient ≈ 1.0²⁰ = 1.0 ✅
+```text
+∂L/∂x_0 = ∂L/∂x_L · Π_{l=0}^{L-1} (I + ∂F_l/∂x_l)
+```
+
+Contrast:
+
+- Plain network: \(\partial L/ \partial x_0 = \partial L/\partial x_L \cdot \prod_l \partial H_l / \partial x_l\), a pure product of Jacobians (easy to vanish or explode).  
+- Residual network: each factor is \(I + J_l\), where \(J_l = \partial F_l / \partial x_l\).[file:131][web:172]
+
+If residual branches are small perturbations (‖\(J_l\)‖ not too large), then eigenvalues of \(I + J_l\) cluster around 1, making gradient norms more stable across depth.[web:172] In the extreme case when \(F_l \approx 0\), we have \(I + \partial F_l / \partial x_l \approx I\), so:
+
+```text
+∂L/∂x_0 ≈ ∂L/∂x_L
+```
+
+This is the “gradient highway”: adding identity paths mitigates vanishing gradients even when the residual branch itself is poorly conditioned.[file:131][web:172]
+
+### Visual Intuition
+
+```text
+Plain network (20 layers):
+Input → Layer1 → Layer2 → ... → Layer20 → Output
+       (×0.3)   (×0.3)           (×0.3)   → gradient ≈ 0.3²⁰ → ~0
+
+ResNet (20 residual blocks):
+Input → [F₁ + identity] → [F₂ + identity] → ... → [F₂₀ + identity] → Output
+          ↘ grad ↖          ↘ grad ↖                        ↘ grad ↖
+
+Skip paths give a near‑constant gradient route from output to early layers.
 ```
 
 ---
@@ -125,60 +139,57 @@ Skip connections provide highway: gradient ≈ 1.0²⁰ = 1.0 ✅
 
 ### Learning Incremental Changes
 
-**Standard network:**
-- Must learn complete transformation from input to output
-- Early layers must predict what later layers need
-- Difficult optimization landscape
+**Plain network:**  
 
-**Residual network:**
-- Each block learns small refinement: "what to add to current representation"
-- If a block doesn't help, it can learn `F(x) ≈ 0` (identity mapping)
-- Easy to optimize: doing nothing (identity) is always an option
+- Each layer must contribute to the full mapping from input to output.  
+- It is hard to optimise, because layers interact in complicated ways.  
 
-### The Identity Hypothesis
+**Residual network:**  
 
-From the original paper (He et al., 2015):
+- Each block learns a small *correction* to the current representation: “what should I add to x?”.  
+- If a block is unnecessary, it can approximate \(F(x) \approx 0\), effectively becoming an identity mapping.  
+- This makes optimisation easier: the identity function is always in the function class and easy to realise by pushing residual weights toward zero.[file:131][web:162]
 
-> "If the added layers can be constructed as identity mappings, a deeper model should produce no higher training error than its shallower counterpart."
+### Identity Hypothesis (He et al.)
 
-**In practice:**
-- Shallower model: 18 layers
-- Deeper model: 34 layers with last 16 blocks learning ≈ identity
-- Result: At worst, same as 18-layer model (in reality, better)
+The ResNet paper observes:[web:162]
 
-Without skip connections, forcing 16 layers to learn exact identity mapping is extremely difficult.
+> If the added layers can be constructed as identity mappings, a deeper model should produce no higher training error than its shallower counterpart.
+
+Interpretation:
+
+- Start with a shallower network (e.g., 18 layers).  
+- Add additional residual blocks (e.g., to reach 34 layers).  
+- In the worst case, those extra blocks learn identity (F ≈ 0), so the deep network can match the training error of the shallow one.  
+- In practice, deeper residual nets yield lower training and test error.[web:162][web:172]
+
+Without skips, coaxing a stack of layers to implement exact identity is non‑trivial; with residuals, identity corresponds simply to “learn F ≈ 0.”
 
 ---
 
 ## Experimental Evidence
 
-### From the ResNet Paper (2015)
+### CIFAR‑10 (from the ResNet paper)
 
-**Training on CIFAR-10:**
+On CIFAR‑10, He et al. show that deeper plain networks can be *worse* than shallower ones, whereas deeper ResNets improve:[web:162][web:168]
 
-| Architecture | Depth | Training Error | Test Error |
-|--------------|-------|----------------|------------|
-| Plain CNN | 20 | 8.75% | 8.15% |
-| Plain CNN | 56 | 10.75% | 9.45% |
-| ResNet | 20 | 8.45% | 7.89% |
-| ResNet | 56 | **6.34%** | **6.18%** |
+- A 56‑layer **plain** CNN has higher training and test error than a 20‑layer plain CNN (optimisation difficulty).  
+- Corresponding 56‑layer **ResNet** achieves substantially lower training and test error than its 20‑layer ResNet counterpart.  
 
-**Key observations:**
-1. Plain 56-layer > Plain 20-layer in error (optimization failure)
-2. ResNet 56-layer < ResNet 20-layer (deeper is better with residuals)
-3. ResNet enables training 100+ layer networks successfully
+The key observation is that residual connections allow increasing depth to reduce training error, whereas plain nets with the same depth get stuck at higher training error.[web:162][web:168]
 
-### ImageNet Results (2015)
+### ImageNet (ILSVRC 2015)
 
-- ResNet-152: 3.57% top-5 error (won ILSVRC 2015)
-- Previous best (VGG-19): 7.3% top-5 error
-- **152 layers trained successfully** (impossible with plain CNNs)
+- ResNet‑152 (152 layers) achieves **3.57% top‑5 error** on ImageNet test set using an ensemble, winning ILSVRC 2015 classification.[web:162][web:163][web:171][web:174]  
+- This was about 8× deeper than VGG‑19 yet with lower FLOPs and significantly better accuracy.[web:162][web:171]
+
+This demonstrates that residual connections make it possible to train very deep networks in practice.
 
 ---
 
 ## Implementation Details
 
-### Basic Residual Block
+### Basic Residual Block (Post‑activation ResNet‑v1 style)
 
 ```python
 def forward(self, x):
@@ -186,61 +197,63 @@ def forward(self, x):
     out = self.conv1(x)
     out = self.bn1(out)
     out = self.relu(out)
-    
+
     out = self.conv2(out)
     out = self.bn2(out)
-    
-    # Skip connection: add identity
-    out += self.shortcut(x)  # This is the key!
-    
+
+    # Skip connection: add identity or projection
+    out += self.shortcut(x)
+
     # Activation after addition
     out = self.relu(out)
-    
     return out
 ```
 
-### When Shape Matching is Needed
+- When `self.shortcut` is identity, this implements `x + F(x)`.  
+- When shapes differ (e.g., stride 2 or channel mismatch), a 1×1 conv + BN projection is used to align dimensions.[file:131][web:162]
 
-**Identity shortcut** (free gradient flow):
+### Identity vs Projection Shortcuts
+
+**Identity shortcut (no change in shape):**
+
 ```python
 if stride == 1 and in_channels == out_channels:
-    self.shortcut = nn.Sequential()  # F(x) + x
+    self.shortcut = nn.Sequential()   # returns x unchanged
 ```
 
-**Projection shortcut** (when dimensions change):
+**Projection shortcut (when downsampling or channel changes):**
+
 ```python
 else:
     self.shortcut = nn.Sequential(
-        nn.Conv2d(in_channels, out_channels, kernel_size=1, 
+        nn.Conv2d(in_channels, out_channels, kernel_size=1,
                   stride=stride, bias=False),
         nn.BatchNorm2d(out_channels)
     )
 ```
 
-The 1×1 conv matches dimensions but **still provides a gradient path**.
+The projection introduces weights on the skip path, but still provides a relatively direct gradient route; He et al. show that identity skips with after‑addition activation work best when feasible.[web:162][web:172]
 
 ---
 
-## Why ReLU Alone Wasn't Enough
+## Why ReLU Alone Was Not Enough
 
-Even with ReLU (gradient = 1 for x > 0):
+ReLU avoids saturation on positive inputs, but gradients still traverse **weight matrices** and nonlinearities:[file:131]
 
-**Problem:** The gradient still passes through **learned weights**
-
-```
-∂L/∂x₁ = ∂L/∂x₂ × W₂ × ReLU'(z₁)
+```text
+∂L/∂x₁ = ∂L/∂x₂ · W₂ · ReLU'(z₁)
 ```
 
-If `W₂` has small values (common with proper initialization), gradients shrink.
+Even with ReLU'(z₁) = 1, small weights or ill‑conditioned weight matrices can shrink the gradient. Over many layers, the product of weight matrices can still yield vanishing or exploding gradients.[web:162]
 
-**ResNet solution:** Bypass the weights entirely with skip connection
-```
-∂L/∂x₁ = ∂L/∂x₂ × (W₂ × ReLU'(z₁) + 1)
-                                    ↑
-                              identity term
+Residual connections change the structure:
+
+```text
+x₂ = x₁ + F(x₁; W₂)
+∂L/∂x₁ = ∂L/∂x₂ · (I + ∂F/∂x₁)
 ```
 
-Even if `W₂ × ReLU'(z₁) ≈ 0`, gradient flows through the `+1` term.
+Even if \(W_2\) and \(\partial F / \partial x_1\) are small, the identity term \(I\) ensures a baseline gradient path. This is why residual connections plus ReLU and BN enable much deeper networks than ReLU alone.[file:131][web:172]
 
 ---
 
@@ -248,127 +261,113 @@ Even if `W₂ × ReLU'(z₁) ≈ 0`, gradient flows through the `+1` term.
 
 ### 1. Network Depth
 
-**Before ResNet (2015):**
-- Practical limit: ~20 layers
-- Deeper networks performed worse
+**Before ResNet (≈2015):**  
 
-**After ResNet:**
-- ResNet-50, ResNet-101, ResNet-152 all work
-- Some experiments with 1000+ layers
+- ConvNet depth for classification typically ≤ 20–30 layers (e.g., VGG‑19); deeper plain nets were very hard to train.[web:162]
+
+**After ResNet:**  
+
+- ResNet‑50, ‑101, ‑152 and even 1,001‑layer variants (on CIFAR) are trainable.[web:162][web:172]  
+- Depth became a tunable hyperparameter rather than a hard barrier.
 
 ### 2. Training Dynamics
 
-**Easier optimization:**
-- Converges faster
-- More stable training (gradients don't vanish)
-- Less sensitive to learning rate
+Residual networks:
 
-**From experiments:**
-- ResNet-50 converges faster than VGG-19 (despite being deeper)
-- Can use higher learning rates
+- Optimise more easily and reach lower training error for the same depth.  
+- Are less sensitive to learning rate choices (within reasonable ranges).  
+- Show smoother, “more convex‑like” loss landscapes when visualised, compared to plain nets of similar depth.[web:170][web:175]
+
+Li et al. (2018) explicitly show that ResNet‑style skip connections make the loss surface wider and less chaotic than VGG‑style architectures, which correlates with better optimisation and generalisation.[web:170][web:175]
 
 ### 3. Transfer Learning
 
-ResNets became the standard backbone for:
-- Object detection (Faster R-CNN)
-- Semantic segmentation (FCN, U-Net variants)
-- Instance segmentation (Mask R-CNN)
+ResNet backbones have been widely adopted for:
 
-**Why?** Deep features are more discriminative, and skip connections enable learning them.
+- Object detection (Faster R‑CNN, Mask R‑CNN).  
+- Semantic segmentation (DeepLab, FCN variants).  
+- Instance segmentation and other downstream CV tasks.[web:162]
+
+Deep, robust feature extractors enabled by residual connections became standard starting points for many vision pipelines.
 
 ---
 
 ## Common Misconceptions
 
-### ❌ "Skip connections just copy features"
+### ❌ “Skip connections just copy features.”
 
-**Reality:** They provide a gradient highway. The features themselves are transformed by the learned layers `F(x)`.
+**Reality:** They do not just copy features; they **add** the learned residual to the input. The skip path gives a clean gradient route, but the main branch still transforms features; the network learns when and how to modify or preserve information.[file:131][web:162]
 
-### ❌ "Skip connections always help"
+### ❌ “Skip connections always help.”
 
-**Reality:** They help when depth is the bottleneck. For shallow networks (< 10 layers), benefit is minimal.
+**Reality:** Benefits are most pronounced when depth is large enough that optimisation is a bottleneck. For very shallow networks (e.g., 5–10 layers), residual connections bring limited gains and sometimes unnecessary complexity.[file:131]
 
-### ❌ "Identity mappings don't learn anything"
+### ❌ “Identity mappings don’t learn anything.”
 
-**Reality:** Even if `F(x) ≈ 0`, the network learned that this block should pass inputs through unchanged. That's a learned decision.
+**Reality:** Learning \(F(x) \approx 0\) is still a **learned decision** that certain layers should pass features through; the network uses this flexibility to allocate representational capacity where it’s most useful.[file:131]
 
 ---
 
 ## Advanced Topics
 
-### Pre-activation ResNet (He et al., 2016)
+### Pre‑activation ResNet (He et al., 2016)
 
-Original: `Conv → BN → ReLU → Conv → BN → Add → ReLU`
+The follow‑up paper “Identity Mappings in Deep Residual Networks” proposes moving BN and ReLU **before** convolutions (pre‑activation):[web:172]
 
-Pre-activation: `BN → ReLU → Conv → BN → ReLU → Conv → Add`
+- Original (post‑activation): `Conv → BN → ReLU → Conv → BN → Add → ReLU`.  
+- Pre‑activation: `BN → ReLU → Conv → BN → ReLU → Conv → Add`.
 
-**Benefits:**
-- Even cleaner gradient flow (no activation before addition)
-- Better performance for very deep networks (200+ layers)
+Benefits:[web:172]
+
+- Cleaner forward/backward paths (activation is not between addition and identity).  
+- Better performance for very deep nets (e.g., 1001‑layer ResNets on CIFAR‑10).
 
 ### ResNeXt (Aggregated Residual Transformations)
 
-Extends skip connections with multiple parallel paths:
-```
-x ─→ [Path 1] ─┐
-  ─→ [Path 2] ─┼─→ Add → Output
-  ─→ [Path 3] ─┘
+ResNeXt adds **grouped/parallel** paths within each residual block, increasing “cardinality”:[file:131][web:162]
+
+```text
+x → [Path 1] → 
+  → [Path 2] →  Σ → + identity → output
+  → [Path 3] →
 ```
 
 ### DenseNet (Dense Skip Connections)
 
-Every layer connects to every other layer:
-```
+DenseNets connect each layer to all subsequent layers via concatenation:[file:131][web:170]
+
+```text
 x₀ → x₁ → x₂ → x₃
  ↓    ↓    ↓
- └────┴────┴──→ Concatenate all
+ └────┴────┴──→ concat [x₀, x₁, x₂, x₃]
 ```
 
-Even more gradient highways, but more memory intensive.
+This creates many gradient and information paths, at the cost of higher memory usage.
 
 ---
 
 ## Key Takeaways
 
-✅ **Vanishing gradients** occur when gradients multiply through many layers, shrinking exponentially
-
-✅ **Skip connections** provide a direct gradient path: `∂L/∂x = ∂L/∂y + ∂L/∂y × ∂F/∂x`
-
-✅ **Even if learned path vanishes**, identity path ensures gradient reaches early layers
-
-✅ **Mathematical guarantee**: Gradient cannot vanish completely (has additive identity term)
-
-✅ **Enables very deep networks**: 50-152 layers train successfully
-
-✅ **Not just a trick**: Fundamentally changes the optimization landscape
+- **Vanishing gradients** arise from repeated multiplication of Jacobians with singular values < 1 across many layers.  
+- **Residual/skip connections** change the recurrence to include an identity term: gradients propagate via both the residual branch and a direct path.  
+- Even when the residual branch contributes small or unstable derivatives, the identity term keeps gradients from collapsing completely.  
+- This yields **easier optimisation**, enabling very deep networks (50–150+ layers) with strong empirical performance.  
+- Residual connections are not a minor tweak; they effectively restructure the optimisation landscape and have shaped modern backbone design.[file:131][web:162][web:170]
 
 ---
 
 ## Further Reading
 
-**Original Papers:**
+1. **Deep Residual Learning for Image Recognition** – He et al., 2015.[web:162][web:163][web:166]  
+   Introduces ResNet, residual blocks, and shows deep networks (up to 152 layers) on ImageNet and 100/1000‑layer variants on CIFAR‑10.
 
-1. **Deep Residual Learning for Image Recognition** (He et al., 2015)
-   - https://arxiv.org/abs/1512.03385
-   - The original ResNet paper with theoretical analysis
+2. **Identity Mappings in Deep Residual Networks** – He et al., 2016.[web:172]  
+   Analyses propagation in residual blocks, motivates pre‑activation units, and reports 1001‑layer ResNets.
 
-2. **Identity Mappings in Deep Residual Networks** (He et al., 2016)
-   - https://arxiv.org/abs/1603.05027
-   - Pre-activation ResNet and deeper analysis
+3. **Visualizing the Loss Landscape of Neural Nets** – Li et al., 2018.[web:170][web:175]  
+   Shows that skip connections (ResNet, DenseNet) significantly “smooth” the loss landscape compared to plain VGG‑style nets.
 
-3. **Visualizing the Loss Landscape of Neural Nets** (Li et al., 2018)
-   - https://arxiv.org/abs/1712.09913
-   - Shows how ResNets have smoother loss landscapes
-
-**Related Concepts:**
-
-- Highway Networks (Srivastava et al., 2015) — similar idea with learned gates
-- DenseNet (Huang et al., 2017) — concatenate instead of add
-- ResNeXt (Xie et al., 2017) — grouped convolutions with residuals
-
----
-## 👤 Author
-
-**Adi Mendelowitz**  
-Machine Learning Engineer  
-Specialization: Computer Vision & Image Processing
+4. Related architectures:[file:131][web:162][web:170]  
+   - **Highway Networks** (Srivastava et al., 2015) – gated skip connections.  
+   - **DenseNet** (Huang et al., 2017) – dense concatenated connections.  
+   - **ResNeXt** (Xie et al., 2017) – aggregated residual transformations.

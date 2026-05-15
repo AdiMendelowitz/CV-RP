@@ -1,8 +1,7 @@
 # Knowledge Distillation
 
-**Paper:** "Distilling the Knowledge in a Neural Network" - Hinton, Vinyals & Dean, 2015
+**Paper:** "Distilling the Knowledge in a Neural Network" - Hinton, Vinyals & Dean, 2015  
 **Link:** https://arxiv.org/abs/1503.02531
-**Week:** 2 - Model Compression
 **Implementation:** `code/compression/distillation.py`, `code/compression/train_distillation.py`
 
 ---
@@ -23,8 +22,8 @@ The diagram below shows the full forward and backward pass. Purple = teacher
 (frozen), blue = student (trainable), teal = loss components, amber = combined
 loss. The dashed line is the gradient flowing back - it reaches only the student.
 
-**Distillation Pipline:**
-how teacher logits and student logits feed both loss terms, and how backprop flows only to the student.
+**Distillation Pipeline:**  
+How teacher logits and student logits feed both loss terms, and how backprop flows only to the student.
 
 ![Distillation pipeline](../code/compression/plots/distillation/distillation_pipeline.svg)
 
@@ -39,7 +38,7 @@ how teacher logits and student logits feed both loss terms, and how backprop flo
 
 The combined distillation loss has two terms:
 
-```
+```text
 L = α · T² · KL(softmax(z_s/T) ‖ softmax(z_t/T)) + (1 - α) · CE(z_s, y)
 ```
 
@@ -50,34 +49,37 @@ Where:
 - `α` - weight on the soft-target KL term
 - `y` - ground truth hard labels
 
+This is a reparameterisation of the loss in Hinton et al. (their Eq. 4), where the distillation term is written in terms of cross-entropy between softened outputs.
+
 ### Temperature T
 
-Dividing logits by T before softmax flattens the probability distribution. At T=1 the model is confident (peaked distribution). At T=4 the distribution is softer, making the small inter-class probabilities (e.g. the 12% dog) much more visible and learnable.
+Dividing logits by T before softmax flattens the probability distribution. At T=1 the model is confident (peaked distribution). At higher T (e.g. T=4) the distribution is softer, making the small inter-class probabilities (e.g. the 12% dog) much more visible and learnable.
 
-Without temperature scaling, the teacher's distribution is so peaked that all non-maximum probabilities are effectively zero after softmax - the soft target degenerates into a hard label, and KL divergence gives no additional signal beyond CE.
+Without temperature scaling, the teacher's distribution is often so peaked that non-maximum probabilities are effectively negligible after softmax - the soft target degenerates toward a hard label, and the KL term carries little extra information beyond CE.
 
 ### The T² Multiplier
 
-The full combined loss from the paper (equation 4) is:
-```
+The full combined loss from the paper (Eq. 4) is:
+
+```text
 L = (1 - α) · H(y, σ(z_s; T=1)) + α · H(σ(z_t; T), σ(z_s; T))
 ```
-Where H is cross-entropy and σ is softmax at temperature T. When you divide logits by T, the softmax gradient scales by 1/T². Without compensating, the KL term's gradients are T² times smaller than the CE term's gradients, making α an unstable hyperparameter where increasing T would silently downweight the distillation signal. Multiplying by T² restores gradient magnitudes to be comparable, so α retains its intended meaning regardless of temperature.
 
-In implementation this becomes the KL form shown at the top of this section, with the T² scaling factor applied explicitly. The two formulations are equivalent -
-KL divergence between two distributions equals their cross-entropy minus the entropy of the target, and since the teacher distribution is fixed, minimising KL and
-minimising cross-entropy are the same optimisation problem.
+Where H is cross-entropy and σ is softmax at temperature T. Hinton et al. argue that when logits are divided by T, the gradients from the distillation term scale approximately as 1/T². Without compensating, increasing T would reduce the effective strength of the distillation term.
 
+Multiplying the distillation term by T² restores its gradient scale so that, across different temperatures, α continues to control the intended balance between distillation and hard-label loss.
+
+In implementation this becomes the KL form shown at the top of this section, with the T² scaling factor applied explicitly. Because the teacher distribution is fixed, KL(softmax(z_s/T) ‖ softmax(z_t/T)) and the cross-entropy H(σ(z_t; T), σ(z_s; T)) differ only by the (constant) entropy of the teacher’s distribution.
 
 ### Alpha α
 
-Controls the balance between learning from the teacher (soft targets) and the ground truth labels (hard targets). Hinton et al. found α=0.7 works well in practice, meaning the distillation signal dominates. Setting α=0 reduces to standard CE training with no teacher - this is the baseline condition.
+α controls the balance between learning from the teacher (soft targets) and the ground truth labels (hard targets). In our experiments we set α=0.3, placing more weight on the distillation term than on the hard-label CE, in line with common practice in KD for vision tasks. Setting α=0 reduces to standard CE training with no teacher, which serves as the baseline condition.
 
 ---
 
 ## Why It Works: Dark Knowledge
 
-The teacher's soft predictions encode **inter-class similarity structure** learned from the full dataset. For example, a model trained on ImageNet learns that Persian cats look more like Siamese cats than like trucks, and this similarity is embedded in the off-diagonal probabilities of its output distribution. 
+The teacher's soft predictions encode **inter-class similarity structure** learned from the full dataset. For example, a model trained on ImageNet can learn that Persian cats look more like Siamese cats than like trucks, and this similarity is embedded in the off-diagonal probabilities of its output distribution.  
 The student absorbs this structure during training, effectively getting access to a richer training signal than one-hot labels provide.
 
 This is analogous to how a student learns more from a detailed explanation of *why* an answer is correct than from just being told the correct answer.
@@ -86,6 +88,8 @@ This is analogous to how a student learns more from a detailed explanation of *w
 
 ## Architecture
 
+The following teacher–student setup is specific to this project and is not part of the original KD paper, which focused on a large speech model and MNIST.
+
 ### Teacher: ResNet-18
 - Parameters: ~11.2M
 - CIFAR-10 accuracy: 93.43% (Week 1 checkpoint)
@@ -93,10 +97,10 @@ This is analogous to how a student learns more from a detailed explanation of *w
 
 ### Student: SmallCNN
 - Parameters: ~170K
-- Architecture: 4 depthwise conv blocks + adaptive avg pool + linear
-- Compression ratio: **65×** fewer parameters than teacher
+- Architecture: 4 conv blocks + adaptive avg pool + linear
+- Compression ratio: ~65.6× fewer parameters than teacher
 
-```
+```text
 Block 1: Conv(3→32)    + BN + ReLU + MaxPool(2) → 16×16
 Block 2: Conv(32→64)   + BN + ReLU + MaxPool(2) →  8×8
 Block 3: Conv(64→128)  + BN + ReLU + MaxPool(2) →  4×4
@@ -110,31 +114,33 @@ Linear(256, 10)
 
 | Parameter | Value             | Rationale |
 |---|-------------------|---|
-| Temperature T | 4.0               | Hinton et al. recommendation for vision tasks |
-| Alpha α | 0.3               | KL dominates; paper's default |
+| Temperature T | 4.0               | Common choice in KD for vision; T>1 softens targets |
+| Alpha α | 0.3               | Project choice; gives more weight to the distillation term |
 | Optimizer | Adam              | lr=1e-3 |
 | Scheduler | CosineAnnealingLR | Smooth decay, no manual LR tuning |
-| Epochs | 30                | Sufficient for student convergence on CIFAR-10 |
+| Epochs | 30                | Sufficient for student convergence on CIFAR-10 in this setup |
 | Batch size | 128               | Standard for CIFAR-10 |
 
 ---
 
 ## Experiment Results
 
+All experiments below are on CIFAR-10 with the ResNet-18 / SmallCNN configuration described above.
+
 ### Run 1 - Diagnostic (broken)
 
-Training stalled at ~27% val_acc. Two bugs: `return` statement inside the batch
+Training stalled at ~27% val_acc. Two bugs were present: a `return` statement inside the batch
 loop caused the student to train on only one batch per epoch (1/390th of the data),
-and fixed lr=1e-3 with no scheduler caused oscillation. Demonstrates that training
-dynamics matter as much as distillation hyperparameters.
+and fixed lr=1e-3 with no scheduler caused oscillation. This run illustrates that training
+dynamics (data coverage, learning-rate schedule) can dominate the effect of distillation hyperparameters.
 
 ### Run 2 - Partial fix (wrong teacher, wrong normalisation)
 
-Fixed the return bug and added CosineAnnealingLR. Used wrong teacher checkpoint
+After removing the early `return` and adding CosineAnnealingLR, we used an incorrect teacher checkpoint
 (72.93% accuracy) and mismatched normalisation stats between teacher and students
-(0.2023 vs 0.2470 std). Distillation reached 77.77% vs baseline 78.38% (Δ=-0.61pp).
-The negative gap was a symptom of the weak teacher - soft targets from a 72.93%
-model carry less structured inter-class information.
+(0.2023 vs 0.2470 standard deviation). Distillation reached 77.77% vs a baseline of 78.38% (Δ=-0.61pp).
+
+This negative gap is consistent with the hypothesis that a weak teacher provides less useful soft targets, but we did not systematically vary teacher quality, so this should be treated as an observation rather than a definitive causal claim.
 
 ### Run 3 - Final (correct teacher, unified normalisation)
 
@@ -147,12 +153,10 @@ model carry less structured inter-class information.
 | val_acc at epoch 10 | 68.59% | 70.02% |
 | val_acc at epoch 20 | 75.91% | 76.61% |
 
-**Interpretation:** with a strong teacher (93.43%) distillation correctly edges above
-the baseline. The margin (+0.07pp) is small because student capacity (170K params,
-65.6× compression) is the binding constraint - the student cannot fully absorb the
-teacher's richer soft distributions. The convergence curves are noisier than the
-baseline because the KD loss signal is harder to optimise than plain CE at this
-compression ratio.
+With a strong teacher (93.43%) and matched normalisation, the distilled student slightly outperforms
+the same architecture trained with hard labels only. The margin (+0.07pp) is small; given the 65.6×
+parameter compression, it is plausible that student capacity is the limiting factor, but we did not
+run larger students to confirm this hypothesis.
 
 ### Inference Benchmark (CPU, batch_size=128)
 
@@ -162,51 +166,55 @@ compression ratio.
 | SmallCNN - distilled | 170,378 | 0.6 MB | 78.34% | 76ms | 1,676 img/s |
 | SmallCNN - baseline CE | 170,378 | 0.6 MB | 78.27% | 67ms | 1,905 img/s |
 
-**Compression ratio:** 65.6× parameters, 71× size  
-**Speedup vs teacher:** 14.6× (distilled), 16.6× (baseline)  
-**Accuracy cost:** 15.09pp vs teacher at 14.6× speedup
+**Compression ratio:** 65.6× parameters, ~71× model size  
+**Speedup vs teacher:** ≈14.7× (distilled), ≈16.7× (baseline)  
+**Accuracy cost:** ≈15.1pp vs teacher at ≈14.7× speedup
+
+These latencies are specific to the hardware and implementation used here and should not be interpreted as universal KD speedups.
 
 ### Plots
 
-Loss breakdown (distillation run):
+Loss breakdown (distillation run):  
 ![Distillation loss breakdown](../code/compression/plots/distillation/distill_loss_breakdown.png)
 
-Validation accuracy comparison:
+Validation accuracy comparison:  
 ![Val accuracy comparison](../code/compression/plots/distillation/val_accuracy_comparison.png)
 
 ---
 
 ## Key Observations
 
-**On the KD vs CE loss gap:** throughout training, `kd_loss > ce_loss`. This is expected - the KL divergence between two distributions over 10 classes is naturally larger in scale than cross-entropy against a one-hot target. The ratio between them should decrease as the student's distribution converges toward the teacher's.
+**On the KD vs CE loss gap:** in our runs, `kd_loss` was consistently larger than `ce_loss`, which is expected because the KL divergence between two distributions over 10 classes tends to be larger in scale than cross-entropy against a one-hot target. As training progresses and the student distribution becomes closer to both teacher and ground truth, both losses decrease.
 
-**On the 65× compression:** the student at 170K parameters is not expected to match the teacher's 93.43%. The question distillation answers is: *does the student trained with soft targets outperform the same student trained with hard labels alone?* That gap is the measure of what the teacher's knowledge contributes.
+**On the 65× compression:** with 170K parameters, the student is not expected to match the teacher's 93.43%. The relevant question for knowledge distillation is whether the student trained with soft targets outperforms the same student trained with hard labels alone. In the final run, KD yields a small but positive gain on this metric.
 
-**On frozen teacher:** the teacher must be in `eval()` mode with all gradients disabled during distillation training. If the teacher were trainable, backpropagating through both models simultaneously would update the teacher toward the student's poor predictions - the signal would degrade rather than improve.
+**On the frozen teacher:** during distillation training the teacher is kept in `eval()` mode with gradients disabled, as in the original KD formulation. Jointly updating the teacher and student during distillation could move the teacher away from its pre-trained optimum; analysing that regime is beyond the scope of these experiments.
 
 ---
+
 ## Soft Target Visualisation
 
 ![Soft target distributions](../code/compression/plots/distillation/soft_target_distributions.png)
 
 Four correctly classified CIFAR-10 images at T=1, 2, 4, 8. Red bar = true class, blue = other classes.
 
-At T=1 the teacher assigns near-100% to the correct class, the soft target is essentially a hard label. By T=4 inter-class similarity structure emerges: cat gets non-trivial probability on dog and deer; ship gets probability on airplane
-and truck; airplane (an ambiguous poster image) spreads across all vehicle classes. By T=8 the distribution is so flat that the true class is no longer dominant for
-uncertain images, which is why T=8 is generally too high causing the signal to degrade.
+At T=1 the teacher assigns near-100% to the correct class, so the soft target is essentially a hard label. By T=4 inter-class similarity structure becomes visible: cat gets non-trivial probability on dog and deer; ship gets probability on airplane
+and truck; airplane (an ambiguous poster image) spreads across all vehicle classes. By T=8 the distribution can become so flat that the true class is no longer clearly dominant for
+uncertain images, which is why T=8 is often too high in practice.
 
-This is the empirical justification for T=4: it exposes the teacher's learned similarity structure without washing out the correct class signal entirely.
+This provides empirical support in our setup for using T=4: it exposes the teacher's learned similarity structure without washing out the correct-class signal entirely.
 
 ---
+
 ## Variants and Extensions (not implemented)
 
-**Feature-level distillation (FitNets, Romero et al., 2015):** instead of matching only the final logits, intermediate feature maps from the teacher are used as targets for corresponding student layers. More information transfer but requires aligned architectures.
+**Feature-level distillation (FitNets, Romero et al., 2015):** instead of matching only the final logits, intermediate feature maps from the teacher are used as targets for corresponding student layers. This can transfer more information but typically requires some alignment between teacher and student architectures.
 
-**Progressive distillation (Hinton et al., 2022):** cascade of distillation steps - teacher → medium model → small model - rather than jumping directly from large to tiny. Each step is an easier learning problem.
+**Progressive distillation:** a general strategy where distillation is applied in stages (teacher → medium model → small model) rather than jumping directly from large to tiny. This idea appears in various KD works and surveys but is not analysed in detail here.
 
-**Self-distillation (Zhang et al., 2019):** the model distills into itself across epochs, using earlier checkpoints as the teacher. No separate teacher model required.
+**Self-distillation (Zhang et al., 2019):** the model distills into itself across epochs, using earlier checkpoints as the teacher. No separate teacher model is required.
 
-**Task-Agnostic Distillation (DistilBERT, Sanh et al., 2019):** applied to transformers in NLP; the same principles transfer directly - the architecture is different but the loss formulation is identical.
+**Task-Agnostic Distillation (DistilBERT, Sanh et al., 2019):** applied to transformers in NLP; the same principles transfer directly - the architecture is different but the loss formulation is closely related.
 
 ---
 
@@ -214,5 +222,5 @@ This is the empirical justification for T=4: it exposes the teacher's learned si
 
 - Hinton, G., Vinyals, O., Dean, J. (2015). *Distilling the Knowledge in a Neural Network*. https://arxiv.org/abs/1503.02531
 - Romero, A. et al. (2015). *FitNets: Hints for Thin Deep Nets*. https://arxiv.org/abs/1412.6550
-- Sanh, V. et al. (2019). *DistilBERT*. https://arxiv.org/abs/1910.01108
+- Sanh, V. et al. (2019). *DistilBERT: a distilled version of BERT*. https://arxiv.org/abs/1910.01108
 - Gou, J. et al. (2021). *Knowledge Distillation: A Survey*. https://arxiv.org/abs/2006.05525

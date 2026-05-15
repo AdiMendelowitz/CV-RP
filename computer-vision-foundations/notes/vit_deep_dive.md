@@ -1,14 +1,14 @@
 # Vision Transformer (ViT) Deep Dive
 
 **Reference Implementation:** `vit.py`  
-**Paper:** "An Image is Worth 16x16 Words" (Dosovskiy et al., 2020)
+**Paper:** “An Image is Worth 16×16 Words: Transformers for Image Recognition at Scale” (Dosovitskiy et al., 2020)[file:129][web:148][web:151]
 
 ---
 
 ## Table of Contents
 
 - [The Paradigm Shift](#the-paradigm-shift)
-- [Component 1: PatchEmbedding](#component-1-patchembed)
+- [Component 1: PatchEmbedding](#component-1-patchembedding)
 - [Component 2: MultiHeadAttention](#component-2-multiheadattention)
 - [Component 3: TransformerBlock](#component-3-transformerblock)
 - [Component 4: VisionTransformer](#component-4-visiontransformer)
@@ -17,21 +17,24 @@
 - [ViT vs "Attention Is All You Need"](#vit-vs-attention-is-all-you-need-2017)
 - [Training Considerations](#training-considerations)
 - [Model Variants](#model-variants)
+
 ---
 
 ## The Paradigm Shift
 
-**CNNs:** Spatial inductive bias built into architecture
-- Convolutions process local neighborhoods
-- Translation equivariance by design
-- Hierarchical feature learning
+**CNNs: strong spatial inductive bias.**  
 
-**Transformers:** Pure sequence modeling with global receptive field
-- Treat image as sequence of patches
-- No spatial inductive bias
-- Self-attention learns relationships between all patches
+- Convolutions operate on local neighbourhoods and share weights spatially.  
+- Translation equivariance is built in: shifting the input shifts the feature maps.  
+- Stacking layers yields hierarchical features (edges → parts → objects).[file:129][web:137]
 
-**Key insight:** With enough data, transformers can learn spatial relationships that CNNs get "for free" — and often learn better representations.
+**Transformers: minimal spatial inductive bias.**  
+
+- Treat an image as a sequence of patch tokens and use self‑attention over tokens.  
+- No inherent locality or translation equivariance; all relations are learned.  
+- Global receptive field from the first layer via attention over all patches.[file:129][web:148]
+
+**Key insight (ViT):** With sufficient data (e.g., JFT‑300M), a pure transformer applied to image patches can match or surpass CNNs on classification tasks, despite lacking convolutional inductive biases.[web:148][web:151]
 
 ---
 
@@ -39,13 +42,13 @@
 
 ### What It Does
 
-Converts a 2D image into a 1D sequence of patch embeddings.
+Converts a 2D image into a 1D sequence of patch embeddings.[file:129][web:148]
 
 ```python
 # Input:  (batch, 3, 224, 224)     RGB image
-# Output: (batch, 197, 768)        Sequence of embedded patches
+# Output: (batch, 197, 768)        patch tokens + CLS
 #         197 = 196 patches + 1 CLS token
-#         196 = (224/16)² patches for patch_size=16
+#         196 = (224/16)² patches for patch_size = 16
 ```
 
 ### The Process
@@ -53,54 +56,50 @@ Converts a 2D image into a 1D sequence of patch embeddings.
 **Step 1: Split into patches**
 
 ```python
-# Image: 224×224
-# Patch size: 16×16
-# Number of patches: (224/16) × (224/16) = 14 × 14 = 196
+# Image: 224 × 224
+# Patch size: 16 × 16
+# Number of patches: (224 / 16) × (224 / 16) = 14 × 14 = 196
 ```
 
-Each patch is a 16×16×3 = 768-dimensional vector (flattened).
+Each patch covers 16×16×3 = 768 scalar values; in ViT these are linearly projected to an embedding of dimension \(D\) (often 768 for ViT‑B), not kept as raw 768‑D.[file:129][web:148]
 
-**Step 2: Linear projection (via Conv2d)**
+**Step 2: Linear projection via Conv2d**
 
 ```python
 self.projection = nn.Conv2d(
     in_channels=3,
-    out_channels=768,  # embed_dim
-    kernel_size=16,
-    stride=16
+    out_channels=embed_dim,  # e.g. 768
+    kernel_size=patch_size,  # e.g. 16
+    stride=patch_size
 )
 ```
 
-**Why Conv2d?** A convolution with `kernel_size=patch_size` and `stride=patch_size` simultaneously:
-1. Splits the image into non-overlapping patches
-2. Projects each patch to embedding dimension
+A conv layer with `kernel_size = stride = patch_size` performs, in one operation:[file:129][web:148][web:156]
 
-This is computationally equivalent to:
-```python
-# Manual approach (slower):
-patches = split_into_patches(image)  # (196, 768)
-embeddings = linear_projection(patches)
-```
+1. Non‑overlapping patch extraction.  
+2. Linear projection of each patch to `embed_dim`.
+
+This is equivalent to manually flattening patches and applying a fully connected layer to each patch, but more efficient and idiomatic in PyTorch.[file:129][web:156]
 
 **Step 3: Add positional embeddings**
 
 ```python
-self.positional_embedding = nn.Parameter(torch.randn(1, 197, 768))
+self.positional_embedding = nn.Parameter(
+    torch.randn(1, n_patches + 1, embed_dim)
+)
 ```
 
-**Why needed?** Unlike CNNs, transformers have no notion of spatial position. Positional embeddings tell the model where each patch came from in the original image.
-
-**Learnable vs Fixed:** ViT uses learnable positional embeddings (unlike original Transformer's sinusoidal). Research shows both work, but learnable is slightly better for vision.
+Transformers are permutation‑invariant over tokens, so they need explicit position information.[file:129][web:148] ViT uses *learnable* 1D positional embeddings over the patch sequence (plus the CLS position), as opposed to fixed sinusoidal encodings used in Vaswani et al.[web:148][web:151] The ViT paper reports small or negligible accuracy differences between fixed and learned positions, but learnable embeddings are now standard in vision transformers.[web:148]
 
 **Step 4: Prepend [CLS] token**
 
 ```python
-self.cls_token = nn.Parameter(torch.randn(1, 1, 768))
+self.cls_token = nn.Parameter(torch.randn(1, 1, embed_dim))
 ```
 
-The [CLS] token is a learnable embedding prepended to the sequence. After passing through all transformer layers, it aggregates information from all patches and is used for classification.
+A learnable [CLS] token is prepended to the patch sequence. After passing through all transformer layers, its final representation is used as a compact summary for classification.[file:129][web:148]
 
-**Why [CLS]?** Borrowed from BERT. Alternative: global average pooling over all patch embeddings. [CLS] works better empirically.
+Alternatives like global average pooling over patch tokens are viable, but empirically [CLS] performs slightly better for ViT‑style models and aligns with BERT‑style pretraining recipes.[file:129][web:148][web:151]
 
 ---
 
@@ -108,126 +107,84 @@ The [CLS] token is a learnable embedding prepended to the sequence. After passin
 
 ### The Attention Mechanism
 
-**Core equation:**
-```
-Attention(Q, K, V) = softmax(QK^T / √d_k) V
+Standard scaled dot‑product attention:[file:129][web:148]
+
+```text
+Attention(Q, K, V) = softmax(Q Kᵀ / √d_k) V
 ```
 
-Where:
-- Q (Query): "What am I looking for?"
-- K (Key): "What do I contain?"
-- V (Value): "What information do I have?"
+- Q (queries): what each token is looking for.  
+- K (keys): what each token offers.  
+- V (values): the information to aggregate.
 
-### Step-by-Step Breakdown
+### Step‑by‑Step Breakdown
 
 **Step 1: Generate Q, K, V**
 
 ```python
-# Single linear projection generates all three
 qkv = self.qkv(x)  # (batch, seq_len, 3 * embed_dim)
 ```
 
-For each token, we create three different representations:
-- Q: What this token is querying for
-- K: What this token offers (for other tokens to query)
-- V: The actual information this token carries
+A single linear layer produces concatenated Q, K, V for each token, which are then reshaped and split.[file:129][web:148]
 
 **Step 2: Split into multiple heads**
 
 ```python
-# embed_dim = 768, num_heads = 12
-# head_dim = 768 / 12 = 64
-
-# Reshape: (batch, 197, 768) -> (batch, 12, 197, 64)
+# Example: embed_dim = 768, num_heads = 12 → head_dim = 64
+# (batch, seq_len, 768) -> (batch, 12, seq_len, 64)
 ```
 
-**Why multiple heads?** Each head can learn to attend to different types of relationships:
-- Head 1: Spatial proximity
-- Head 2: Color similarity
-- Head 3: Texture patterns
-- etc.
+Multiple heads allow the model to attend to different relational patterns in parallel (e.g., spatial neighbours, similar colour/texture, long‑range dependencies).[file:129][web:148]
 
-**Step 3: Scaled dot-product attention**
+**Step 3: Scaled dot‑product attention**
 
 ```python
-# Q @ K^T: (batch, 12, 197, 64) @ (batch, 12, 64, 197)
-#        -> (batch, 12, 197, 197)
-attn = (q @ k.transpose(-2, -1)) * self.scale
+attn = (q @ k.transpose(-2, -1)) * self.scale  # self.scale = 1/√d_k
+# Shape: (batch, num_heads, seq_len, seq_len)
 ```
 
-**What does this matrix represent?**
-- Shape: (197, 197) for each head
-- attn[i, j] = similarity between patch i and patch j
-- Each row: "how much should token i attend to all other tokens?"
+The attention matrix per head has shape (tokens × tokens), including the CLS token (so 197×197 for ViT‑B/16).[file:129][web:148]
 
-**Why scale by √d_k?**
-
-Dot products grow with dimensionality. For large d_k, dot products have large magnitude → softmax saturates → tiny gradients.
-
-Scaling by √d_k keeps dot products in a reasonable range.
-
-**Example:**
-```python
-# Without scaling:
-q = [1, 1, ..., 1]  # 64 dimensions
-k = [1, 1, ..., 1]
-q @ k = 64  # Large!
-
-# With scaling:
-(q @ k) / √64 = 64 / 8 = 8  # Reasonable
-```
+Scaling by \(1/\sqrt{d_k}\) prevents inner products from growing too large with dimension, which would make softmax saturate and harm gradients.[file:129][web:148]
 
 **Step 4: Softmax (attention weights)**
 
 ```python
-attn = attn.softmax(dim=-1)  # (batch, 12, 197, 197)
+attn = attn.softmax(dim=-1)
 ```
 
-Softmax converts similarities to probabilities. Each row sums to 1:
-- attn[i, :] = [0.3, 0.05, 0.02, ..., 0.15, 0.01]
-- Interpretation: Token i should pay 30% attention to token 0, 5% to token 1, etc.
+Each row is a probability distribution over all tokens: for token i, attn[i, :] encodes how much it attends to every other token.[file:129][web:148]
 
 **Step 5: Apply attention to values**
 
 ```python
-# (batch, 12, 197, 197) @ (batch, 12, 197, 64)
-# -> (batch, 12, 197, 64)
-x = attn @ v
+x = attn @ v  # (batch, num_heads, seq_len, head_dim)
 ```
 
-This is a weighted sum. For token i:
-```
-output[i] = 0.3 * v[0] + 0.05 * v[1] + ... + 0.01 * v[196]
+For each token i:
+
+```text
+output[i] = Σ_j attn[i, j] * v[j]
 ```
 
-Token i's output is a weighted combination of all other tokens' values, where weights come from attention scores.
+So the new representation of token i is a learned weighted average of other tokens’ value vectors.[file:129][web:148]
 
 **Step 6: Concatenate heads and project**
 
 ```python
-# (batch, 12, 197, 64) -> (batch, 197, 768)
 x = x.transpose(1, 2).reshape(batch, seq_len, embed_dim)
 x = self.proj(x)
 ```
 
-### Attention Visualization
+This re‑merges head outputs and applies a final linear projection.[file:129][web:148]
 
-For a 224×224 image with 16×16 patches (196 patches):
+### Attention Patterns (Qualitative)
 
-```
-Attention matrix for one head: (197, 197)
+Empirically, attention maps in ViT exhibit:[file:129][web:148]
 
-     CLS  P1  P2  P3  ...  P196
-CLS [0.01 0.02 0.03 0.01 ... 0.01]
-P1  [0.05 0.30 0.20 0.05 ... 0.02]  <- Patch 1 attends to itself (0.30) 
-P2  [0.03 0.25 0.35 0.10 ... 0.01]     and its neighbors (0.20, 0.25)
-P3  [0.02 0.05 0.15 0.40 ... 0.03]
-...
-P196[0.01 0.01 0.02 0.03 ... 0.50]
-```
-
-Early layers: attention is local (patches attend to neighbors)  
-Later layers: attention is global (patches attend across entire image)
+- Early layers: mainly local attention to neighbouring patches (CNN‑like behaviour).  
+- Middle layers: attention that clusters semantically similar regions (object parts).  
+- Late layers: more global attention across distant regions and to the CLS token.
 
 ---
 
@@ -240,52 +197,42 @@ x -> LayerNorm -> MultiHeadAttention -> Add (residual)
   -> LayerNorm -> MLP -> Add (residual) -> output
 ```
 
-This is the "Pre-LN" (Pre-LayerNorm) architecture, different from the original Transformer.
+ViT uses a **Pre‑LayerNorm** (Pre‑LN) architecture: the LN is applied before each sublayer (attention/MLP), not after the residual, which differs from the original Transformer.[file:129][web:148][web:153]
 
-### Why Pre-LayerNorm?
+### Why Pre‑LayerNorm?
 
-**Original Transformer (Post-LN):**
+Original Vaswani et al. used **Post‑LN**:
+
 ```python
-x = x + Attention(x)
-x = LayerNorm(x)
-x = x + MLP(x)
-x = LayerNorm(x)
+# Post-LN (original Transformer)
+x = LayerNorm(x + Attention(x))
+x = LayerNorm(x + MLP(x))
 ```
 
-**ViT (Pre-LN):**
+ViT uses **Pre‑LN**:
+
 ```python
+# Pre-LN (ViT-style)
 x = x + Attention(LayerNorm(x))
 x = x + MLP(LayerNorm(x))
 ```
 
-**Benefits of Pre-LN:**
-1. **More stable training**: Gradients flow more cleanly through residuals
-2. **Can skip final LayerNorm** (though ViT keeps it)
-3. **Easier to train deep models** (100+ layers)
-
-Research (Xiong et al., 2020) shows Pre-LN converges better for very deep Transformers.
+Pre‑LN improves gradient flow, especially in deeper models, by providing a clean residual path that does not pass through LayerNorm, making training more stable and less sensitive to warmup and learning‑rate schedules.[file:129][web:153][web:158]
 
 ### The MLP Block
 
 ```python
-Linear(768 -> 3072) -> GELU -> Linear(3072 -> 768)
+MLP: Linear(embed_dim → 4 * embed_dim) → GELU → Linear(4 * embed_dim → embed_dim)
 ```
 
-**Why 4× expansion?** Following original Transformer design. The hidden layer has 4× the embedding dimension.
+- Hidden dimension is typically 4× the embedding dimension, mirroring Vaswani et al.[file:129][web:148]  
+- GELU is used instead of ReLU; it is smoother and has empirically worked better for Transformer‑style architectures.[file:129][web:148]
 
-**Why GELU instead of ReLU?**
+GELU is approximated as:
 
-GELU (Gaussian Error Linear Unit): `x * Φ(x)` where Φ is the cumulative distribution function of the standard normal distribution.
-
-Approximation: `0.5 * x * (1 + tanh(√(2/π) * (x + 0.044715 * x³)))`
-
-Properties:
-- Smooth (differentiable everywhere)
-- Non-monotonic (slightly negative for small negative inputs)
-- Empirically better for Transformers
-
-**ReLU:** Hard cutoff at 0  
-**GELU:** Smooth transition around 0
+\[
+\operatorname{GELU}(x) \approx 0.5 x \big(1 + \tanh\big(\sqrt{2/\pi} (x + 0.044715 x^3)\big)\big)
+\]
 
 ### Residual Connections
 
@@ -294,7 +241,7 @@ x = x + self.attn(self.norm1(x))
 x = x + self.mlp(self.norm2(x))
 ```
 
-Same purpose as in ResNet: enable gradient flow to early layers. Without residuals, 12-layer Transformer would suffer from vanishing gradients.
+Residual connections play the same role as in ResNets: they help gradients flow to early layers and mitigate vanishing gradients; without them, a 12‑layer transformer would be significantly harder to train.[file:129][web:148]
 
 ---
 
@@ -306,102 +253,74 @@ Same purpose as in ResNet: enable gradient flow to early layers. Without residua
 Input: (batch, 3, 224, 224)
 
 1. PatchEmbedding:
-   (batch, 3, 224, 224) -> (batch, 197, 768)
-   
-2. Transformer Blocks (×12):
-   (batch, 197, 768) -> (batch, 197, 768)  # Same shape
-   
+   (batch, 3, 224, 224) -> (batch, 197, embed_dim)
+
+2. Transformer blocks (×L, e.g. 12):
+   (batch, 197, embed_dim) -> (batch, 197, embed_dim)
+
 3. LayerNorm:
-   (batch, 197, 768) -> (batch, 197, 768)
-   
+   (batch, 197, embed_dim) -> (batch, 197, embed_dim)
+
 4. Extract CLS token:
-   (batch, 197, 768) -> (batch, 768)  # Take first token
-   
+   (batch, 197, embed_dim) -> (batch, embed_dim)
+
 5. Classification head:
-   (batch, 768) -> (batch, num_classes)
+   (batch, embed_dim) -> (batch, num_classes)
 ```
 
-### Why Extract CLS Token?
+### Why Extract the CLS Token?
 
-**Alternative 1: Average all patch tokens**
+Alternatives include averaging or max‑pooling patch tokens:
+
 ```python
-cls_token = x.mean(dim=1)  # (batch, 197, 768) -> (batch, 768)
+# Mean pooling
+cls_like = x.mean(dim=1)        # (batch, embed_dim)
+
+# Max pooling
+cls_like, _ = x.max(dim=1)      # (batch, embed_dim)
 ```
 
-**Alternative 2: Max pooling**
-```python
-cls_token = x.max(dim=1)[0]
-```
-
-**CLS token approach:**
-- Dedicated learnable token
-- Attends to all patches through self-attention
-- Aggregates global information
-- Empirically works best
+ViT, however, designates the first token as a learnable [CLS] token, which attends to all patches and is then used as the input to the classifier.[file:129][web:148] This mechanism is borrowed from BERT and works well in practice; many ViT variants retain it even when adding alternative pooling strategies.
 
 ### Weight Initialization
+
+ViT uses truncated normal initialisation for linear layers, with standard deviation around 0.02:[file:129][web:148]
 
 ```python
 nn.init.trunc_normal_(module.weight, std=0.02)
 ```
 
-**Truncated normal:** Normal distribution with values outside 2σ resampled.
-
-**Why std=0.02?** Empirically found to work well for Transformers. Smaller than typical initialization (std=0.1) because:
-1. LayerNorm follows, which normalizes anyway
-2. Residual connections accumulate activations
+- A relatively small std helps stabilise early training in deep residual networks.  
+- LayerNorm and residual connections compensate, but small initial weights avoid large activations and gradients at start‑up.[file:129][web:148]
 
 ---
 
 ## Why This Works
 
-### The Inductive Bias Question
+### Inductive Bias vs Data Scale
 
-**CNNs have strong inductive biases:**
-- Locality (convolutions operate on local neighborhoods)
-- Translation equivariance (shift input → shift output)
-- Hierarchical composition (early: edges, late: objects)
+**CNNs** provide strong inductive biases:[file:129][web:148]
 
-**Transformers have minimal inductive bias:**
-- Only constraint: sequence of tokens
-- Must learn spatial relationships from data
+- Locality and translation equivariance.  
+- Hierarchical feature extraction built directly into the architecture.  
+- Good performance on relatively small datasets (e.g., CIFAR‑10, ImageNet‑1k) with moderate training schedules.
 
-**So why do Transformers work for vision?**
+**ViT** has weaker inductive biases:[file:129][web:148]
 
-### Answer: Data Scale
+- It only assumes a token sequence; locality and translation behaviour are learned.  
+- As a result, ViT is data‑hungry and underperforms CNNs when trained from scratch on modest datasets like ImageNet‑1k without special tricks.[web:148][web:154]
 
-**Small datasets (< 100K images):**
-- CNNs outperform ViT
-- Inductive bias helps when data is scarce
-- Example: CIFAR-10 (50K images) → ResNet > ViT
+Dosovitskiy et al. show that, when pre‑trained on very large datasets (e.g., JFT‑300M) and then fine‑tuned, ViT matches or surpasses state‑of‑the‑art CNNs across several benchmarks, while being competitive in training efficiency at scale.[web:148][web:151]
 
-**Medium datasets (100K - 1M images):**
-- CNNs ≈ ViT
-- ImageNet (1.3M images) → Similar performance
+### What Transformers Learn in Vision
 
-**Large datasets (> 10M images):**
-- ViT outperforms CNNs
-- JFT-300M (300M images) → ViT significantly better
-- Transformers can learn spatial relationships given enough examples
+Attention visualisation reveals that:[file:129][web:148]
 
-### What Transformers Learn
+- Early layers: focus mainly on local neighbourhoods (akin to conv receptive fields).  
+- Middle layers: organise semantically similar patches and follow object boundaries.  
+- Later layers: capture global relations and scene‑level semantics, with CLS attention spreading over relevant object regions.
 
-Visualizing attention maps shows Transformers learn:
-
-**Early layers:**
-- Local patterns (similar to early CNN layers)
-- Attend to spatially nearby patches
-
-**Middle layers:**
-- Semantic groupings (patches with similar content)
-- Object boundaries
-
-**Late layers:**
-- Global relationships
-- Object parts across entire image
-- Scene understanding
-
-**Key difference from CNNs:** Transformers can attend to long-range dependencies from layer 1. CNNs need to stack many layers to achieve this.
+Transformers can attend to long‑range dependencies from the first layer; CNNs must stack many layers or add explicit non‑local blocks to achieve comparable receptive fields.[file:129][web:148]
 
 ---
 
@@ -409,256 +328,207 @@ Visualizing attention maps shows Transformers learn:
 
 ### Computational Complexity
 
-**CNN (ResNet-50):**
-- Complexity: O(n²) per layer (for n×n image)
-- But: depth is limited (practical max ~200 layers)
+For a fixed input size, both CNNs and transformers have roughly quadratic cost in spatial resolution, but with different constants and scaling behaviour.
 
-**ViT:**
-- Self-attention complexity: O(n²) where n = number of patches
-- For 224×224 image, 16×16 patches → 196 patches
-- Attention: (197, 197) matrix → manageable
+**ResNet‑50 (typical CNN):**
 
-**Comparison:**
-```
-ResNet-50:  25.6M parameters,  4.1 GFLOPs
-ViT-Base:   86M parameters,   17.6 GFLOPs  (4× more compute)
-```
+- ~25.6M parameters, ≈4 GFLOPs on 224×224 inputs.[web:63]  
 
-ViT is more computationally expensive but often more accurate.
+**ViT‑Base/16 (as reported in implementations and follow‑up work):**
+
+- 12 layers, 768‑D embeddings, 12 heads, MLP ratio 4.  
+- ~86M parameters.[file:129][web:148][web:156]  
+- FLOPs depend on implementation; some references report ≈16–18 GFLOPs at 224×224 resolution for ViT‑B/16.[web:156][web:160]
+
+So ViT‑B/16 is substantially larger and more computationally intensive than ResNet‑50 at 224×224, though efficient kernels and hardware can narrow the gap.[file:129][web:156]
 
 ### When to Use Each
 
-**Use CNNs when:**
-- Small dataset (< 100K images)
-- Need computational efficiency
-- Strong spatial structure matters
-- Limited compute budget
+**CNNs are often preferable when:**[file:129][web:148][web:154]
 
-**Use ViT when:**
-- Large dataset (> 1M images)
-- Transfer learning from pretrained ViT
-- Need global relationships early
-- Have sufficient compute
+- Data is limited (≲10^5 images).  
+- Compute/budget constraints are tight.  
+- Deployment targets have optimised convolution kernels.
 
-**Hybrid approaches:**
-- ConvNeXt: CNN designed to match ViT performance
-- Swin Transformer: ViT with local windows (more efficient)
-- CoAtNet: Combine conv stem + transformer stages
+**ViT is attractive when:**
+
+- You have access to large‑scale pretraining (e.g., ImageNet‑21k, JFT) or strong distillation recipes (e.g., DeiT).[web:148][web:154]  
+- You want strong transfer performance across diverse downstream tasks.  
+- You can afford higher compute and parameter counts.
+
+**Hybrid approaches:**  
+
+- **ConvNeXt:** CNNs redesigned to match ViT performance using modern training recipes.  
+- **Swin Transformer:** Hierarchical ViT with local  window attention (better scaling in resolution).  
+- **CoAtNet:** Hybrid conv + attention backbone.[file:129][web:155]
 
 ---
 
 ## ViT vs "Attention Is All You Need" (2017)
 
-The original Transformer (Vaswani et al., 2017) was designed for sequence-to-sequence tasks like machine translation. ViT borrows the encoder but drops almost everything else. Understanding what changed and why is essential for reading either paper.
+The original Transformer was designed for sequence‑to‑sequence tasks (e.g., machine translation). ViT borrows the encoder stack and drops the decoder and cross‑attention.[file:129][web:148]
 
-### What the Original Transformer Looks Like
+### Original Transformer Overview
 
+```text
+Encoder:                         Decoder:
+Input tokens                     Shifted output tokens
+  ↓                                  ↓
+Token + Positional Encoding      Token + Positional Encoding
+  ↓                                  ↓
+[Multi-Head Self-Attention]      [Masked Multi-Head Self-Attention]
+[Add & Norm]                     [Add & Norm]
+[Feed-Forward]                       ↓
+[Add & Norm]                     [Multi-Head Cross-Attention] ← attends to encoder output
+  ↓ (×N layers)                  [Add & Norm]
+Encoder output                   [Feed-Forward]
+                                 [Add & Norm]
+                                     ↓ (×N layers)
+                                 Linear + Softmax
+                                 Output sequence
 ```
-Encoder:                          Decoder:
-Input tokens                      Output tokens (shifted right)
-    ↓                                 ↓
-Positional Encoding               Positional Encoding
-    ↓                                 ↓
-[Multi-Head Self-Attention]       [Masked Multi-Head Self-Attention]
-[Add & Norm]                      [Add & Norm]
-[Feed Forward]                        ↓
-[Add & Norm]                      [Multi-Head Cross-Attention]  ← attends to encoder output
-    ↓ (×N layers)                 [Add & Norm]
-Encoder Output                    [Feed Forward]
-                                  [Add & Norm]
-                                      ↓ (×N layers)
-                                  Linear + Softmax
-                                  Output probabilities
-```
 
-ViT uses **only the encoder stack**. There is no decoder, no cross-attention, no masked attention.
+ViT uses only the **encoder** side: stacked self‑attention + MLP blocks with positional encodings.[file:129][web:148]
 
-### The Three Types of Attention — and Which ViT Uses
+### Attention Types and What ViT Uses
 
-**1. Self-attention** (encoder): every token attends to every other token in the same sequence. This is what ViT uses exclusively.
+- **Self‑attention (encoder):** tokens attend to one another within the same sequence — used by ViT.  
+- **Masked self‑attention (decoder):** prevents peeking at future tokens — irrelevant for ViT.  
+- **Cross‑attention (decoder→encoder):** lets output tokens attend to encoded inputs — not needed for classification.[file:129][web:148]
 
-**2. Masked self-attention** (decoder): same as self-attention but future tokens are masked so the decoder can't "cheat" by looking ahead. Irrelevant for ViT — there's no sequence generation.
+### LayerNorm: Post‑LN vs Pre‑LN
 
-**3. Cross-attention** (encoder-decoder bridge): queries come from the decoder, keys and values come from the encoder output. This is how the decoder "reads" the encoded input. ViT drops this entirely because classification doesn't require generating an output sequence.
+Original Transformer:[file:129][web:148]
 
-### Post-LN vs Pre-LN
-
-This is the most architecturally significant difference between the 2017 paper and ViT.
-
-**Original Transformer — Post-LN:**
 ```python
+# Post-LN
 x = LayerNorm(x + Attention(x))
 x = LayerNorm(x + MLP(x))
 ```
 
-**ViT — Pre-LN:**
+ViT and most modern transformers:[file:129][web:153][web:158]
+
 ```python
+# Pre-LN
 x = x + Attention(LayerNorm(x))
 x = x + MLP(LayerNorm(x))
 ```
 
-In Post-LN, the residual stream passes through LayerNorm before continuing. The gradient of the loss must flow through the LayerNorm at every layer — and early in training, before the model has converged, this can destabilise the gradient signal. Post-LN requires careful learning rate warmup to avoid divergence.
-
-In Pre-LN, LayerNorm is applied only inside the residual branch. The shortcut path (`x +`) is untouched, so gradients always have a clean direct path back to earlier layers regardless of what happens inside the branches. This is why ViT trains more stably and is less sensitive to warmup length.
+Pre‑LN improves stability, especially in deeper networks, by ensuring a clear residual path for gradients and reducing the need for aggressive learning‑rate warmup.[web:153][web:158]
 
 ### Positional Encoding: Fixed vs Learnable
 
-**Original Transformer — fixed sinusoidal:**
-```python
+Original Transformer uses fixed sinusoidal positional encodings:[file:129][web:148]
+
+```text
 PE(pos, 2i)   = sin(pos / 10000^(2i/d_model))
 PE(pos, 2i+1) = cos(pos / 10000^(2i/d_model))
 ```
 
-The encoding is deterministic — position 5 always gets the same vector, computed by formula. The motivation was that sinusoids allow the model to extrapolate to sequence lengths not seen during training (you can compute `sin` for any position), and the relative offset between two positions is always a linear function of their encodings.
+ViT uses **learnable** positional embeddings:[file:129][web:148]
 
-**ViT — learnable:**
 ```python
-self.positional_embedding = nn.Parameter(torch.randn(1, n_patches + 1, embed_dim))
+self.positional_embedding = nn.Parameter(
+    torch.randn(1, n_patches + 1, embed_dim)
+)
 ```
 
-Just a tensor of parameters updated by the optimiser like any other weight. The ViT paper ablated both and found no meaningful accuracy difference. Learnable is simpler to implement and now the default in most vision work. The tradeoff: learnable positional embeddings don't generalise to different input resolutions without interpolation, whereas sinusoidal ones can.
-
-### What ViT Kept Unchanged
-
-Everything inside the attention operation itself is identical to the 2017 paper:
-
-```
-Attention(Q, K, V) = softmax(QK^T / √d_k) V
-```
-
-The multi-head split, the QKV projection, the scaling factor, the output projection, the 4× MLP expansion ratio, dropout placement — all of it is carried over directly. When you read ViT's attention code, you're reading a direct implementation of Section 3.2 of "Attention Is All You Need."
+Sinusoidal encodings have nice extrapolation properties, but ViT shows that learnable embeddings work at least as well within the training resolution, with interpolation used to adapt to different resolutions at fine‑tuning time.[web:148][web:151]
 
 ### Summary Table
 
-| | Attention Is All You Need (2017) | ViT (2020) |
-|---|---|---|
-| Architecture | Encoder + Decoder | Encoder only |
-| Attention types | Self + Masked self + Cross | Self only |
-| LayerNorm position | Post-LN | Pre-LN |
-| Positional encoding | Fixed sinusoidal | Learnable |
-| Input | Token embeddings | Patch embeddings |
-| Output | Next-token probabilities | Class logits |
-| Task | Sequence-to-sequence | Classification |
+|                      | Transformer (2017)             | ViT (2020)                         |
+|----------------------|---------------------------------|------------------------------------|
+| Architecture         | Encoder + decoder               | Encoder only                       |
+| Attention types      | Self, masked self, cross        | Self only                          |
+| LayerNorm position   | Post‑LN                         | Pre‑LN                             |
+| Positional encoding  | Fixed sinusoidal                | Learnable                          |
+| Input tokens         | Word/subword embeddings         | Patch embeddings (+ CLS)           |
+| Output               | Token sequence                  | Class logits                       |
+| Main task            | Seq‑to‑seq (e.g., translation)  | Image classification               |
+
+[file:129][web:148]
 
 ---
 
 ## Training Considerations
 
-### ViT Training is Different
+### ViT Training vs CNN Training
 
-**Compared to CNNs, ViT requires:**
+Compared to typical CNN schedules, ViT training recipes differ in several ways:[file:129][web:148][web:155]
 
-1. **More data**
-   - Underfits on ImageNet alone
-   - Needs pretraining on larger datasets (JFT-300M, ImageNet-21K)
+1. **More data / pretraining.**  
+   - Original ViT models are pre‑trained on JFT‑300M or ImageNet‑21k before fine‑tuning on ImageNet‑1k.[web:148][web:151]  
+   - Training from scratch on ImageNet‑1k usually underperforms unless using DeiT‑style data‑efficient recipes and distillation.[web:154][web:159]
 
-2. **Heavier augmentation**
-   - RandAugment, CutMix, MixUp
-   - More regularization than CNNs
+2. **Stronger augmentation.**  
+   - RandAugment, MixUp, CutMix and related techniques are commonly used.  
+   - These act as explicit regularisation to compensate for weaker inductive biases.
 
-3. **Longer training**
-   - 300 epochs (vs 90 for ResNet)
-   - Higher batch sizes (4096 vs 256)
+3. **Longer training and larger batches.**  
+   - 300+ epochs and batch sizes in the thousands are typical in the original ViT work.  
+   - Cosine decay with warmup is standard.[web:148]
 
-4. **Different optimization**
-   - AdamW optimizer (vs SGD for CNNs)
-   - Warmup + cosine decay learning rate schedule
+4. **Different optimiser and regularisation.**  
+   - AdamW (Adam with decoupled weight decay) instead of SGD with momentum.  
+   - Non‑trivial weight decay, label smoothing, dropout, and stochastic depth are used.[file:129][web:148][web:155]
 
-### Typical Training Recipe
-
-```python
-# Optimizer
-optimizer = AdamW(model.parameters(), lr=0.001, weight_decay=0.05)
-
-# Learning rate schedule
-warmup_steps = 10000
-scheduler = CosineAnnealingLR(optimizer, T_max=epochs - warmup)
-
-# Augmentation
-transforms = [
-    RandomResizedCrop(224),
-    RandAugment(),
-    MixUp(alpha=0.8),
-    CutMix(alpha=1.0)
-]
-
-# Regularization
-- Dropout: 0.1
-- Stochastic depth: 0.1
-- Label smoothing: 0.1
-```
-
-### Why So Much Regularization?
-
-Transformers have **high capacity** — 86M parameters for ViT-Base.
-
-Without strong regularization, they overfit easily on datasets smaller than ImageNet-21K.
-
-CNNs have built-in regularization via inductive bias (locality, weight sharing). ViT must compensate with explicit regularization.
+These choices are documented further in follow‑up work such as “How to Train Your ViT” and DeiT.[file:129][web:154][web:155]
 
 ---
 
 ## Model Variants
 
-### ViT Sizes
+### ViT Sizes (Canonical Family)
 
-| Model | Layers | Hidden Dim | Heads | Params | ImageNet Acc |
-|-------|--------|------------|-------|--------|--------------|
-| ViT-Ti | 12 | 192 | 3 | 5.7M | ~72% |
-| ViT-S | 12 | 384 | 6 | 22M | ~80% |
-| ViT-B | 12 | 768 | 12 | 86M | ~85% |
-| ViT-L | 24 | 1024 | 16 | 307M | ~88% |
-| ViT-H | 32 | 1280 | 16 | 632M | ~89% |
+Common ViT configurations (numbers approximate and may vary slightly across implementations):[file:129][web:148][web:160]
+
+| Model    | Layers | Hidden dim | Heads | Params (M) | Typical ImageNet‑1k top‑1* |
+|----------|--------|------------|-------|-----------:|----------------------------:|
+| ViT‑Ti   | 12     | 192        | 3     | ≈5–6       | ≈72% (with strong recipe)   |
+| ViT‑S    | 12     | 384        | 6     | ≈22        | ≈80%                        |
+| ViT‑B    | 12     | 768        | 12    | ≈86        | ≈84–86% (with large‑scale pretraining) |
+| ViT‑L    | 24     | 1024       | 16    | ≈300       | ≈87–89%                     |
+| ViT‑H    | 32     | 1280       | 16    | ≈630       | ≈88–89%+                    |
+
+\*Exact accuracies depend heavily on dataset (ImageNet‑1k vs ImageNet‑21k vs JFT), training recipe, and distillation; the table shows representative ranges from ViT and follow‑up scaling papers.[web:148][web:155][web:160]
 
 ### Patch Sizes
 
-**ViT-B/16:** Base model, 16×16 patches (most common)  
-**ViT-B/32:** Base model, 32×32 patches (faster, fewer patches)  
-**ViT-B/8:** Base model, 8×8 patches (more expensive, finer detail)
+ViT models are often denoted as ViT‑X/P, where X is size (B, L, etc.) and P is patch size:[file:129][web:148]
 
-**Trade-off:**
-- Smaller patches → more tokens → better accuracy but slower
-- Larger patches → fewer tokens → faster but less detail
+- **ViT‑B/32:** Base model, 32×32 patches (fewer tokens → faster, coarser).  
+- **ViT‑B/16:** Base model, 16×16 patches (default).  
+- **ViT‑B/8:** Base model, 8×8 patches (more tokens → slower, finer detail).
 
----
+**Trade‑off:**  
 
+- Smaller patches → more tokens → higher compute and memory → finer spatial granularity, higher accuracy.  
+- Larger patches → fewer tokens → lower cost → potentially less detailed representations.[web:148][web:155]
 
 ---
 
 ## Key Takeaways
 
-✅ **ViT treats images as sequences** of patch embeddings, enabling standard Transformer architecture
-
-✅ **Self-attention** learns which patches are related without spatial bias
-
-✅ **CLS token** aggregates global information for classification
-
-✅ **Multi-head attention** allows learning different types of relationships simultaneously
-
-✅ **Pre-LayerNorm** provides more stable gradients than Post-LN
-
-✅ **Data scale matters**: ViT needs large datasets to outperform CNNs
-
-✅ **Compute tradeoff**: ViT is more expensive than CNNs but often more accurate
-
-✅ **Heavy regularization required**: Transformers overfit without strong augmentation
+- ViT treats images as sequences of **patch embeddings**, enabling direct reuse of Transformer encoder architectures.[file:129][web:148]  
+- **Self‑attention** learns which patches are related, without hard‑coded spatial bias.  
+- A **CLS token** aggregates global information and feeds a classifier head.  
+- **Multi‑head attention** captures diverse relationships simultaneously.  
+- **Pre‑LayerNorm** stabilises deep transformer training and is now standard.  
+- ViT needs **large‑scale data or strong training recipes** to outperform CNNs.  
+- ViT models are more computationally expensive than ResNet‑class CNNs at the same resolution, but offer excellent transfer and state‑of‑the‑art accuracy when scaled.[web:148][web:155][web:160]
 
 ---
 
 ## Further Reading
 
-**Original Paper:**
-- Dosovskiy et al., "An Image is Worth 16x16 Words" (2020)
-- https://arxiv.org/abs/2010.11929
+**Core papers:**
 
-**Related Work:**
-- DeiT: Data-efficient image transformers (training ViT on ImageNet-1K only)
-- Swin Transformer: Hierarchical vision transformer with shifted windows
-- ConvNeXt: CNN designed to match ViT performance
-- BEiT: BERT pre-training for image transformers
+- Dosovitskiy et al., “An Image is Worth 16×16 Words: Transformers for Image Recognition at Scale.”[web:148][web:151]  
+- Touvron et al., “DeiT: Data‑Efficient Image Transformers.” (ViT‑style models trained on ImageNet‑1k from scratch with distillation).[web:154][web:159]  
+- Zhai et al., “Scaling Vision Transformers.” (Large‑scale ViT training, up to billions of parameters).[web:155][web:160]
 
-**Implementation Details:**
-- "How to train your ViT?" (Steiner et al., 2021)
-- ViT training recipes and ablations
+**Training recipes and implementations:**
 
----
+- “How to Train Your ViT?” (Steiner et al.) — ablations and best practices.  
+- Official and open‑source ViT codebases (e.g., timm, Google’s JAX/Flax implementations).[web:156]

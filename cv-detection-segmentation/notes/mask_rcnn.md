@@ -1,137 +1,176 @@
 # Mask R-CNN
 
-**Paper:** "Mask R-CNN"  
-**Authors:** Kaiming He, Georgia Gkioxari, Piotr Dollar, Ross Girshick  
+**Paper:** “Mask R-CNN”  
+**Authors:** Kaiming He, Georgia Gkioxari, Piotr Dollár, Ross Girshick  
 **Venue:** ICCV 2017 (Best Paper Award)  
-**arXiv:** https://arxiv.org/abs/1703.06870
+**arXiv:** https://arxiv.org/abs/1703.06870[file:210][web:211][web:212]
 
 ---
 
-## Background: Faster R-CNN and the RoIPool Operation
+## Background: Faster R-CNN and the RoIPool operation
 
-Mask R-CNN extends Faster R-CNN, so understanding the earlier system is a prerequisite for understanding what Mask R-CNN changes and why.
+Mask R‑CNN extends Faster R‑CNN, so understanding the earlier system is a prerequisite.[file:210][web:211]
 
 ### Faster R-CNN overview
 
-Faster R-CNN (Ren et al., NeurIPS 2015) is a two-stage object detector. In the first stage, a Region Proposal Network (RPN) operates on the feature map produced by a backbone CNN and outputs a set of candidate bounding boxes, called region proposals, along with objectness scores. In the second stage, each proposal is mapped onto the feature map, a fixed-size feature vector is extracted from that region, and a pair of heads predict the final class label and a refined bounding box.
+Faster R‑CNN (Ren et al., NeurIPS 2015) is a **two‑stage** object detector.[file:210][web:215]
 
-The operation that extracts a fixed-size feature from an arbitrarily sized proposal region is called RoI Pooling (Region of Interest Pooling).
+- Stage 1: a Region Proposal Network (RPN) operates on backbone CNN features and outputs candidate boxes (region proposals) and objectness scores.  
+- Stage 2: each proposal is mapped onto the feature map; a fixed‑size feature is extracted and fed to two heads that predict the final class label and a refined bounding box.[file:210][web:215]
 
-### RoI Pooling and quantization error
+The operation that extracts a fixed‑size feature from an arbitrary‑sized proposal is **RoIPool** (Region of Interest Pooling).[file:210][web:215]
 
-A region proposal is defined in input image coordinates as a floating-point rectangle. To extract features from this region, two coordinate transformations are required:
+### RoIPool and quantization error
 
-1. The proposal coordinates are divided by the backbone stride (typically 16 for a VGG or ResNet backbone) to map from image space to feature map space. Since the stride is an integer and the proposal coordinates are floating-point, this division generally produces non-integer feature map coordinates.
+Region proposals are defined in input‑image coordinates as floating‑point rectangles.[file:210][web:215] To extract features, Faster R‑CNN performs:
 
-2. The resulting floating-point coordinates are rounded to the nearest integer to identify which feature map cells fall within the proposal. This rounding is the first quantization step.
+1. Divide proposal coordinates by the backbone stride (e.g. 16 for VGG/ResNet) to map from image space to feature‑map space, yielding non‑integer coordinates in feature space.  
+2. Round these floating‑point coordinates to integers to determine which feature map cells belong to the proposal (first quantization).  
+3. Divide the resulting integer region into a fixed grid of bins (e.g. 7×7); bin boundaries are computed as floats and then rounded to integers (second quantization).  
+4. Apply max pooling within each bin to obtain a single value per bin.[file:210][web:215]
 
-3. The rounded region is then divided into a fixed grid of bins (typically 7x7). The bin boundaries are again computed as floating-point values and rounded to integers. This is the second quantization step.
+Each rounding step introduces **spatial misalignment** between the true proposal region and the area from which features are extracted.[file:210] For a stride‑16 backbone, a single rounding step can misalign by up to 8 pixels in input space (half the stride), and two such steps can compound this.[file:210]
 
-4. Within each bin, max pooling produces a single value.
-
-Each rounding step introduces a spatial misalignment between the actual proposal region and the region from which features are extracted. For a stride-16 backbone, a single rounding operation can misalign by up to 8 pixels in input image space (half the stride), and two rounding operations can compound this further.
-
-For bounding box detection, this misalignment is tolerable. A box prediction is a coarse, four-number output; small spatial errors in the extracted features produce small errors in the predicted coordinates, which are further corrected by the bounding box regression head. The quantization error is absorbed by the regression.
-
-For instance segmentation, the output is a per-pixel spatial map, not a four-number summary. A misalignment of several pixels in the feature extraction directly corrupts the spatial correspondence between the feature map and the object, producing masks that are blurred at boundaries or systematically shifted. The precision requirement for masks is fundamentally higher than for boxes, and quantization error that is acceptable for detection is destructive for segmentation.
+For bounding box detection, this is usually tolerable: a bounding box is a coarse four‑number output, and small spatial errors in features can be corrected by the regression head.[file:210] For instance segmentation, the output is a **per‑pixel mask**, so several‑pixel misalignment corrupts the spatial correspondence and yields masks that are blurred or shifted at boundaries.[file:210][web:211] Mask prediction therefore demands much higher spatial precision than box prediction.
 
 ---
 
-## RoIAlign: Eliminating Quantization
+## RoIAlign: eliminating quantization
 
-Mask R-CNN replaces RoI Pooling with RoIAlign, which removes both rounding steps entirely.
+Mask R‑CNN replaces RoIPool with **RoIAlign**, which removes both rounding steps and preserves alignment.[file:210][web:211][web:212]
 
 ### Floating-point grid sampling
 
-Instead of rounding proposal and bin boundaries to integer coordinates, RoIAlign keeps all coordinates as floating-point values throughout. Within each bin of the fixed output grid, a small set of sampling points is placed at regular floating-point locations (the paper uses a 2x2 grid of four points per bin by default).
+Instead of rounding proposal and bin boundaries, RoIAlign keeps all coordinates as floating‑point values.[file:210][web:211]
 
-Each sampling point falls at a non-integer position in the feature map. Since there is no feature map value defined at a non-integer position, the value at each sampling point is computed by bilinear interpolation from the four nearest integer feature map locations.
+- For each bin in the fixed output grid (e.g. 7×7 for boxes, 14×14 for masks), RoIAlign places a small set of sampling points at regular *floating‑point* locations; the paper uses a 2×2 grid of four sampling points per bin by default.[file:210][web:211]  
+- Each sampling point lies at a non‑integer position on the feature map, so the feature value is computed by **bilinear interpolation** from the four neighbouring integer cells.[file:210][web:211]
 
 ### Bilinear interpolation
 
-For a sampling point at floating-point position (x, y) in the feature map, the four surrounding integer-coordinate cells are (floor(x), floor(y)), (ceil(x), floor(y)), (floor(x), ceil(y)), and (ceil(x), ceil(y)). Let dx = x - floor(x) and dy = y - floor(y). The interpolated value is:
+For a sampling point at (x, y) in feature‑map coordinates, let:
 
+- \((x_1, y_1) = (\lfloor x \rfloor, \lfloor y \rfloor)\)  
+- \((x_2, y_1) = (\lceil x \rceil, \lfloor y \rfloor)\)  
+- \((x_1, y_2) = (\lfloor x \rfloor, \lceil y \rceil)\)  
+- \((x_2, y_2) = (\lceil x \rceil, \lceil y \rceil)\)
+
+Define \(dx = x - \lfloor x \rfloor\), \(dy = y - \lfloor y \rfloor\).[file:210] The interpolated feature value is
+
+```text
+v = (1 - dx)(1 - dy) · f(x1, y1)
+  + dx       (1 - dy) · f(x2, y1)
+  + (1 - dx) dy       · f(x1, y2)
+  + dx       dy       · f(x2, y2)
 ```
-v = (1 - dx)(1 - dy) * f(x1, y1)
-  + dx * (1 - dy)    * f(x2, y1)
-  + (1 - dx) * dy    * f(x1, y2)
-  + dx * dy          * f(x2, y2)
-```
 
-where f(xi, yi) denotes the feature map value at integer cell (xi, yi). This is a weighted average of four neighbours, with weights proportional to proximity. The result is a smoothly varying function of the proposal coordinates, with no discontinuities from rounding.
+where \(f(x_i, y_i)\) are the feature map values at integer locations.[file:210] This yields a smoothly varying function of the sampling coordinates without discontinuities from rounding.
 
-The final value for each output bin is the average (or max) of the sampled points within that bin.
+The final value for each output bin is the average (or max) of its sampled points.[file:210] In Mask R‑CNN, average pooling is typically used for RoIAlign in the mask branch.[web:211]
 
 ### Why this eliminates quantization error
 
-RoI Pooling loses spatial precision at two points: when mapping proposal boundaries to the feature map and when dividing the region into bins. Both involve rounding. RoIAlign removes both rounding steps: proposal boundaries are kept as floating-point values, bin boundaries are kept as floating-point values, and feature values at floating-point positions are computed by interpolation rather than cell lookup.
+RoIPool loses precision when mapping proposal boundaries and when binning; both involve rounding.[file:210] RoIAlign keeps proposal and bin boundaries as floats and uses interpolation at fractional positions, so the extracted features remain **aligned** to the original region.[file:210][web:211][web:212]
 
-The result is that the extracted features are precisely aligned with the actual proposal region. The paper demonstrates that this single change improves mask AP by around 3 points and keypoint AP by around 5 points, with no change to the model architecture or loss function.
+The paper shows that switching from RoIPool to RoIAlign—without changing the rest of the architecture—improves mask AP by roughly **2–3 points** and keypoint AP by roughly **4–5 points** (He et al. 2017, Table 2).[file:210][web:211][web:212] This demonstrates that the “small” change of removing quantization has a large impact on precise, pixel‑level tasks.
 
 ---
 
-## Mask R-CNN Architecture
+## Mask R-CNN architecture
 
 ### Overall structure
 
-Mask R-CNN keeps the Faster R-CNN two-stage structure intact and adds a third parallel head to the second stage. Where Faster R-CNN has a classification head and a box regression head operating on each RoI feature, Mask R-CNN adds a mask head that predicts a spatial segmentation mask for the same RoI.
+Mask R‑CNN keeps the Faster R‑CNN two‑stage layout and adds a **third parallel head** in stage 2.[file:210][web:211][web:214]
 
-The three heads share the RoI feature but are otherwise independent: each has its own parameters and its own loss term. The total loss is a sum of the classification loss, the box regression loss, and the mask loss, with no weighting between them in the published configuration.
+- Stage 1: RPN on top of a backbone (ResNet/ResNeXt + FPN) generates proposals.  
+- Stage 2: RoIAlign extracts fixed‑size features for each proposal; three heads operate in parallel:  
+  - classification head (class per proposal),  
+  - box regression head (refined bounding box),  
+  - mask head (per‑pixel segmentation for the proposal).[file:210][web:211]
+
+The three heads share the RoI‑aligned features but have disjoint parameters and separate loss terms.[file:210] In the canonical configuration, the total loss is an **unweighted sum** of classification, box, and mask losses.[web:211][web:215]
 
 ### Feature Pyramid Network backbone
 
-The published Mask R-CNN uses a Feature Pyramid Network (FPN, Lin et al. 2017) as the backbone rather than a single-scale feature map. FPN constructs a multi-scale feature pyramid by combining bottom-up features from a ResNet with top-down lateral connections, producing feature maps at four spatial scales. RPN proposals at different scales are assigned to different pyramid levels based on proposal size, so small objects are detected from high-resolution feature maps and large objects from low-resolution ones. RoIAlign is applied at whichever pyramid level the proposal is assigned to.
+Mask R‑CNN uses a **Feature Pyramid Network (FPN)** backbone (Lin et al. 2017) rather than a single‑scale feature map.[file:210][web:211][web:215]
+
+- FPN builds a top‑down pyramid (e.g. P2–P5) by combining higher‑level semantic features with higher‑resolution lower‑level features.  
+- RPN proposals are assigned to pyramid levels based on their scale: small objects use higher‑resolution maps, large objects use coarser maps.[file:210][web:211]  
+- RoIAlign is then applied to the appropriate pyramid level for each proposal.
+
+FPN improves multi‑scale detection and is critical for strong mask performance on COCO.[web:211][web:215]
 
 ### The mask head
 
-The mask head receives the RoI-aligned feature for each proposal, which has a fixed spatial size of 14x14 (larger than the 7x7 used for the box and class heads, to preserve more spatial detail). It applies a sequence of four 3x3 convolutional layers, each followed by ReLU, and then a single transposed convolution (deconvolution) with stride 2 that upsamples the feature map to 28x28. A final 1x1 convolution produces the output.
+The mask head operates on RoI‑aligned features at a relatively high spatial resolution to preserve detail.[file:210][web:211][web:213]
 
-The output has K channels for K foreground classes, giving a 28x28xK tensor per RoI. Each of the K channels is a binary mask predicting, independently, whether each pixel belongs to that class.
+- Input: RoIAlign features of size 14×14×C per proposal.  
+- Architecture:  
+  - 4 convolutional layers (3×3, stride 1, padding 1) with ReLU, keeping 14×14 spatial size.  
+  - One transposed convolution (deconvolution) with stride 2 to upscale to 28×28.  
+  - Final 1×1 convolution producing **K channels** for K foreground classes.[file:210][web:211][web:213]
+
+The output is a 28×28×K tensor per RoI; each channel is a **binary mask** for one class.[file:210][web:211][web:215] The mask head uses per‑pixel sigmoid activations and a binary cross‑entropy loss, as described next.[web:211][web:216]
 
 ---
 
-## Binary Mask Per Class vs. Single Multi-Class Mask
+## Binary mask per class vs single multi-class mask
 
-### The choice and its rationale
+### Choice and rationale
 
-A natural way to formulate instance segmentation would be to predict a single spatial map where each pixel is assigned a class label from a softmax over K+1 classes (K foreground classes plus background). This is the approach used in semantic segmentation (FCN, DeepLab). Mask R-CNN instead predicts K independent binary masks, one per class, and uses a sigmoid with binary cross-entropy loss on each independently.
+A natural semantic‑segmentation design is a single mask with per‑pixel softmax over K+1 classes (K foreground + background).[file:210] Mask R‑CNN instead predicts K **independent binary masks** and uses a sigmoid + binary cross‑entropy loss for each, decoupled from the class label prediction.[file:210][web:211][web:216]
 
-The key reason is the decoupling of classification from segmentation. In the two-stage Faster R-CNN framework, the class of each proposal is already predicted by the classification head, which has access to the full spatial feature and is well-suited to that task. If the mask head also had to resolve the class identity (as a multi-class softmax mask would require), it would be competing with the classification head and potentially interfering with it.
+The rationale:
 
-By predicting a binary mask per class, the mask head is only asked to answer the spatial question: for this proposal, which pixels belong to an object of class k? The class identity question (which k to use at inference) is answered separately by the classification head. At inference, only the mask channel corresponding to the predicted class is selected and thresholded to produce the final instance mask.
+- In Faster R‑CNN/Mask R‑CNN, the class of each RoI is already predicted by the **classification head**, which has a global view of the RoI features.[file:210][web:211][web:215]  
+- The mask head should focus purely on localization: *given that this RoI belongs to class k, which pixels belong to that instance?*  
+- If the mask head used a multi‑class softmax, it would also have to resolve class identity, competing with the classifier and coupling class and shape decisions.[web:216]
 
-This formulation prevents competition between classes within the mask head. In a multi-class softmax mask, the probabilities for all classes at each pixel must sum to one, so a pixel can only be assigned to one class. If there is any ambiguity in the spatial features about the exact boundary, the softmax forces a hard competition. Binary masks per class allow each class to independently assess its own evidence without suppressing others, which is a more appropriate inductive bias when the class identity is already resolved upstream.
+By predicting one binary mask per class, the mask head answers only the spatial question, and the classification head answers the class question.[file:210][web:211][web:216] At inference, Mask R‑CNN selects the mask channel corresponding to the predicted class and thresholds it to obtain the final instance mask.[file:210][web:211]
 
-The paper reports that replacing the per-class binary mask formulation with a single softmax mask reduces mask AP by around 5 points, confirming that the decoupling is materially important rather than a minor implementation choice.
+This design also ensures **masks across classes do not compete**: per‑pixel sigmoid + binary loss does not require mask probabilities to sum to one across classes.[web:215][web:216] In contrast, a softmax mask forces competition among classes at each pixel.
 
-### Architectural difference from a classifier head
+The paper reports that using a multi‑class softmax mask instead of per‑class sigmoids reduces mask AP by several points (≈4–5 AP), confirming this formulation is important, not cosmetic.[file:210][web:211][web:215][web:216]
 
-The classification head and the mask head differ in both structure and output type, reflecting their different functions.
+### Architectural difference from classifier head
 
-The classification head takes the 7x7 RoI feature, collapses it to a vector via global average pooling or flattening, and passes it through one or two fully connected layers to produce a class score vector of length K+1. Spatial structure is discarded; only a class label (a distribution over K+1 scalars) is produced. This is the standard design for image classification.
+The classification and mask heads reflect their distinct roles.[file:210][web:211][web:215]
 
-The mask head never collapses spatial structure. It applies convolutional layers throughout, preserving the 2D spatial layout of the feature. The upsampling step via transposed convolution increases spatial resolution from 14x14 to 28x28, restoring detail that was compressed by the backbone. The output is a 2D spatial map of shape 28x28 per class, not a scalar.
+- **Classification head:**  
+  - Input: 7×7 RoI feature (RoIAlign followed by pooling).  
+  - Architecture: fully connected layers; spatial structure is collapsed to a vector.  
+  - Output: K+1‑dimensional class logits; no spatial layout.
 
-The distinction is between a classification function (input -> class distribution) and a dense prediction function (input spatial map -> output spatial map). Fully connected layers are appropriate for the former because they aggregate all spatial positions into a single output. Convolutional layers are appropriate for the latter because they maintain spatial correspondence between input positions and output positions, which is precisely what is needed to predict which pixel belongs to which object.
+- **Mask head:**  
+  - Input: 14×14 RoI feature (no global pooling).  
+  - Architecture: fully convolutional (3×3 convs + upsampling); spatial structure preserved.  
+  - Output: 28×28 spatial mask per class (K channels); dense prediction over pixels.[file:210][web:211][web:213]
+
+The mask head is a small FCN whose output remains aligned to the RoI region due to RoIAlign; the classifier is an image‑level (RoI‑level) predictor that discards spatial information.[file:210][web:211]
 
 ---
 
 ## Summary
 
-| Component | Role | Key Design Choice |
-|-----------|------|------------------|
-| RPN | Generates candidate proposals | Shared with Faster R-CNN, unchanged |
-| RoIAlign | Extracts fixed-size features per proposal | Bilinear interpolation; no quantization |
-| Classification head | Predicts class label per proposal | FC layers; collapses spatial structure |
-| Box head | Predicts refined bounding box | FC layers; collapses spatial structure |
-| Mask head | Predicts per-pixel binary mask | Conv layers; preserves spatial structure; K independent binary masks |
+| Component      | Role                            | Key design choice                                      |
+|----------------|---------------------------------|--------------------------------------------------------|
+| RPN            | Generates candidate proposals   | Same as Faster R‑CNN                                   |
+| RoIAlign       | Extracts fixed‑size RoI features| Floating‑point coordinates + bilinear interpolation    |
+| Classification head | Class label per proposal  | FC layers; spatially collapsed                         |
+| Box head       | Box refinement per proposal     | FC layers; spatially collapsed                         |
+| Mask head      | Per‑pixel instance mask         | Conv layers; keeps spatial layout; K independent masks |
 
-The two central contributions of Mask R-CNN are RoIAlign, which provides the spatial precision that mask prediction requires, and the per-class binary mask formulation, which decouples segmentation from classification and prevents cross-class interference in the mask head.
+The two central contributions of Mask R‑CNN are:
+
+- **RoIAlign**, which removes quantization from RoIPool and provides the spatial precision required for masks and keypoints.[file:210][web:211][web:212]  
+- The **per‑class binary mask formulation**, which decouples classification from segmentation and avoids cross‑class competition in the mask head.[file:210][web:211][web:215][web:216]
+
+Together, these changes allow a relatively simple extension of Faster R‑CNN to achieve state‑of‑the‑art instance segmentation performance on COCO.[web:211][web:213]
 
 ---
 
 ## References
 
-- He, K., Gkioxari, G., Dollar, P., and Girshick, R. "Mask R-CNN." ICCV 2017. https://arxiv.org/abs/1703.06870
-- Ren, S., He, K., Girshick, R., and Sun, J. "Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks." NeurIPS 2015. https://arxiv.org/abs/1506.01497
-- Lin, T.-Y., Dollar, P., Girshick, R., He, K., Hariharan, B., and Belongie, S. "Feature Pyramid Networks for Object Detection." CVPR 2017. https://arxiv.org/abs/1612.03144
+- He, K., Gkioxari, G., Dollár, P., and Girshick, R. “Mask R‑CNN.” ICCV 2017.[web:211][web:212][web:213]  
+- Ren, S., He, K., Girshick, R., and Sun, J. “Faster R‑CNN: Towards Real‑Time Object Detection with Region Proposal Networks.” NeurIPS 2015.[web:215]  
+- Lin, T.-Y., Dollár, P., Girshick, R., He, K., Hariharan, B., and Belongie, S. “Feature Pyramid Networks for Object Detection.” CVPR 2017.[web:215]

@@ -2,19 +2,32 @@
 
 ## Priority 1: Core Operations
 
-**Gaussian Blur from Scratch:** A smooth blur is achieved by convolving an image with a **Gaussian kernel**, which functions as a low-pass filter to reduce high-frequency noise. In practice, this is often implemented using a discrete **binomial kernel** (e.g., the 5-tap filter [1, 4, 6, 4, 1] / 16), as repeated convolutions with this kernel converge to a smooth Gaussian shape. To implement this efficiently from scratch, the operation is performed **separably**, applying a 1D horizontal blur followed by a 1D vertical blur.
+**Gaussian Blur from Scratch.**  
+A smooth blur is obtained by convolving the image with a **Gaussian kernel**, which acts as a low‑pass filter and suppresses high‑frequency noise and detail.[file:128][web:136] In practice, small‑sigma Gaussians are often implemented using a discrete **binomial kernel** such as the 5‑tap filter \([1, 4, 6, 4, 1] / 16\); this corresponds to the coefficients of a row of Pascal’s triangle and provides a very good approximation to a discrete Gaussian.[file:128][web:133][web:137] Because the 2D Gaussian is separable, the filter is applied efficiently as two 1D convolutions—first horizontally, then vertically—rather than as a full 2D kernel.[file:128][web:136][web:143]
 
-**Sobel Edge Detection:** The Sobel operator is a popular **3x3 edge extractor** used to find the **gradient** of an image. It is a separable combination of a **central difference** (to find the derivative) in one direction and a **box filter** (to smooth the result) in the perpendicular direction. This process generates **horizontal and vertical gradients**, emphasising edges where intensity changes abruptly.
+**Sobel Edge Detection.**  
+The Sobel operator is a classic **3×3 gradient filter** used to estimate horizontal and vertical intensity derivatives.[file:128][web:138] It can be interpreted as a separable combination of a **central difference** in one direction (to approximate the derivative) and a **[1, 2, 1]** smoothing filter in the perpendicular direction (a small binomial/box‑like filter), which reduces noise in the gradient estimate.[file:128][web:138][web:143] Applying Sobel in x and y yields gradient components that emphasise edges where intensity changes sharply.
 
-**Convolution Engine and Padding:** When a kernel extends beyond image boundaries, the engine must use **padding** to prevent darkening or artifacts at the edges. Common modes include **zero padding** (setting outside pixels to 0), **clamp/replicate** (repeating edge pixels), and **mirroring** (reflecting pixels across the edge). Proper padding ensures the linear system behaves consistently across the entire image domain.
+**Convolution Engine and Padding.**  
+When the convolution kernel extends beyond image boundaries, some form of **padding** is required to avoid artifacts and unintended darkening near edges.[file:128][web:143] Common padding modes include:  
+- **Zero padding:** outside pixels treated as 0 (can darken borders).  
+- **Replicate/clamp:** extend the nearest border value outward.  
+- **Mirror/reflect:** mirror the image content at the border.  
+
+Choosing appropriate padding ensures the linear system behaves consistently across the image, especially for repeated filtering stages (e.g., multiple blurs or derivatives).[file:128][web:143]
+
+---
 
 ## Priority 2: Foundational Understanding
 
-**Convolution as a Weighted Sum:** Mathematically, a linear neighbourhood operator determines the value of an output pixel by calculating a **weighted sum of the input pixels** in the vicinity of that location. The weights are defined by the **filter coefficients** within the kernel or mask. This operation is **linear shift-invariant (LSI)**, meaning it obeys the superposition principle and behaves the same way at every pixel location.
+**Convolution as a Weighted Sum.**  
+In discrete 2D images, a linear neighbourhood operator defines each output pixel as a **weighted sum of nearby input pixels**, with weights given by the kernel coefficients.[file:128][web:143] This operation is linear and shift‑invariant (LSI): it obeys superposition and behaves identically at every spatial location, which is why convolution is the canonical model for linear filtering in computer vision.
 
-**Separability for Efficiency:** A 2D convolution kernel of size K x K normally requires **K^2 multiply-add operations** per pixel. If a kernel is **separable**, it can be decomposed into the outer product of a column and row vector (`K = v @ h.T`), allowing the operation to be performed in **2K operations**. This optimisation significantly increases processing speed and often influences the design of kernels used in computer vision.
+**Separability for Efficiency.**  
+A general \(K \times K\) kernel requires \(K^2\) multiply‑adds per output pixel. If the kernel is **separable**, it can be written as the outer product of a column and row vector, \(K = v \, h^\top\).[file:128][web:143] In that case, 2D convolution can be implemented as a 1D convolution with \(h\) followed by a 1D convolution with \(v\), reducing the cost to \(2K\) multiplies per pixel. This is a major reason why Gaussian and binomial filters (which are separable) are favoured in many classical CV pipelines.[web:136][web:137]
 
-**Edge Detection as Taking Derivatives:** Finding edges in an image is mathematically equivalent to **taking derivatives** of the image function. First-order derivatives (like Sobel) identify the **gradient field**, while second-order derivatives (like the **Laplacian**) respond to rapid changes in the gradient, such as edges and corners. Because differentiation linearly magnifies higher frequencies, it effectively highlights the sharp transitions that define object boundaries.
+**Edge Detection as Taking Derivatives.**  
+Edges correspond to locations where the image intensity function has large gradients. First‑order derivative filters (e.g., Sobel, Prewitt) approximate the **gradient field** and highlight edges where intensity changes rapidly.[file:128][web:143] Second‑order derivatives (e.g., the **Laplacian**) respond to changes in the gradient itself and are sensitive to fine structures such as corners and line crossings.[file:128][web:143] In the frequency domain, differentiation amplifies high frequencies, which is why derivative operators emphasize sharp transitions.
 
 ---
 
@@ -22,24 +35,33 @@
 
 ## Implementation
 
-- Location: `code/classical_cv/edge_detection.py`
-- Components:
-  - Gaussian blur (from `filters.py`)
-  - Sobel gradients (from `filters.py`)
-  - Non-maximum suppression
-  - Double threshold
+- Location: `code/classical_cv/edge_detection.py`  
+- Components:  
+  - Gaussian blur (from `filters.py`)  
+  - Sobel gradients (from `filters.py`)  
+  - Non‑maximum suppression (NMS)  
+  - Double threshold  
   - Hysteresis
+
+This matches the standard five‑stage Canny pipeline: Gaussian smoothing → gradient computation → non‑maximum suppression → double threshold → edge tracking by hysteresis.[file:128][web:144][web:139]
 
 ## Key Learnings
 
-- Hysteresis connects weak edges to strong edges
-- Sliding windows for efficient neighbour operations
-- Ratios for adaptive thresholding
+- **Hysteresis connects weak edges to strong edges.**  
+  Weak gradient responses are retained only if they are connected (via 8‑connected paths) to strong edge pixels; otherwise they are suppressed as noise.[file:128][web:144] This stabilises edge maps across varying contrast.
+
+- **Sliding windows for efficient neighbourhood operations.**  
+  Implementing Sobel, NMS, and hysteresis as sliding‑window operations allows you to reuse local computations and enforce consistent neighbourhood definitions across the image.[file:128][web:143]
+
+- **Ratios for adaptive thresholding.**  
+  Canny commonly uses thresholds defined as fractions of the maximum gradient magnitude (e.g., high threshold at 0.2–0.3 of max, low threshold at a smaller fraction of the high threshold), which adapts to overall image contrast.[file:128][web:144]
 
 ## Performance
 
-- Match rate vs OpenCV: [not yet recorded]
-- Works on test patterns: checkerboard, gradient, circle
+- Match rate vs OpenCV: **quantitative validation against OpenCV is pending** (not yet recorded)  
+- Qualitative tests: works on synthetic patterns such as checkerboards, intensity gradients, and simple shapes (circles), which are standard sanity checks for edge detectors.[file:128]
+
+Once you measure agreement with a reference implementation (e.g., OpenCV’s `Canny`) on standard images, you can add quantitative metrics such as pixel‑wise agreement or F1 on labelled edge maps.
 
 ---
 
@@ -47,22 +69,31 @@
 
 ## Implementation
 
-- Location: `code/classical_cv/transforms.py`
-- Affine: 2x3 matrix, 3 point correspondences
-- Perspective: 3x3 matrix, 4 point correspondences
-- Bilinear interpolation for smooth warping
+- Location: `code/classical_cv/transforms.py`  
+- **Affine transform:** 2×3 matrix; 3 non‑collinear point correspondences are sufficient to solve for the parameters.[file:128][web:140][web:145]  
+- **Perspective (projective) transform:** 3×3 homography; typically solved from 4 point correspondences in general position.[file:128][web:141]  
+- **Bilinear interpolation** used when sampling non‑integer locations to obtain smooth warps.[file:128][web:146]
+
+Affine transforms include translation, rotation, scaling, and shear; perspective transforms additionally model convergence of parallel lines and foreshortening.[web:141]
 
 ## Results
 
-- Affine matrix error: ~5e-14
-- Perspective matrix error: ~1e-12
-- Visual results match OpenCV
+- Affine matrix numerical error: ~\(5 \times 10^{-14}\) (relative to analytical solution or library reference).  
+- Perspective matrix numerical error: ~\(1 \times 10^{-12}\).  
+- Visual inspection indicates warps that match OpenCV’s results for the same control points.[file:128]
+
+These error levels are consistent with double‑precision solutions of small linear systems and indicate a correct implementation.
 
 ## Key Learnings
 
-- Inverse mapping prevents holes in the output
-- Homogeneous coordinates for projective geometry
-- SVD solves overconstrained systems
+- **Inverse mapping prevents holes.**  
+  For image warping, mapping from output pixels back to source coordinates (inverse warping) avoids gaps (“holes”) that occur when pushing source pixels forward onto a discrete output grid.[file:128][web:141]
+
+- **Homogeneous coordinates for projective geometry.**  
+  Representing pixels as \((x, y, 1)\) and transformations as 3×3 matrices (or 2×3 for affine) unifies translation, rotation, scaling, shear, and perspective into simple matrix multiplication.[file:128][web:141]
+
+- **SVD solves overconstrained systems.**  
+  When you have more than the minimum number of point correspondences, using least‑squares with SVD yields a robust estimate of the transform that balances noise across all points.[file:128][web:141]
 
 ---
 
@@ -70,17 +101,23 @@
 
 ## Coverage
 
-- Filters: Gaussian blur, Sobel, convolution
-- Edge detection: NMS, thresholding, hysteresis, Canny
-- Transforms: affine, perspective, rotation, resize
+- Filters: Gaussian blur, Sobel operator, generic convolution.[file:128]  
+- Edge detection: non‑maximum suppression, thresholding, hysteresis, full Canny pipeline.  
+- Transforms: affine, perspective, rotation, resize (including boundary behaviour).[file:128]
 
 ## Test Results
 
-- 32 tests pass
-- Edge cases covered: shape preservation, identity transforms, boundary conditions, value ranges
+- 32 tests pass.  
+- Edge cases covered explicitly:  
+  - Shape preservation (output dimensions correct).  
+  - Identity transforms (no‑op operations behave correctly).  
+  - Boundary conditions for padding and interpolation.  
+  - Value ranges (no unexpected clipping or overflow).[file:128]
 
 ## Run Tests
 
 ```bash
 pytest test_unit.py -v
 ```
+
+This test suite gives you a solid regression harness for future refactors (e.g., optimisations, vectorisation, or GPU ports) while ensuring classical CV behaviour remains correct.
