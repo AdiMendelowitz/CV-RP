@@ -119,7 +119,7 @@ class TransformerEncoder(nn.Module):
 
     def __init__(self, d_model: int, num_heads: int, num_layers: int, dropout: float) -> None:
         super().__init__()
-        self.blocks = nn.ModuleList([_TransformerBlock(d_model, num_heads, num_layers, dropout=dropout)
+        self.blocks = nn.ModuleList([_TransformerBlock(d_model, num_heads, dropout=dropout)
                                      for _ in range(num_layers)])
         self.norm = nn.LayerNorm(d_model)
 
@@ -186,7 +186,7 @@ class PatchTST(nn.Module):
     """
 
     def __init__(self, seq_len: int, pred_len: int, num_variates: int, patch_size: int = 16, stride: int = 8,
-                 d_model: int = 128, num_heads: int = 3, num_layers: int = 3, dropout: float = 0.2) -> None:
+                 d_model: int = 128, num_heads: int = 16, num_layers: int = 3, dropout: float = 0.2) -> None:
         super().__init__()
         self.num_variates = num_variates
         self.pred_len = pred_len
