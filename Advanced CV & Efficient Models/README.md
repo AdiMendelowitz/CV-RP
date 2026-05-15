@@ -42,7 +42,7 @@ primary result from each module.
 | Efficient Architectures | ViT-Tiny | Linear probe, CIFAR-10 | Top-1 (%) | 80.72 |
 | Compression | Static INT8 PTQ | CIFAR-10 classification | Top-1 (%) | 93.44 |
 | Compression | Pruning 40% L1 | CIFAR-10 classification | Top-1 (%) | 93.27 |
-| Compression | SmallCNN distilled | CIFAR-10 classification | Top-1 (%) | 78.33 |
+| Compression | SmallCNN distilled | CIFAR-10 classification | Top-1 (%) | 78.34 |
 | Detection | YOLOv8n | PCB defect detection | mAP@0.5 | 0.9896 |
 | Segmentation | U-Net | Carvana car masking | Validation Dice | approximately 0.99 |
 
@@ -72,12 +72,12 @@ single-image CPU medians over 200 runs.
 
 | Architecture | Top-1 (%) | Parameters (M) | Accuracy / Param (%/M) |
 |---|---|---|---|
-| ConvNeXt-Tiny | 95.08 | 28.6 | 3.32 |
+| ConvNeXt-Tiny | 95.08 | 27.8 | 3.42 |
 | EfficientNet-B0 | 90.06 | 4.0 | 22.52 |
-| ResNet-18 | 83.83 | 11.7 | 7.17 |
-| ViT-Tiny | 80.72 | 5.7 | 14.16 |
+| ResNet-18 | 83.83 | 11.2 | 7.49 |
+| ViT-Tiny | 80.72 | 5.5 | 14.68 |
 
-EfficientNet-B0 achieves the best accuracy-per-parameter ratio at 22.52 %/M, consistent with
+EfficientNet-B0 achieves the best accuracy-per-parameter ratio at 22.52 %/M (backbone parameters, num_classes=0), consistent with
 the compound scaling hypothesis. ConvNeXt-Tiny leads in absolute accuracy. ViT-Tiny's lower
 score reflects its data hunger: the frozen linear probe setting amplifies the gap between
 transformer and ConvNet representations at this scale, where self-attention cannot fully
@@ -114,11 +114,11 @@ full experimental details.
 | + Static INT8 (PTQ) | 11.17 | 10.80 | 6.21 | 93.44 |
 | + Dynamic INT8 | 11.17 | 42.69 | 18.80 | 93.44 |
 | + Pruning 40% L1 unstructured | 11.17 | 42.70 | 9.47 | 93.27 |
-| SmallCNN distilled (T=4, a=0.3) | 0.17 | 0.65 | 0.86 | 78.33 |
-| SmallCNN CE baseline | 0.17 | 0.65 | 0.84 | 78.97 |
+| SmallCNN distilled (T=4, a=0.3) | 0.17 | 0.65 | 0.86 | 78.34 |
+| SmallCNN CE baseline | 0.17 | 0.65 | 0.84 | 78.27 |
 
 Static INT8 PTQ achieves 3.95x size reduction and 1.52x speedup with no accuracy degradation.
-Knowledge distillation achieves 65.6x parameter reduction and 14.4x speedup at a 15.10pp
+Knowledge distillation achieves 65.6x parameter reduction and 14.7x speedup at a 15.09pp
 accuracy cost versus the teacher. L1 unstructured pruning at 40% sparsity degrades accuracy
 by 0.16pp after fine-tuning but produces no CPU speedup because standard dense kernels
 process zeroed weights identically to non-zeros.

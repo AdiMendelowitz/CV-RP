@@ -14,7 +14,7 @@ A ground-up implementation of core computer vision systems — from classical im
 
 | Model | Task | Accuracy | Parameters | Notes |
 |---|---|---|---|---|
-| CNN (NumPy) | MNIST digit classification | **90.94%** | ~13K | No frameworks — pure NumPy |
+| CNN (NumPy) | MNIST digit classification | **90.94%** | ~103K | No frameworks — pure NumPy |
 | ResNet-18 | CIFAR-10 classification | **93.43%** | 11.2M | Matches published benchmark |
 | ViT-Tiny | CIFAR-10 classification | **86.70%** | 5.36M | T4 GPU, 100 epochs |
 | SimCLR | CIFAR-10 linear evaluation | **68.23%** | — | Self-supervised, no labels during pretraining |
@@ -74,7 +74,7 @@ Input (1×28×28) → Conv(1→8) → ReLU → MaxPool →
 - He initialization prevents vanishing gradients in ReLU networks
 - Validated first on synthetic line-pattern data (100% accuracy in 2 epochs) before MNIST, following incremental verification methodology
 
-**Result: 90.94% on MNIST.** The same architecture rebuilt in PyTorch achieves 93.00% — the 0.01% difference in *training* accuracy between the two confirms mathematical equivalence with PyTorch's autograd engine.
+**Result: 90.94% on MNIST.** The same architecture rebuilt in PyTorch achieves 93.00% — the 0.01% difference in *training* accuracy between the two confirms mathematical equivalence with PyTorch's autograd engine. <!-- UNVERIFIED: PyTorch comparison result (93.00%) and 0.01% delta not recorded in experiment notes -->
 
 ---
 
@@ -118,9 +118,9 @@ ViT-Tiny from scratch, following the DeiT-Tiny configuration (Touvron et al., 20
 - LR: linear warmup (10 epochs) → cosine annealing, peak 1×10⁻³
 - Regularisation: MixUp (α=0.2), CutMix (α=1.0), TrivialAugmentWide, RandomErasing (p=0.25), label smoothing (ε=0.1), gradient clipping (max norm 1.0)
 
-**Result: 86.70%**, 6.7 points below ResNet-18. The gap is consistent with published literature — ViT's lack of convolutional inductive biases (local connectivity, translation equivariance) requires substantially more data to compensate. The crossover point between ViT and CNNs has been empirically placed at approximately 14M images (Dosovitskiy et al., 2020); CIFAR-10's 50,000 images are three orders of magnitude below that threshold.
+**Result: 86.70%**, 6.7 points below ResNet-18. The gap is consistent with published literature — ViT's lack of convolutional inductive biases (local connectivity, translation equivariance) requires substantially more data to compensate. The crossover point between ViT and CNNs has been empirically placed at approximately 14M images (Dosovitskiy et al., 2020); CIFAR-10's 50,000 images are three orders of magnitude below that threshold. <!-- UNVERIFIED: the 14M crossover figure is not recorded in experiment notes -->
 
-Notably, ViT-Tiny achieves this with **47.7% fewer parameters** than ResNet-18. The dominant failure mode is cat/dog confusion (cat: 69.5%, dog: 79.6%), accounting for ~19% of all errors — a known hard pair at 32×32 resolution. A detailed architectural comparison with training curve analysis is in [`ViT_vs_ResNet.md`](code/vision_transformers/ViT_vs_ResNet.md).
+Notably, ViT-Tiny achieves this with **52.1% fewer parameters** than ResNet-18. The dominant failure mode is cat/dog confusion (cat: 69.5%, dog: 79.6%), accounting for ~19% of all errors — a known hard pair at 32×32 resolution. A detailed architectural comparison with training curve analysis is in [`ViT_vs_ResNet.md`](code/vision_transformers/ViT_vs_ResNet.md).
 
 ---
 

@@ -110,7 +110,7 @@ ETTh1 configuration (PatchTST/64, matching Table 3 of Nie et al., ICLR 2023):
 | seq_len | 512 |
 | patch_size | 16 |
 | stride | 8 |
-| num_patches | 63 |
+| num_patches | 64 |
 | d_model | 128 |
 | num_heads | 16 |
 | num_layers | 3 |
