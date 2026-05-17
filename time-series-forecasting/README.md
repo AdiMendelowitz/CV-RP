@@ -6,7 +6,7 @@ ETTh1 benchmark under the standard chronological split used in the PatchTST (Nie
 and iTransformer (Liu et al., ICLR 2024) papers.
 
 Full benchmark results, per-channel analysis, and ablation findings are in
-[`results/RESULTS.md`](results/RESULTS.md).
+[`results/RESULTS.md`](results/benchmark_results.md).
 
 ---
 
