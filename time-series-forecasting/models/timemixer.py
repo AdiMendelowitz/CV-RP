@@ -6,7 +6,7 @@ Reference: Wang et al., "TimeMixer: Decomposable Multiscale Mixing for Time Seri
 
 Time series exhibit different patterns at different sampling scales. TimeMixer downsamples the input
 to multiple resolutions, decomposes each into seasonal and trend components via a moving average, mixes
-them with lightweight MLPs (Past-Decomposable-Mixing), then ensembles forecasts from all scales vis a learned
+them with lightweight MLPs (Past-Decomposable-Mixing), then ensembles forecasts from all scales via a learned
 weighted average (Future-Multipredictor-Mixing).
 
 Forward pass shapes (B = batch, C = variates, L = seq_len, P = pred_len, D = d_model):
@@ -36,11 +36,10 @@ class SeriesDecomposition(nn.Module):
 
     def __init__(self, kernel_size: int) -> None:
         super().__init__()
-        self.kernel_size = kernel_size
+
         # Padding on each size so output length == input length
         self.padding = kernel_size // 2
-        # stride=1 + count_include_pad=False to avoid edge distortions
-        self.avg_pool = nn.AvgPool1d(kernel_size=kernel_size, stride=1, padding=0, count_include_pad=False)
+        self.avg_pool = nn.AvgPool1d(kernel_size=kernel_size, stride=1, padding=0)
 
     def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """
@@ -102,7 +101,7 @@ class PDMBlock(nn.Module):
 class FMMBlock(nn.Module):
     """
     Future-Multipredictor-Mixing Block.
-    One linear forecast head per scale. Predictions are ensembled vua a learned softmax-weighted average
+    One linear forecast head per scale. Predictions are ensembled via a learned softmax-weighted average
     across scales.
 
     Args:
@@ -115,8 +114,7 @@ class FMMBlock(nn.Module):
         super().__init__()
         self.heads = nn.ModuleList([nn.Linear(d_model, pred_len) for _ in range(num_scales)])
 
-        # Learned ensemble weights, one scalar per scale.
-        # Scale weights can be scalar, but initialized to zeros so softmax starts uniform.
+        # Learned ensemble weights, one scalar per scale, initialized to zeros so softmax starts uniform.
         self.scale_weights = nn.Parameter(torch.zeros(num_scales))
 
     def forward(self, scale_representations: list[torch.Tensor]) -> torch.Tensor:
@@ -131,11 +129,11 @@ class FMMBlock(nn.Module):
         """
         weights = F.softmax(self.scale_weights, dim=0) # (num_scales,)
 
-        # Vectorized projection across heads, then weighted sum.
-        out = 0
-        for i, head in enumerate(self.heads):
-            out += weights[i] * head(scale_representations[i])
-        return out # (B, C, pred_len)
+        forecasts = torch.stack(
+            [weights[i] * head(scale_representations[i]) for i, head in enumerate(self.heads)],
+            dim=0,
+        )
+        return forecasts.sum(dim=0) # (B, C, pred_len)
 
 
 class TimeMixer(nn.Module):
@@ -163,7 +161,7 @@ class TimeMixer(nn.Module):
 
         self.num_scales = num_scales
 
-        # Track layers and correct lengths dynamically using Ceil/Floor matching AvgPool1d
+        # Build downsamplers sequentially: scale s is derived from scale s-1, halving length each step.
         self.downsamplers = nn.ModuleList()
         self.scale_lens = []
 
@@ -172,8 +170,7 @@ class TimeMixer(nn.Module):
             if s == 0:
                 self.downsamplers.append(nn.Identity())
             else:
-                # ceil_mode=True ensures predictable shapes if seq_len is odd
-                self.downsamplers.append(nn.AvgPool1d(kernel_size=2, stride=2, ceil_mode=False))
+                self.downsamplers.append(nn.AvgPool1d(kernel_size=2, stride=2))
                 current_len = current_len // 2
 
             self.scale_lens.append(max(1, current_len))
@@ -205,8 +202,9 @@ class TimeMixer(nn.Module):
 
             # Defensive check for dynamic shapes / odd sequence lengths
             if x_s.shape[-1] != self.scale_lens[i]:
-                # Dynamic adjustment or padding could go here; tracking enforces stability
-                pass
+                raise RuntimeError(
+                    f"Scale {i}: expected length {self.scale_lens[i]}, got {x_s.shape[-1]}."
+                )
 
             x_seasonal, x_trend = self.decomposition(x_s)
             rep = pdm(x_seasonal, x_trend)
