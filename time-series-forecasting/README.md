@@ -149,9 +149,9 @@ comparable.
 | Model | H=96 | H=192 | H=336 | H=720 | Paper target (H=96) |
 |-------|------|-------|-------|-------|---------------------|
 | Linear baseline | 0.389 | -- | 0.485 | -- | -- |
-| PatchTST | [fill] | [fill] | [fill] | [fill] | 0.370 |
-| iTransformer | [fill] | [fill] | [fill] | [fill] | ~0.454 (avg) |
-| TimeMixer | [fill] | [fill] | [fill] | [fill] | ~0.446 (avg) |
+| PatchTST | 0.3984 | 0.4417 | 0.4673 | 0.5423 | 0.370 |
+| iTransformer | 0.4841 | 0.5450 | 0.6110 | 0.7167 | ~0.454 (avg) |
+| TimeMixer | 0.4539 | 0.4990 | 0.5431 | 0.6753 | ~0.446 (avg) |
 
 Linear baseline was trained at H=96 and H=336 only.
 
@@ -163,8 +163,8 @@ dimension before the encoder, allowing cross-variate attention.
 
 | Mode | Test MSE | Test MAE |
 |------|----------|----------|
-| PatchTST CI | [fill from ci_cd_ettch1.csv] | [fill from ci_cd_ettch1.csv] |
-| PatchTST CD | [fill from ci_cd_ettch1.csv] | [fill from ci_cd_ettch1.csv] |
+| PatchTST CI | -- | -- |
+| PatchTST CD | -- | -- |
 
 ---
 

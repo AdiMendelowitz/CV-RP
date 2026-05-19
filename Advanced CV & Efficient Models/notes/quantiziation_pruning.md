@@ -22,7 +22,7 @@ Lower bit-width compresses the set of representable values, increasing the spaci
 |-----------------------|----------------------------------|---------------------------------------------|
 | Bits per value        | 32                              | 8                                           |
 | Memory (weights)      | Baseline                        | ~4× reduction                               |
-| Representable range   | ~\(\pm 3.4 \times 10^{38}\)     | -128 to 127 (signed) / 0–255 (unsigned)     |
+| Representable range   | ~±3.4e38                        | -128 to 127 (signed) / 0–255 (unsigned)     |
 | Precision             | ~7 decimal digits               | about 2–3 decimal digits                    |
 | Typical accuracy drop | –                               | ≈0–1% top‑1 on ImageNet (good PTQ/QAT)      |
 | Inference speedup     | Baseline                        | ≈2–4× on hardware with INT8 units           |

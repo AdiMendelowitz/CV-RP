@@ -40,7 +40,7 @@ milliseconds**, not just FLOPs.
 
 - Searches for macro-level block structure (layer types, kernel sizes, expansion ratios).  
 - Optimises a multi-objective reward of the form  
-  \( \text{ACC}(m) \times \left(\frac{\text{LAT}(m)}{\text{TAR}}\right)^w \),  
+  `ACC(m) * (LAT(m)/TAR)^w`,  
   where `TAR` is a target latency and `w` trades off accuracy and latency.  
 - Produces a baseline MobileNetV3 backbone tailored to the target platform.
 
@@ -54,7 +54,7 @@ Together, NAS chooses the global structure while NetAdapt refines local widths u
 
 #### 2. Hard-Swish Activation (h-swish)
 
-The Swish activation \(x \cdot \sigma(x)\) empirically outperforms ReLU but is expensive on mobile due to the sigmoid. MobileNetV3 introduces a piecewise-linear approximation:
+The Swish activation `x * sigma(x)` empirically outperforms ReLU but is expensive on mobile due to the sigmoid. MobileNetV3 introduces a piecewise-linear approximation:
 
 ```text
 h-swish(x) = x · ReLU6(x + 3) / 6
@@ -197,7 +197,7 @@ The backbone is a custom CNN inspired by GoogLeNet. It is first pretrained on Im
 
 - (x, y): box centre relative to the grid cell, in [0, 1].  
 - (w, h): width and height relative to the full image, in [0, 1].  
-- confidence = \(P(\text{object}) \times \text{IoU}(\text{pred}, \text{gt})\).
+- confidence = `P(object) * IoU(pred, gt)`.
 
 **Class prediction:** Each cell predicts a **single** set of C class probabilities shared by both predicted boxes in that cell, which creates a “one class per cell” limitation.
 

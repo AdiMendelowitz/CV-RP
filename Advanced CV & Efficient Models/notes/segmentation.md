@@ -183,7 +183,7 @@ Total loss:
 L = L_cls + L_box + L_mask
 ```
 
-where \(L_{cls}\) and \(L_{box}\) are as in Faster R-CNN (cross-entropy and smooth L1), and \(L_{mask}\) is per-pixel binary cross-entropy over predicted masks.
+where `L_cls` and `L_box` are as in Faster R-CNN (cross-entropy and smooth L1), and `L_mask` is per-pixel binary cross-entropy over predicted masks.
 
 ### RoIAlign: The Critical Contribution
 

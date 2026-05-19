@@ -62,7 +62,7 @@ The paper argues that tokenising individual time steps and using point‑wise at
 
 ### Why it matters for this project
 
-DLinear is the **sanity‑check baseline** in Week 4: if PatchTST cannot beat DLinear on ETT, something is wrong with the implementation or training. Conceptually, DLinear explains *why* PatchTST works: by forming **temporal patches**, PatchTST restores local temporal structure and produces tokens that are more compatible with attention than single time‑step snapshots. DLinear is the bridge from “transformers seem ineffective” to “transformers can be effective with the right tokenization.”
+DLinear is the **sanity-check baseline** in the benchmark experiments: if PatchTST cannot beat DLinear on ETT, something is wrong with the implementation or training. Conceptually, DLinear explains *why* PatchTST works: by forming **temporal patches**, PatchTST restores local temporal structure and produces tokens that are more compatible with attention than single time‑step snapshots. DLinear is the bridge from “transformers seem ineffective” to “transformers can be effective with the right tokenization.”
 
 ### Note on subsequent debate
 
@@ -150,7 +150,7 @@ Anomaly Transformer achieves state‑of‑the‑art results on six unsupervised 
 
 ### Why it matters for this project
 
-Your Week 4 anomaly detection module uses **reconstruction error from PatchTST** as the anomaly score — simple and generic. Anomaly Transformer illustrates a more principled alternative: design the attention mechanism to make **normal vs anomalous association patterns** explicitly separable. This contrast clarifies how to interpret your results: reconstruction error is a useful but noisy proxy, whereas association discrepancy is a targeted signal for detection.
+The reconstruction-error anomaly detection in the benchmark experiments uses **PatchTST reconstruction error** as the anomaly score: simple and generic. Anomaly Transformer illustrates a more principled alternative, designing the attention mechanism to make **normal vs anomalous association patterns** explicitly separable. Reconstruction error is a useful but noisy proxy; association discrepancy is a targeted signal for detection.
 
 ### Limitations
 
