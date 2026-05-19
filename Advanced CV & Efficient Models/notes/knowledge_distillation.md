@@ -92,7 +92,7 @@ The following teacher–student setup is specific to this project and is not par
 
 ### Teacher: ResNet-18
 - Parameters: ~11.2M
-- CIFAR-10 accuracy: 93.43% (Week 1 checkpoint)
+- CIFAR-10 accuracy: 93.43% (pre-trained checkpoint)
 - Frozen during all distillation training - no gradients computed
 
 ### Student: SmallCNN
