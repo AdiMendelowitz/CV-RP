@@ -110,3 +110,88 @@ def test_channel_independence(model: PatchTST) -> None:
         assert torch.allclose(baseline[:, :, c], perturbed[:, :, c], atol=1e-5), (
             f"Channel {c} output changed after perturbing only channel 0 -- channel independence violated."
         )
+
+# ---------------------------------------------------------------------------
+# CD mode tests (channel_mixing=True)
+# ---------------------------------------------------------------------------
+
+class TestPatchTSTChannelMixing:
+    def test_cd_output_shape(self) -> None:
+        """CD mode must produce the same output shape as CI mode."""
+        model = PatchTST(
+            seq_len=SEQ_LEN,
+            pred_len=PRED_LEN,
+            num_variates=NUM_VARIATES,
+            patch_size=PATCH_SIZE,
+            stride=STRIDE,
+            d_model=D_MODEL,
+            num_heads=NUM_HEADS,
+            num_layers=NUM_LAYERS,
+            dropout=0.0,
+            channel_mixing=True,
+        )
+        x = torch.randn(BATCH, SEQ_LEN, NUM_VARIATES)
+        out = model(x)
+        assert out.shape == (BATCH, PRED_LEN, NUM_VARIATES), (
+            f"Expected {(BATCH, PRED_LEN, NUM_VARIATES)}, got {out.shape}"
+        )
+
+    def test_cd_cross_channel_interaction(self) -> None:
+        """In CD mode, perturbing channel 0 must change all output channels.
+
+        This is the behavioral inverse of the CI channel independence test.
+        In CD mode, attention runs over patches from all variates simultaneously,
+        so a change to any variate's input propagates through the attention matrix
+        to every other variate's output representation.
+        """
+        model = PatchTST(
+            seq_len=SEQ_LEN,
+            pred_len=PRED_LEN,
+            num_variates=NUM_VARIATES,
+            patch_size=PATCH_SIZE,
+            stride=STRIDE,
+            d_model=D_MODEL,
+            num_heads=NUM_HEADS,
+            num_layers=NUM_LAYERS,
+            dropout=0.0,
+            channel_mixing=True,
+        )
+        model.eval()
+        torch.manual_seed(0)
+
+        x = torch.randn(1, SEQ_LEN, NUM_VARIATES)
+        with torch.no_grad():
+            baseline = model(x)
+
+        x_perturbed = x.clone()
+        x_perturbed[:, :, 0] += 10.0
+        with torch.no_grad():
+            perturbed = model(x_perturbed)
+
+        delta = (perturbed - baseline).abs()
+        for c in range(NUM_VARIATES):
+            assert delta[:, :, c].max().item() > 1e-6, (
+                f"Channel {c} output did not change after perturbing channel 0 in CD mode. "
+                "Cross-variate interaction is expected in channel_mixing=True."
+            )
+
+    def test_cd_gradient_flow(self) -> None:
+        """All parameters must receive gradients in CD mode."""
+        model = PatchTST(
+            seq_len=SEQ_LEN,
+            pred_len=PRED_LEN,
+            num_variates=NUM_VARIATES,
+            patch_size=PATCH_SIZE,
+            stride=STRIDE,
+            d_model=D_MODEL,
+            num_heads=NUM_HEADS,
+            num_layers=NUM_LAYERS,
+            dropout=0.0,
+            channel_mixing=True,
+        )
+        x = torch.randn(BATCH, SEQ_LEN, NUM_VARIATES)
+        loss = model(x).sum()
+        loss.backward()
+        for name, param in model.named_parameters():
+            if param.requires_grad:
+                assert param.grad is not None, f"Parameter '{name}' has no gradient in CD mode."
