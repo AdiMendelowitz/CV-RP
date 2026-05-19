@@ -10,6 +10,7 @@ References:
 
 import numpy as np
 
+
 def compute_iou(box1: np.ndarray, box2: np.ndarray) -> float:
     """
     Intersection over Union (IoU) between two bounding boxes.
@@ -37,7 +38,8 @@ def compute_iou(box1: np.ndarray, box2: np.ndarray) -> float:
 
     if union_area <= 0.0:
         return 0.0
-    return float(inter_area/union_area)
+    return float(inter_area / union_area)
+
 
 def non_max_suppression(boxes: np.ndarray, scores: np.ndarray, iou_threshold: float = 0.5) -> np.ndarray:
     """
@@ -67,12 +69,13 @@ def non_max_suppression(boxes: np.ndarray, scores: np.ndarray, iou_threshold: fl
 
     return np.array(kept, dtype=np.int64)
 
+
 def compute_ap(recall: np.ndarray, precision: np.ndarray) -> float:
     """
     Average precision via 11-point interpolation (PASCAL VOC 2007 protocol).
 
-    For each recall threshold in [0.0, 0.1, ..., 1.0] take the max precision at recall >= that threshold, then average over all 11
-    thresholds.
+    For each recall threshold in [0.0, 0.1, ..., 1.0] take the max precision at recall >= that threshold, then average
+    over all 11 thresholds.
 
     Args:
         recall: array (N,) of recall values.
@@ -87,6 +90,7 @@ def compute_ap(recall: np.ndarray, precision: np.ndarray) -> float:
         ap += precision[mask].max() if mask.any() else 0.0
 
     return float(ap / 11.0)
+
 
 def compute_map(predictions: dict[int, dict], targets: dict[int, dict], iou_threshold: float = 0.5) -> float:
     """

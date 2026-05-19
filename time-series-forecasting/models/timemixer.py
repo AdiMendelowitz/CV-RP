@@ -23,6 +23,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 class SeriesDecomposition(nn.Module):
     """
     Extract trend via moving average. Seasonality = series - trend.
@@ -57,7 +58,7 @@ class SeriesDecomposition(nn.Module):
 
         x_trend = self.avg_pool(x_padded)
 
-        if x_trend.shape[-1] != x.shape[-1]: # Trim any length mismatch caused by even kernel sizes.
+        if x_trend.shape[-1] != x.shape[-1]:  # Trim any length mismatch caused by even kernel sizes.
             x_trend = x_trend[..., : x.shape[-1]]
         x_seasonal = x - x_trend
         return x_seasonal, x_trend
@@ -127,13 +128,13 @@ class FMMBlock(nn.Module):
         Returns:
             forecast: (B, C, pred_len)
         """
-        weights = F.softmax(self.scale_weights, dim=0) # (num_scales,)
+        weights = F.softmax(self.scale_weights, dim=0)  # (num_scales,)
 
         forecasts = torch.stack(
             [weights[i] * head(scale_representations[i]) for i, head in enumerate(self.heads)],
             dim=0,
         )
-        return forecasts.sum(dim=0) # (B, C, pred_len)
+        return forecasts.sum(dim=0)  # (B, C, pred_len)
 
 
 class TimeMixer(nn.Module):
@@ -155,8 +156,15 @@ class TimeMixer(nn.Module):
         dropout: Dropout probability.
     """
 
-    def __init__(self, seq_len: int, pred_len: int, num_scales: int = 3, d_model: int = 16,
-                 decomp_kernel: int = 25, dropout: float = 0.1) -> None:
+    def __init__(
+        self,
+        seq_len: int,
+        pred_len: int,
+        num_scales: int = 3,
+        d_model: int = 16,
+        decomp_kernel: int = 25,
+        dropout: float = 0.1,
+    ) -> None:
         super().__init__()
 
         self.num_scales = num_scales
@@ -177,9 +185,9 @@ class TimeMixer(nn.Module):
 
         self.decomposition = SeriesDecomposition(decomp_kernel)
 
-        self.pdm_blocks = nn.ModuleList([
-            PDMBlock(seq_len=l, d_model=d_model, dropout=dropout) for l in self.scale_lens
-        ])
+        self.pdm_blocks = nn.ModuleList(
+            [PDMBlock(seq_len=l, d_model=d_model, dropout=dropout) for l in self.scale_lens]
+        )
 
         self.fmm = FMMBlock(num_scales=num_scales, d_model=d_model, pred_len=pred_len)
 
@@ -193,7 +201,7 @@ class TimeMixer(nn.Module):
             Forecast tensor, shape (B, pred_len, C).
         """
         # Work in (B, C, L) throughout: transpose once at entry and once at exit.
-        x = x.transpose(1, 2) # (B, C, seq_len)
+        x = x.transpose(1, 2)  # (B, C, seq_len)
 
         scale_reps = []
         x_s = x
@@ -202,9 +210,7 @@ class TimeMixer(nn.Module):
 
             # Defensive check for dynamic shapes / odd sequence lengths
             if x_s.shape[-1] != self.scale_lens[i]:
-                raise RuntimeError(
-                    f"Scale {i}: expected length {self.scale_lens[i]}, got {x_s.shape[-1]}."
-                )
+                raise RuntimeError(f"Scale {i}: expected length {self.scale_lens[i]}, got {x_s.shape[-1]}.")
 
             x_seasonal, x_trend = self.decomposition(x_s)
             rep = pdm(x_seasonal, x_trend)

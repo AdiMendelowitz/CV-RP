@@ -152,21 +152,35 @@ introduces more noise than signal.
 
 ## Anomaly Detection
 
-*To be completed after Friday implementation.*
+Reconstruction-error-based anomaly detection using the PatchTST checkpoint trained at
+pred_len=96, seq_len=512. For each position in the test split, a 512-timestep sliding
+window (step size 1) is passed to the model; step 0 of the 96-step prediction serves as
+the one-step-ahead reconstruction. The per-timestep anomaly score is the MSE between this
+prediction and the observed value, averaged across all 7 channels.
 
-The anomaly detection module applies a trained PatchTST forecasting model (seq_len=512,
-pred_len=96) to unsupervised anomaly detection via reconstruction error thresholding.
-The anomaly score at each timestep is the MSE between the first predicted step and the
-observed value at that timestep.
+The detection threshold is the 95th percentile of validation reconstruction errors
+(1.166358), fit on the validation split to avoid leakage into the test set.
 
-Two synthetic anomaly types are injected into the test split for evaluation:
+Two synthetic anomaly types are evaluated on the test split (seed=42, reconstructable
+range: 2368 timesteps):
 
-- **Point anomaly**: Gaussian noise with std = 5 * channel_std added at 20 random timesteps.
-- **Contextual anomaly**: a contiguous 24-hour window zeroed out at 3 random locations.
+- Point anomaly: Gaussian noise with std = 5 * channel_std injected at 20 random timesteps.
+- Contextual anomaly: 3 contiguous 24-hour windows zeroed to 0.0 (72 anomalous timesteps).
 
-Precision, recall, and F1 are reported per anomaly type. Full results in `anomaly_ettch1.md`.
+| Anomaly type | Precision | Recall | F1     |
+|--------------|-----------|--------|--------|
+| Point        | 0.1227    | 1.0000 | 0.2186 |
+| Contextual   | 0.0420    | 0.0694 | 0.0524 |
 
-This approach is not state-of-the-art. Methods such as Anomaly Transformer (Xu et al., ICLR 2022)
-and TranAD use anomaly-specific training objectives. The purpose here is to demonstrate that
-forecasting quality and anomaly signal are connected -- a property directly relevant to inverter
-telemetry monitoring in industrial IoT settings.
+Point anomaly recall of 1.0 confirms that all 20 injected spikes produced reconstruction
+errors above the threshold. Low precision reflects the expected false positive rate at the
+95th percentile threshold (~118 false positives on 2368 normal timesteps). Contextual
+anomaly performance is near zero because zeroing to 0.0 in normalized space produces values
+near the data mean, which the model can predict from context without elevated error.
+
+Full methodology and analysis in `results/anomaly_etth1.md`.
+
+This approach is not state-of-the-art. Methods such as Anomaly Transformer (Xu et al.,
+ICLR 2022) and TranAD (Tuli et al., VLDB 2022) use anomaly-specific training objectives.
+The purpose here is to demonstrate that forecasting quality and anomaly signal are connected,
+a property directly relevant to inverter telemetry monitoring in industrial IoT settings.

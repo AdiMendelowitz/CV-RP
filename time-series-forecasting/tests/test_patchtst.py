@@ -9,9 +9,9 @@ import torch
 
 from pathlib import Path
 import sys
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from models.patchtst import PatchEmbedding, PatchTST
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -65,7 +65,11 @@ def test_patchtst_output_shape(model: PatchTST) -> None:
     """PatchTST end-to-end must produce (B, pred_len, C) from (B, seq_len, C)."""
     x = torch.randn(BATCH, SEQ_LEN, NUM_VARIATES)
     out = model(x)
-    assert out.shape == (BATCH, PRED_LEN, NUM_VARIATES), f"Expected {(BATCH, PRED_LEN, NUM_VARIATES)}, got {tuple(out.shape)}"
+    assert out.shape == (
+        BATCH,
+        PRED_LEN,
+        NUM_VARIATES,
+    ), f"Expected {(BATCH, PRED_LEN, NUM_VARIATES)}, got {tuple(out.shape)}"
 
 
 # ---------------------------------------------------------------------------
@@ -103,17 +107,21 @@ def test_channel_independence(model: PatchTST) -> None:
         perturbed = model(x_perturbed)
 
     # Channel 0 output must differ.
-    assert not torch.allclose(baseline[:, :, 0], perturbed[:, :, 0]), "Channel 0 output did not change after perturbation."
+    assert not torch.allclose(
+        baseline[:, :, 0], perturbed[:, :, 0]
+    ), "Channel 0 output did not change after perturbation."
 
     # All other channels must remain identical.
     for c in range(1, NUM_VARIATES):
-        assert torch.allclose(baseline[:, :, c], perturbed[:, :, c], atol=1e-5), (
-            f"Channel {c} output changed after perturbing only channel 0 -- channel independence violated."
-        )
+        assert torch.allclose(
+            baseline[:, :, c], perturbed[:, :, c], atol=1e-5
+        ), f"Channel {c} output changed after perturbing only channel 0 -- channel independence violated."
+
 
 # ---------------------------------------------------------------------------
 # CD mode tests (channel_mixing=True)
 # ---------------------------------------------------------------------------
+
 
 class TestPatchTSTChannelMixing:
     def test_cd_output_shape(self) -> None:
@@ -132,9 +140,11 @@ class TestPatchTSTChannelMixing:
         )
         x = torch.randn(BATCH, SEQ_LEN, NUM_VARIATES)
         out = model(x)
-        assert out.shape == (BATCH, PRED_LEN, NUM_VARIATES), (
-            f"Expected {(BATCH, PRED_LEN, NUM_VARIATES)}, got {out.shape}"
-        )
+        assert out.shape == (
+            BATCH,
+            PRED_LEN,
+            NUM_VARIATES,
+        ), f"Expected {(BATCH, PRED_LEN, NUM_VARIATES)}, got {out.shape}"
 
     def test_cd_cross_channel_interaction(self) -> None:
         """In CD mode, perturbing channel 0 must change all output channels.

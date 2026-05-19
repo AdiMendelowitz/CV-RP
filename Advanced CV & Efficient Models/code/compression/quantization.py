@@ -37,10 +37,10 @@ _STATIC_QUANT_CKPT = Path(__file__).resolve().parent / "checkpoints" / "quantiza
 sys.path.insert(0, str(_REPO_ROOT / "computer-vision-foundations" / "code" / "pytorch_cnn"))
 from resnet import resnet18 as custom_resnet18  # noqa: E402
 
-
 # ----------------------------------------------------------------------------------------------------------------------
 # Data Loaders
 # ----------------------------------------------------------------------------------------------------------------------
+
 
 def get_cifar10_loaders(data_dir: str = str(_DATA_ROOT), batch_size: int = 128) -> tuple[DataLoader, DataLoader]:
     """
@@ -58,8 +58,9 @@ def get_cifar10_loaders(data_dir: str = str(_DATA_ROOT), batch_size: int = 128) 
     calibration_set = torchvision.datasets.CIFAR10(_DATA_ROOT, train=True, download=True, transform=transforms)
     test_set = torchvision.datasets.CIFAR10(_DATA_ROOT, train=False, download=True, transform=transforms)
 
-    calibration_loader = DataLoader(calibration_set, batch_size=batch_size, shuffle=False,
-                                    num_workers=2, pin_memory=False)
+    calibration_loader = DataLoader(
+        calibration_set, batch_size=batch_size, shuffle=False, num_workers=2, pin_memory=False
+    )
     test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False, num_workers=2, pin_memory=False)
 
     return calibration_loader, test_loader
@@ -69,12 +70,14 @@ def get_cifar10_loaders(data_dir: str = str(_DATA_ROOT), batch_size: int = 128) 
 # Measurement Utilities
 # ----------------------------------------------------------------------------------------------------------------------
 
+
 @dataclass
 class BenchmarkResult:
     label: str
     size_mb: float
     latency_ms: float
     top1_acc: float
+
 
 def model_size_md(mode: nn.Module) -> float:
     """Serialize the model state dict to a temp file and return its size in MB."""
@@ -83,9 +86,10 @@ def model_size_md(mode: nn.Module) -> float:
         tmp_path = f.name
     try:
         torch.save(mode.state_dict(), tmp_path)
-        return os.path.getsize(tmp_path) / (1024 ** 2)
+        return os.path.getsize(tmp_path) / (1024**2)
     finally:
         os.remove(tmp_path)
+
 
 def median_latency_ms(model: nn.Module, input_tensor: torch.Tensor, n_warmup: int = 20, n_runs: int = 100) -> float:
     """
@@ -107,6 +111,7 @@ def median_latency_ms(model: nn.Module, input_tensor: torch.Tensor, n_warmup: in
     times.sort()
     return times[len(times) // 2]
 
+
 def evaluate_top1(model: nn.Module, loader: DataLoader) -> float:
     """Return top-1 accuracy on the given loader. All data stays on CPU"""
 
@@ -118,17 +123,24 @@ def evaluate_top1(model: nn.Module, loader: DataLoader) -> float:
             preds = model(x).argmax(dim=1)
             correct += preds.eq(y).sum().item()
             total += y.size(0)
-    return 100*correct/total
+    return 100 * correct / total
 
-def run_benchmark(model: nn.Module, test_loader: DataLoader, label: str, latency_input: torch.Tensor) -> BenchmarkResult:
+
+def run_benchmark(
+    model: nn.Module, test_loader: DataLoader, label: str, latency_input: torch.Tensor
+) -> BenchmarkResult:
     return BenchmarkResult(
-        label=label, size_mb=model_size_md(model), latency_ms=median_latency_ms(model, latency_input),
-        top1_acc=evaluate_top1(model, test_loader)
+        label=label,
+        size_mb=model_size_md(model),
+        latency_ms=median_latency_ms(model, latency_input),
+        top1_acc=evaluate_top1(model, test_loader),
     )
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Quantization
 # ----------------------------------------------------------------------------------------------------------------------
+
 
 class QuantizableWrapper(nn.Module):
     """
@@ -147,6 +159,7 @@ class QuantizableWrapper(nn.Module):
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         return self.dequant(self.model(self.quant(input)))
 
+
 def fuse_resnet18_modules(model: nn.Module) -> None:
     """
     Fuse Conv-BN-ReLU sequences in a ResNet-18 in-place
@@ -162,6 +175,7 @@ def fuse_resnet18_modules(model: nn.Module) -> None:
             if getattr(block, "downsample", None) is not None:
                 torch.quantization.fuse_modules(block.downsample, ["0", "1"], inplace=True)
 
+
 def apply_dynamic_quantization(model: nn.Module) -> nn.Module:
     """
     Weights are pre-quantized to INT8, activations are quantized on the fly at inference time. Only nn.Linear
@@ -173,8 +187,10 @@ def apply_dynamic_quantization(model: nn.Module) -> nn.Module:
     quantized = copy.deepcopy(model).cpu()
     return torch.quantization.quantize_dynamic(quantized, qconfig_spec={nn.Linear}, dtype=torch.qint8)
 
-def apply_static_quantization(model: nn.Module, calibration_loader: DataLoader,
-                              n_calibration_batches: int = 100) -> nn.Module:
+
+def apply_static_quantization(
+    model: nn.Module, calibration_loader: DataLoader, n_calibration_batches: int = 100
+) -> nn.Module:
     """
     Fuses Conc-BN-ReLU modules, runs calibration data through observer-instrumented forward passes to collect activation
     range statistics, then converts to a fully INT8 model.
@@ -194,7 +210,7 @@ def apply_static_quantization(model: nn.Module, calibration_loader: DataLoader,
     wrapped.eval()
     with torch.no_grad():
         for i, (x, _) in enumerate(calibration_loader):
-            if i>=n_calibration_batches:
+            if i >= n_calibration_batches:
                 break
             wrapped(x.cpu())
 
@@ -208,20 +224,22 @@ def apply_static_quantization(model: nn.Module, calibration_loader: DataLoader,
 
 N_CALIBRATION_BATCHES = 100
 
+
 def parse_args() -> argparse.Namespace:
 
     _default_checkpoint = (
-        _REPO_ROOT
-        / "computer-vision-foundations"
-        / "code"
-        / "pytorch_cnn"
-        / "best_resnet18_cifar10 (1).pth"
+        _REPO_ROOT / "computer-vision-foundations" / "code" / "pytorch_cnn" / "best_resnet18_cifar10 (1).pth"
     )
     parser = argparse.ArgumentParser(description="PTQ benchmarks for ResNet-18 on CIFAR-10")
-    parser.add_argument("--checkpoint", type=str, default=str(_default_checkpoint),
-                        help="Path to ResNet-18 state dict checkpoint (.pth)")
-    parser.add_argument("--batch-size", type=int,default=128,
-                        help="Batch size for evaluation and calibration (default: 128)")
+    parser.add_argument(
+        "--checkpoint",
+        type=str,
+        default=str(_default_checkpoint),
+        help="Path to ResNet-18 state dict checkpoint (.pth)",
+    )
+    parser.add_argument(
+        "--batch-size", type=int, default=128, help="Batch size for evaluation and calibration (default: 128)"
+    )
     return parser.parse_args()
 
 
@@ -272,11 +290,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
-

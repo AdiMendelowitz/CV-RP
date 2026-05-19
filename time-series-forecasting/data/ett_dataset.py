@@ -33,6 +33,7 @@ _TEST_END: int = 14400
 
 Split = Literal["train", "val", "test"]
 
+
 class ETTh1Dataset(Dataset):
     """
     Sliding window dataset over the ETTh1 time series.
@@ -62,12 +63,12 @@ class ETTh1Dataset(Dataset):
 
         # Fit scaler on train rows only, then apply to all rows before slicing
         train_rows = raw[:_TRAIN_END]
-        self._mean = train_rows.mean(axis=0) # (C,)
-        self._std = train_rows.std(axis=0, ddof=0).clip(min=1e-8)   # (C,)
-        normalized = (raw - self._mean) / self._std     # (T, C)
+        self._mean = train_rows.mean(axis=0)  # (C,)
+        self._std = train_rows.std(axis=0, ddof=0).clip(min=1e-8)  # (C,)
+        normalized = (raw - self._mean) / self._std  # (T, C)
 
         start, end = self._split_bounds(split)
-        self._data = normalized[start:end].astype(np.float32)   # (split_len, C)
+        self._data = normalized[start:end].astype(np.float32)  # (split_len, C)
 
         window = seq_len + pred_len
         if len(self._data) < window:
@@ -85,9 +86,9 @@ class ETTh1Dataset(Dataset):
         return self._num_samples
 
     def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
-        if idx <0 or idx >= self._num_samples:
+        if idx < 0 or idx >= self._num_samples:
             raise IndexError(f"Index {idx} out of range [0, {self._num_samples})")
-        x = self._data[idx : idx + self.seq_len]    # (seq_len, C)
+        x = self._data[idx : idx + self.seq_len]  # (seq_len, C)
         y = self._data[idx + self.seq_len : idx + self.seq_len + self.pred_len]  # (pred_len, C)
         return torch.from_numpy(x), torch.from_numpy(y)
 
@@ -119,8 +120,7 @@ class ETTh1Dataset(Dataset):
         """Load ETTh1.csv and return numeric columns as a float64 array."""
         if not path.exists():
             raise FileNotFoundError(
-                f"ETTh1.csv not found {path}. Please download from "
-                "https://github.com/zhouhaoyi/ETDataset"
+                f"ETTh1.csv not found {path}. Please download from " "https://github.com/zhouhaoyi/ETDataset"
             )
         df = pd.read_csv(path)
         numeric = df.drop(columns=["date"])
@@ -144,9 +144,3 @@ class ETTh1Dataset(Dataset):
             "test": (_VAL_END, _TEST_END),
         }
         return bounds[split]
-
-
-
-
-
-

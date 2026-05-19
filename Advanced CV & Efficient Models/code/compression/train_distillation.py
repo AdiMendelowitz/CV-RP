@@ -13,12 +13,6 @@ Assumptions:
         match torchvision's.
 """
 
-import argparse
-import logging
-import random
-import sys
-from pathlib import Path
-
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -27,12 +21,17 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 
+import argparse
+import logging
+import random
+import sys
+from pathlib import Path
+
 _DATA_ROOT = Path(__file__).resolve().parents[3] / "data"
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "computer-vision-foundations" / "code" / "pytorch_cnn"))
 from resnet import resnet18 as custom_resnet18
 
 from distillation import build_student
-
 
 SEED = 42
 random.seed(SEED)
@@ -50,8 +49,10 @@ logger = logging.getLogger(__name__)
 CIFAR10_MEAN = (0.4914, 0.4822, 0.4465)
 CIFAR10_STD = (0.2470, 0.2435, 0.2616)
 
-def get_cifar10_loaders(data_dir: str = str(_DATA_ROOT), batch_size: int = 128,
-                        num_workers: int = 2) -> tuple[DataLoader, DataLoader]:
+
+def get_cifar10_loaders(
+    data_dir: str = str(_DATA_ROOT), batch_size: int = 128, num_workers: int = 2
+) -> tuple[DataLoader, DataLoader]:
     """Return (train_loader, test_loader) for CIFAR-10."""
 
     train_transform = transforms.Compose(
@@ -83,8 +84,16 @@ def get_cifar10_loaders(data_dir: str = str(_DATA_ROOT), batch_size: int = 128,
 # Training loops
 # ----------------------------------------------------------------------------------------------------------------------
 
-def _train_epoch_distill(student: nn.Module, teacher: nn.Module, loader: DataLoader, optimizer: torch.optim.Optimizer,
-                         device: torch.device, T: float, alpha: float) -> tuple[float, float, float, float]:
+
+def _train_epoch_distill(
+    student: nn.Module,
+    teacher: nn.Module,
+    loader: DataLoader,
+    optimizer: torch.optim.Optimizer,
+    device: torch.device,
+    T: float,
+    alpha: float,
+) -> tuple[float, float, float, float]:
     """
     One distillation epoch.
 
@@ -103,17 +112,14 @@ def _train_epoch_distill(student: nn.Module, teacher: nn.Module, loader: DataLoa
 
         student_logits = student(images)
 
-        kd = (
-            F.kl_div(
-                F.log_softmax(student_logits/T, dim=1),
-                F.softmax(teacher_logits/T, dim=1),
-                reduction='batchmean',
-            )
-            * (T**2)
-        )
+        kd = F.kl_div(
+            F.log_softmax(student_logits / T, dim=1),
+            F.softmax(teacher_logits / T, dim=1),
+            reduction="batchmean",
+        ) * (T**2)
 
         ce = F.cross_entropy(student_logits, labels)
-        loss = alpha * kd + (1-alpha) * ce
+        loss = alpha * kd + (1 - alpha) * ce
 
         optimizer.zero_grad()
         loss.backward()
@@ -126,10 +132,12 @@ def _train_epoch_distill(student: nn.Module, teacher: nn.Module, loader: DataLoa
         correct += (student_logits.argmax(dim=1) == labels).sum().item()
         n += bs
 
-    return total_combined/n, total_kd/n, total_ce/n, correct/n
+    return total_combined / n, total_kd / n, total_ce / n, correct / n
 
-def _train_epoch_baseline(model: nn.Module, loader: DataLoader, optimizer: torch.optim.Optimizer,
-                          device: torch.device) -> tuple[float, float]:
+
+def _train_epoch_baseline(
+    model: nn.Module, loader: DataLoader, optimizer: torch.optim.Optimizer, device: torch.device
+) -> tuple[float, float]:
     """
     One standard CE epoch.
 
@@ -154,7 +162,8 @@ def _train_epoch_baseline(model: nn.Module, loader: DataLoader, optimizer: torch
         correct += (logits.argmax(dim=1) == labels).sum().item()
         n += bs
 
-    return total_ce/n, correct/n
+    return total_ce / n, correct / n
+
 
 def _val_epoch(model: nn.Module, loader: DataLoader, device: torch.device) -> tuple[float, float]:
     """Validation pass. Returns (ce_loss, accuracy)."""
@@ -172,16 +181,26 @@ def _val_epoch(model: nn.Module, loader: DataLoader, device: torch.device) -> tu
             correct += (logits.argmax(dim=1) == labels).sum().item()
             n += bs
 
-    return total_ce/n, correct/n
+    return total_ce / n, correct / n
 
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Run helpers
 # ----------------------------------------------------------------------------------------------------------------------
 
-def run_distillation(teacher: nn.Module, train_loader: DataLoader, val_loader: DataLoader, device: torch.device,
-                     epochs: int, T: float, alpha: float, lr: float, checkpoint_dir: Path,
-                     student_arch: str) -> dict[str, list[float]]:
+
+def run_distillation(
+    teacher: nn.Module,
+    train_loader: DataLoader,
+    val_loader: DataLoader,
+    device: torch.device,
+    epochs: int,
+    T: float,
+    alpha: float,
+    lr: float,
+    checkpoint_dir: Path,
+    student_arch: str,
+) -> dict[str, list[float]]:
     """Full distillation run. Returns history dict."""
 
     student = build_student(student_arch, num_classes=10).to(device)
@@ -208,25 +227,43 @@ def run_distillation(teacher: nn.Module, train_loader: DataLoader, val_loader: D
         history["val_loss"].append(val_loss)
         history["val_acc"].append(val_acc)
 
-        logger.info("Distill [%d/%d]    train=%.4f  kd=%.4f  ce=%.4f  val_acc=%.4f",
-                    epoch, epochs, tr_loss, kd_loss, ce_loss, val_acc*100)
+        logger.info(
+            "Distill [%d/%d]    train=%.4f  kd=%.4f  ce=%.4f  val_acc=%.4f",
+            epoch,
+            epochs,
+            tr_loss,
+            kd_loss,
+            ce_loss,
+            val_acc * 100,
+        )
 
         if val_acc > best_val_acc:
             best_val_acc = val_acc
             ckpt = checkpoint_dir / "best_student_distill.pth"
 
             torch.save(
-                {"epoch": epoch, "val_acc": val_acc, "model_state_dict": student.state_dict(),
-                 "optimizer_state_dict": optimizer.state_dict()
-                 },
+                {
+                    "epoch": epoch,
+                    "val_acc": val_acc,
+                    "model_state_dict": student.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                },
                 ckpt,
             )
 
-    logger.info("Distillation complete. Best val_acc=%.2f%%", best_val_acc*100)
+    logger.info("Distillation complete. Best val_acc=%.2f%%", best_val_acc * 100)
     return history
 
-def run_baseline(train_loader: DataLoader, val_loader: DataLoader, device: torch.device, epochs: int,
-                lr: float, checkpoint_dir: Path, student_arch: str) -> dict[str, list[float]]:
+
+def run_baseline(
+    train_loader: DataLoader,
+    val_loader: DataLoader,
+    device: torch.device,
+    epochs: int,
+    lr: float,
+    checkpoint_dir: Path,
+    student_arch: str,
+) -> dict[str, list[float]]:
     """Standard CE baseline(same student architecture, no teacher). Return history dict."""
 
     student = build_student(student_arch, num_classes=10).to(device)
@@ -245,20 +282,23 @@ def run_baseline(train_loader: DataLoader, val_loader: DataLoader, device: torch
         history["val_loss"].append(val_loss)
         history["val_acc"].append(val_acc)
 
-        logger.info("Baseline [%d/%d]   train=%.4f  val_acc=%.2f", epoch, epochs, tr_loss, val_acc*100)
+        logger.info("Baseline [%d/%d]   train=%.4f  val_acc=%.2f", epoch, epochs, tr_loss, val_acc * 100)
 
         if val_acc > best_val_acc:
             best_val_acc = val_acc
             ckpt = checkpoint_dir / "best_student_baseline.pth"
             torch.save(
-                {"epoch": epoch, "val_acc": val_acc, "model_state_dict": student.state_dict(),
-                 "optimizer_state_dict": optimizer.state_dict()},
+                {
+                    "epoch": epoch,
+                    "val_acc": val_acc,
+                    "model_state_dict": student.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                },
                 ckpt,
             )
 
-    logger.info("Baseline complete. Best val_acc=%.2f%%", best_val_acc*100)
+    logger.info("Baseline complete. Best val_acc=%.2f%%", best_val_acc * 100)
     return history
-
 
 
 # ---------------------------------------------------------------------------
@@ -266,8 +306,9 @@ def run_baseline(train_loader: DataLoader, val_loader: DataLoader, device: torch
 # ---------------------------------------------------------------------------
 
 
-def plot_results(distill_history: dict[str, list[float]] | None, baseline_history: dict[str, list[float]] | None,
-                 save_dir: Path) -> None:
+def plot_results(
+    distill_history: dict[str, list[float]] | None, baseline_history: dict[str, list[float]] | None, save_dir: Path
+) -> None:
     """Save two figures: loss breakdown and val accuracy comparison."""
     save_dir.mkdir(parents=True, exist_ok=True)
     epochs = range(
@@ -325,11 +366,7 @@ def plot_results(distill_history: dict[str, list[float]] | None, baseline_histor
 def parse_args() -> argparse.Namespace:
     _project_root = Path(__file__).resolve().parents[3]
     _default_checkpoint = (
-        _project_root
-        / "computer-vision-foundations"
-        / "code"
-        / "pytorch_cnn"
-        / "best_resnet18_cifar10 (1).pth"
+        _project_root / "computer-vision-foundations" / "code" / "pytorch_cnn" / "best_resnet18_cifar10 (1).pth"
     )
     p = argparse.ArgumentParser(description="Knowledge distillation on CIFAR-10")
     p.add_argument("--mode", choices=["distill", "baseline", "both"], default="both")
@@ -359,8 +396,9 @@ def main() -> None:
     checkpoint_dir = Path(args.checkpoint_dir)
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
-    train_loader, val_loader = get_cifar10_loaders(data_dir=args.data_dir, batch_size=args.batch_size,
-                                                   num_workers=args.num_workers)
+    train_loader, val_loader = get_cifar10_loaders(
+        data_dir=args.data_dir, batch_size=args.batch_size, num_workers=args.num_workers
+    )
 
     distill_history, baseline_history = None, None
 
@@ -379,25 +417,43 @@ def main() -> None:
         logger.info("Teacher (ResNet-18): %s parameters", f"{n_teacher:,}")
         logger.info("Distillation settings: T=%.1f  alpha=%.2f", args.temperature, args.alpha)
 
-        distill_history = run_distillation(teacher=teacher, train_loader=train_loader, val_loader=val_loader,
-                                           device=device, epochs=args.epochs, T=args.temperature, alpha=args.alpha,
-                                           lr=args.lr, checkpoint_dir=checkpoint_dir, student_arch=args.student_arch)
+        distill_history = run_distillation(
+            teacher=teacher,
+            train_loader=train_loader,
+            val_loader=val_loader,
+            device=device,
+            epochs=args.epochs,
+            T=args.temperature,
+            alpha=args.alpha,
+            lr=args.lr,
+            checkpoint_dir=checkpoint_dir,
+            student_arch=args.student_arch,
+        )
 
     if args.mode in ("baseline", "both"):
         logger.info("Running baseline (CE only, no teacher)")
-        baseline_history = run_baseline(train_loader=train_loader, val_loader=val_loader, device=device,
-                                        epochs=args.epochs, lr=args.lr, checkpoint_dir=checkpoint_dir,
-                                        student_arch=args.student_arch)
+        baseline_history = run_baseline(
+            train_loader=train_loader,
+            val_loader=val_loader,
+            device=device,
+            epochs=args.epochs,
+            lr=args.lr,
+            checkpoint_dir=checkpoint_dir,
+            student_arch=args.student_arch,
+        )
 
     if distill_history is not None and baseline_history is not None:
         best_distill = max(distill_history["val_acc"]) * 100
         best_baseline = max(baseline_history["val_acc"]) * 100
-        logger.info("Gap: distillation %.2f%% vs baseline %.2f%% (Δ=%.2f%%)",
-                    best_distill, best_baseline, best_distill - best_baseline)
+        logger.info(
+            "Gap: distillation %.2f%% vs baseline %.2f%% (Δ=%.2f%%)",
+            best_distill,
+            best_baseline,
+            best_distill - best_baseline,
+        )
 
     plot_results(distill_history, baseline_history, save_dir=Path(args.plot_dir))
 
 
 if __name__ == "__main__":
     main()
-

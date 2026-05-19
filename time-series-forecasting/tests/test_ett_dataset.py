@@ -19,6 +19,7 @@ import pytest
 import torch
 
 import sys
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from data.ett_dataset import ETTh1Dataset, _TEST_END, _TRAIN_END, _VAL_END
 
@@ -52,6 +53,7 @@ def csv_path(tmp_path_factory: pytest.TempPathFactory) -> Path:
 # ---------------------------------------------------------------------------
 # Helper to instantiate all three splits quickly
 # ---------------------------------------------------------------------------
+
 
 def _make_dataset(csv_path: Path, split: str, seq_len: int = 96, pred_len: int = 96) -> ETTh1Dataset:
     return ETTh1Dataset(csv_path=csv_path, split=split, seq_len=seq_len, pred_len=pred_len)
@@ -197,9 +199,7 @@ class TestGetItem:
         idx = 10
         x, y = self.ds[idx]
         expected_x = torch.from_numpy(self.ds._data[idx : idx + self.SEQ_LEN])
-        expected_y = torch.from_numpy(
-            self.ds._data[idx + self.SEQ_LEN : idx + self.SEQ_LEN + self.PRED_LEN]
-        )
+        expected_y = torch.from_numpy(self.ds._data[idx + self.SEQ_LEN : idx + self.SEQ_LEN + self.PRED_LEN])
         torch.testing.assert_close(x, expected_x)
         torch.testing.assert_close(y, expected_y)
 

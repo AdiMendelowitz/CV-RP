@@ -209,9 +209,7 @@ class TestResNet18:
         """BasicBlock must be present — confirms residual connections are wired."""
         from resnet import BasicBlock
 
-        assert any(isinstance(m, BasicBlock) for m in model.modules()), (
-            "ResNet18 should contain BasicBlock layers"
-        )
+        assert any(isinstance(m, BasicBlock) for m in model.modules()), "ResNet18 should contain BasicBlock layers"
 
     def test_batch_size_invariant(self, model):
         """Output batch dimension must match input batch dimension."""
@@ -253,9 +251,7 @@ class TestPatchEmbedding:
         from vit import PatchEmbedding
 
         for patch_size in (4, 8):
-            embed = PatchEmbedding(
-                img_size=32, patch_size=patch_size, in_channels=3, embed_dim=64
-            )
+            embed = PatchEmbedding(img_size=32, patch_size=patch_size, in_channels=3, embed_dim=64)
             x = torch.randn(1, 3, 32, 32)
             out = embed(x)
             # num_patches + 1 CLS token
@@ -394,6 +390,6 @@ class TestSimCLRAugmentation:
         aug = SimCLRAugmentation(image_size=32)
         image = self._make_image()
         # 5 independent draws — probability of all being identical is negligible
-        assert any(not torch.equal(*aug(image)) for _ in range(5)), (
-            "Augmentation produced identical views 5 times in a row"
-        )
+        assert any(
+            not torch.equal(*aug(image)) for _ in range(5)
+        ), "Augmentation produced identical views 5 times in a row"

@@ -261,9 +261,7 @@ def empirical_rf(
 
         # Capture a single activation with a one-shot hook.
         captured: list[torch.Tensor] = []
-        hook = named_modules[hook_name].register_forward_hook(
-            lambda _m, _i, out: captured.append(out)
-        )
+        hook = named_modules[hook_name].register_forward_hook(lambda _m, _i, out: captured.append(out))
         model(x)
         hook.remove()
 
@@ -342,12 +340,8 @@ def visualise_rf_growth(
     save_path: str = "receptive_field_comparison.png",
 ) -> None:
     """Plot theoretical RF growth curves and empirical estimates side-by-side."""
-    eff_th_names, eff_th_rfs = _filter_summary(
-        theoretical_eff, EFFICIENTNET_SUMMARY_LAYERS
-    )
-    cnx_th_names, cnx_th_rfs = _filter_summary(
-        theoretical_cnx, CONVNEXT_SUMMARY_LAYERS
-    )
+    eff_th_names, eff_th_rfs = _filter_summary(theoretical_eff, EFFICIENTNET_SUMMARY_LAYERS)
+    cnx_th_names, cnx_th_rfs = _filter_summary(theoretical_cnx, CONVNEXT_SUMMARY_LAYERS)
 
     panels = [
         (
@@ -462,12 +456,8 @@ def main() -> None:
     print("\nRunning empirical RF analysis (gradient method)...")
     print("Loading pretrained torchvision models (downloads on first run)...")
 
-    eff_model = models.efficientnet_b0(
-        weights=models.EfficientNet_B0_Weights.DEFAULT
-    )
-    cnx_model = models.convnext_tiny(
-        weights=models.ConvNeXt_Tiny_Weights.DEFAULT
-    )
+    eff_model = models.efficientnet_b0(weights=models.EfficientNet_B0_Weights.DEFAULT)
+    cnx_model = models.convnext_tiny(weights=models.ConvNeXt_Tiny_Weights.DEFAULT)
 
     emp_eff = empirical_rf(eff_model, stage_hooks=EFFICIENTNET_HOOK_NAMES)
     emp_cnx = empirical_rf(cnx_model, stage_hooks=CONVNEXT_HOOK_NAMES)
@@ -485,13 +475,9 @@ def main() -> None:
     print(f"  {'Model':<22} {'Theoretical':>12}  {'Empirical':>10}  {'Coverage':>10}")
     print(f"  {'-' * 22} {'-' * 12}  {'-' * 10}  {'-' * 10}")
     print(
-        f"  {'EfficientNet-B0':<22} {final_eff:>10}px"
-        f"  {emp_final_eff:>8}px  {final_eff / INPUT_SIZE * 100:>9.1f}%"
+        f"  {'EfficientNet-B0':<22} {final_eff:>10}px" f"  {emp_final_eff:>8}px  {final_eff / INPUT_SIZE * 100:>9.1f}%"
     )
-    print(
-        f"  {'ConvNeXt-Tiny':<22} {final_cnx:>10}px"
-        f"  {emp_final_cnx:>8}px  {final_cnx / INPUT_SIZE * 100:>9.1f}%"
-    )
+    print(f"  {'ConvNeXt-Tiny':<22} {final_cnx:>10}px" f"  {emp_final_cnx:>8}px  {final_cnx / INPUT_SIZE * 100:>9.1f}%")
     print()
 
     # --- Visualise ---

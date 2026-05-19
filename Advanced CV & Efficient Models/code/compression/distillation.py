@@ -10,13 +10,11 @@ Reference: Hinton et al. (2015) "Distilling the Knowledge in a Neural Network"
 
 import logging
 import random
-from pathlib import Path
 
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import DataLoader
 
 SEED = 42
 random.seed(SEED)
@@ -25,19 +23,16 @@ torch.manual_seed(SEED)
 
 logger = logging.getLogger(__name__)
 
-__all__ = [
-    "distillation_loss",
-    "SmallCNN",
-    "load_teacher_from_checkpoint",
-    "build_student"
-]
+__all__ = ["distillation_loss", "SmallCNN", "load_teacher_from_checkpoint", "build_student"]
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Loss
 # ----------------------------------------------------------------------------------------------------------------------
 
-def distillation_loss(student_logits: torch.Tensor, teacher_logits: torch.Tensor, labels: torch.Tensor,
-                      T: float, alpha: float) -> torch.Tensor:
+
+def distillation_loss(
+    student_logits: torch.Tensor, teacher_logits: torch.Tensor, labels: torch.Tensor, T: float, alpha: float
+) -> torch.Tensor:
     """
     Combined soft-target KL + hard-label CE loss (Hinton et al. 2015)
 
@@ -49,20 +44,18 @@ def distillation_loss(student_logits: torch.Tensor, teacher_logits: torch.Tensor
         student_logits: Raw logits from the student model, shape (B, C).
         teacher_logits: Raw logits from the teacher model, shape (B, C).
         labels: Ground truth class indices, shape (B,).
-        T: Softening temperature (higher T => softer probabilities, more emphasis on teacher's relative class probabilities).
+        T: Softening temperature (higher T => softer probabilities, more emphasis on teacher's relative class
+           probabilities).
         alpha: Weight on the soft-target KL term, (1-alpha) weights CE.
 
     Returns:
         Scalar combined loss.
     """
-    kl_loss = (
-        F.kl_div(
-            F.log_softmax(student_logits / T, dim=1),
-            F.softmax(teacher_logits / T, dim=1),
-            reduction='batchmean',
-        )
-        * (T**2)
-    )
+    kl_loss = F.kl_div(
+        F.log_softmax(student_logits / T, dim=1),
+        F.softmax(teacher_logits / T, dim=1),
+        reduction="batchmean",
+    ) * (T**2)
 
     ce_loss = F.cross_entropy(student_logits, labels)
     return alpha * kl_loss + (1 - alpha) * ce_loss
@@ -71,6 +64,7 @@ def distillation_loss(student_logits: torch.Tensor, teacher_logits: torch.Tensor
 # ----------------------------------------------------------------------------------------------------------------------
 # Student Architecture
 # ----------------------------------------------------------------------------------------------------------------------
+
 
 class SmallCNN(nn.Module):
     """
@@ -84,7 +78,8 @@ class SmallCNN(nn.Module):
 
     ~170K parameters, roughly 65× smaller than ResNet-18.
     """
-    def __init__(self, num_classes: int=10) -> None:
+
+    def __init__(self, num_classes: int = 10) -> None:
         super().__init__()
         self.features = nn.Sequential(
             nn.Conv2d(3, 32, kernel_size=3, padding=1),
@@ -105,9 +100,11 @@ class SmallCNN(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.classifier(self.features(x).flatten(1))
 
+
 # ----------------------------------------------------------------------------------------------------------------------
 # Utils
 # ----------------------------------------------------------------------------------------------------------------------
+
 
 def load_teacher_from_checkpoint(model: nn.Module, checkpoint_path: str, device: torch.device) -> nn.Module:
     """
@@ -140,12 +137,14 @@ def load_teacher_from_checkpoint(model: nn.Module, checkpoint_path: str, device:
         param.requires_grad = False
     return model
 
+
 def build_student(architecture: str = "small_cnn", num_classes: int = 10) -> nn.Module:
     """
     Instantiate a student model by name.
 
     Args:
-        architecture: "small_cnn" for the built-in SmallCnn, or any timm model name (e.g. "resnet18", "mobilenetv3_small_100").
+        architecture: "small_cnn" for the built-in SmallCnn, or any timm model name (e.g. "resnet18",
+                       "mobilenetv3_small_100").
         num_classes: Number of output classes.
 
     Returns:
@@ -157,15 +156,7 @@ def build_student(architecture: str = "small_cnn", num_classes: int = 10) -> nn.
 
     try:
         import timm
+
         return timm.create_model(architecture, pretrained=False, num_classes=num_classes)
     except Exception as e:
         raise ValueError(f"Unknown architecture: {architecture}, install timm or use 'small_cnn'") from e
-
-
-
-
-
-
-
-
-

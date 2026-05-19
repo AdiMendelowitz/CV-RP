@@ -71,11 +71,14 @@ class TestUp:
 
 
 class TestUNet:
-    @pytest.mark.parametrize("in_channels,num_classes", [
-        (1, 1),
-        (3, 2),
-        (1, 10),
-    ])
+    @pytest.mark.parametrize(
+        "in_channels,num_classes",
+        [
+            (1, 1),
+            (3, 2),
+            (1, 10),
+        ],
+    )
     def test_output_shape(self, in_channels: int, num_classes: int) -> None:
         model = UNet(in_channels=in_channels, num_classes=num_classes)
         model.eval()

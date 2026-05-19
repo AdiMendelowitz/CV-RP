@@ -33,7 +33,9 @@ VARIATE_NAMES = ["HUFL", "HULL", "MUFL", "MULL", "LUFL", "LULL", "OT"]
 SEQ_LEN_DEFAULTS = {"patchtst": 512, "itransformer": 96, "timemixer": 512}
 
 
-def _load_model(model_type: str, pred_len: int, num_variates: int, seq_len: int, checkpoint_path: Path, device: torch.device) -> nn.Module:
+def _load_model(
+    model_type: str, pred_len: int, num_variates: int, seq_len: int, checkpoint_path: Path, device: torch.device
+) -> nn.Module:
     """Load a model from a checkpoint.
 
     Args:
@@ -62,8 +64,9 @@ def _load_model(model_type: str, pred_len: int, num_variates: int, seq_len: int,
     return model
 
 
-def _plot_forecast_windows(model: nn.Module, test_ds: ETTh1Dataset, pred_len: int, model_type: str,
-                           plots_dir: Path, device: torch.device) -> None:
+def _plot_forecast_windows(
+    model: nn.Module, test_ds: ETTh1Dataset, pred_len: int, model_type: str, plots_dir: Path, device: torch.device
+) -> None:
     """Plot 3 representative forecast windows (start, middle, end of test split).
 
     Args:
@@ -130,8 +133,9 @@ def _plot_val_mse_curves(results_dir: Path, plots_dir: Path, model_type: str) ->
     print(f"Saved: {out}")
 
 
-def _plot_per_channel_mse(model: nn.Module, test_ds: ETTh1Dataset, pred_len: int, model_type: str, plots_dir: Path,
-                          device: torch.device) -> None:
+def _plot_per_channel_mse(
+    model: nn.Module, test_ds: ETTh1Dataset, pred_len: int, model_type: str, plots_dir: Path, device: torch.device
+) -> None:
     """Compute and plot per-channel test MSE.
 
     Args:

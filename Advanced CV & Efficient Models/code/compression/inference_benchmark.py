@@ -7,17 +7,16 @@ Loads the best checkpoints saved by train_distillation.py.
 
 """
 
-import time
-from pathlib import Path
-
 import torch
 import torch.nn as nn
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 
 from distillation import build_student
-
+import time
+from pathlib import Path
 import sys
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "computer-vision-foundations" / "code" / "pytorch_cnn"))
 from resnet import resnet18 as custom_resnet18
 
@@ -25,11 +24,7 @@ _project_root = Path(__file__).resolve().parents[3]
 _DATA_ROOT = _project_root / "data"
 
 TEACHER_CHECKPOINT = (
-    _project_root
-    / "computer-vision-foundations"
-    / "code"
-    / "pytorch_cnn"
-    / "best_resnet18_cifar10 (1).pth"
+    _project_root / "computer-vision-foundations" / "code" / "pytorch_cnn" / "best_resnet18_cifar10 (1).pth"
 )
 
 DISTILL_CHECKPOINT = Path(__file__).resolve().parent / "checkpoints" / "distillation" / "best_student_distill.pth"
@@ -37,7 +32,7 @@ BASELINE_CHECKPOINT = Path(__file__).resolve().parent / "checkpoints" / "distill
 
 # Teacher was trained with these (confirmed from train_cifar.py)
 _TEACHER_MEAN = (0.4914, 0.4822, 0.4465)
-_TEACHER_STD  = (0.2470, 0.2435, 0.2616)
+_TEACHER_STD = (0.2470, 0.2435, 0.2616)
 
 
 BATCH_SIZE = 128
@@ -48,11 +43,14 @@ NUM_WORKERS = 2
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def get_val_loader(mean: tuple, std: tuple) -> DataLoader:
-    tf = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize(mean, std),
-    ])
+    tf = transforms.Compose(
+        [
+            transforms.ToTensor(),
+            transforms.Normalize(mean, std),
+        ]
+    )
     ds = datasets.CIFAR10(root=str(_DATA_ROOT), train=False, download=True, transform=tf)
     return DataLoader(ds, batch_size=BATCH_SIZE, shuffle=False, num_workers=NUM_WORKERS, pin_memory=False)
 
@@ -63,7 +61,7 @@ def count_parameters(model: nn.Module) -> int:
 
 def model_size_mb(model: nn.Module) -> float:
     """Estimate in-memory parameter size in MB (float32)."""
-    return count_parameters(model) * 4 / (1024 ** 2)
+    return count_parameters(model) * 4 / (1024**2)
 
 
 def measure_accuracy(model: nn.Module, loader: DataLoader, device: torch.device) -> float:
@@ -97,6 +95,7 @@ def measure_latency_single_ms(model: nn.Module, n_warmup: int = 20, n_runs: int 
 def print_row(label: str, params: int, size_mb: float, acc: float, latency_ms: float) -> None:
     print(f"  {label:<30} {params:>12,}  {size_mb:>8.2f} MB  {acc:>8.2f}%  {latency_ms:>10.2f} ms")
 
+
 def _load_cifar_resnet18(checkpoint_path: str, device: torch.device) -> nn.Module:
     """Load the custom CIFAR-adapted ResNet-18 (3×3 stem, shortcut naming) from checkpoint."""
     model = custom_resnet18(num_classes=10)
@@ -110,9 +109,11 @@ def _load_cifar_resnet18(checkpoint_path: str, device: torch.device) -> nn.Modul
         param.requires_grad = False
     return model
 
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     device = torch.device("cpu")  # CPU benchmark — matches deployment target
@@ -137,20 +138,14 @@ def main() -> None:
     ]
 
     print("Measuring accuracy...")
-    accuracies = {
-        label: measure_accuracy(model, loader, device)
-        for label, model, _ in models_to_bench
-    }
+    accuracies = {label: measure_accuracy(model, loader, device) for label, model, _ in models_to_bench}
 
     print("Measuring single-sample latency (20 warmup + 100 runs, median)...")
-    latencies = {
-        label: measure_latency_single_ms(model)
-        for label, model, _ in models_to_bench
-    }
+    latencies = {label: measure_latency_single_ms(model) for label, model, _ in models_to_bench}
 
     # --- Print table ---
     print(f"\n{'=' * 80}")
-    print(f"  Inference Benchmark — CPU  (latency: single sample, median of 100 runs)")
+    print("  Inference Benchmark — CPU  (latency: single sample, median of 100 runs)")
     print(f"{'=' * 80}")
     print(f"  {'Model':<30} {'Parameters':>12}  {'Size (MB)':>10}  {'Top-1 (%)':>10}  {'Latency (ms)':>13}")
     print(f"  {'-' * 30} {'-' * 12}  {'-' * 10}  {'-' * 10}  {'-' * 13}")
@@ -172,10 +167,15 @@ def main() -> None:
 
     print(f"\n  Compression ratio (params):  {teacher_params / student_params:.1f}x")
     print(f"  Speedup — distilled vs teacher:  {teacher_lat / distill_lat:.1f}x")
-    print(f"  Accuracy gap — distilled vs teacher:  "
-          f"{accuracies['ResNet-18 (teacher)'] - accuracies['SmallCNN — distilled']:.2f}pp\n")
-    print(f"  Distillation gain over baseline CE:  "
-          f"{accuracies['SmallCNN — distilled'] - accuracies['SmallCNN — baseline CE']:.2f}pp\n")
+    print(
+        f"  Accuracy gap — distilled vs teacher:  "
+        f"{accuracies['ResNet-18 (teacher)'] - accuracies['SmallCNN — distilled']:.2f}pp\n"
+    )
+    print(
+        f"  Distillation gain over baseline CE:  "
+        f"{accuracies['SmallCNN — distilled'] - accuracies['SmallCNN — baseline CE']:.2f}pp\n"
+    )
+
 
 if __name__ == "__main__":
     main()

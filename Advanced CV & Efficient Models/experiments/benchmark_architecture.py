@@ -8,11 +8,6 @@ Protocol:
     - Inference time: median over 200 forward passes, batch=1, CPU
 """
 
-import time
-from pathlib import Path
-import os
-os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
-
 import numpy as np
 import timm
 import torch
@@ -20,6 +15,12 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import normalize
 from torch.utils.data import DataLoader
 from torchvision import transforms, datasets
+
+import time
+from pathlib import Path
+import os
+
+os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 
 SEED = 42
 np.random.seed(SEED)
@@ -47,18 +48,23 @@ IMAGENET_STD = [0.229, 0.224, 0.225]
 
 # --- Data -------------------------------------------------------------------------
 
+
 def get_cifar10_loaders() -> tuple[DataLoader, DataLoader]:
-    tfm = transforms.Compose([
-        transforms.Resize(IMG_SIZE),
-        transforms.ToTensor(),
-        transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
-    ])
+    tfm = transforms.Compose(
+        [
+            transforms.Resize(IMG_SIZE),
+            transforms.ToTensor(),
+            transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
+        ]
+    )
     train_ds = datasets.CIFAR10(DATA_DIR, train=True, transform=tfm, download=True)
     test_ds = datasets.CIFAR10(DATA_DIR, train=False, transform=tfm, download=True)
     loader_kwargs = dict(batch_size=EXTRACT_BATCH, num_workers=2, pin_memory=False)
     return DataLoader(train_ds, **loader_kwargs), DataLoader(test_ds, **loader_kwargs)
 
+
 # --- Feature Extraction ----------------------------------------------------------
+
 
 @torch.no_grad()
 def extract_features(model: torch.nn.Module, loader: DataLoader) -> tuple[np.ndarray, np.ndarray]:
@@ -71,26 +77,29 @@ def extract_features(model: torch.nn.Module, loader: DataLoader) -> tuple[np.nda
 
 # --- Inference timing -----------------------------------------------------------
 
+
 def measure_inference_ms(model: torch.nn.Module) -> float:
     """Median forward-pass time in ms, batch=1, CPU."""
     dummy = torch.randn(1, 3, IMG_SIZE, IMG_SIZE)
     with torch.no_grad():
-        for _ in range(10):     # warmup
+        for _ in range(10):  # warmup
             model(dummy)
         times = []
         for _ in range(TIMING_RUNS):
             t0 = time.perf_counter()
             model(dummy)
-            times.append((time.perf_counter() - t0)*1000)
+            times.append((time.perf_counter() - t0) * 1000)
     return float(np.median(times))
 
+
 # --- Benchmark ----------------------------------------------------------------
+
 
 def count_params_m(model: torch.nn.Module) -> float:
     return sum(p.numel() for p in model.parameters()) / 1e6
 
-def benchmark_model(display_name: str, timm_name: str, train_loader: DataLoader,
-                    test_loader: DataLoader) -> dict:
+
+def benchmark_model(display_name: str, timm_name: str, train_loader: DataLoader, test_loader: DataLoader) -> dict:
 
     print(f"\n── {display_name} ──────────────────────────")
 
@@ -123,6 +132,7 @@ def benchmark_model(display_name: str, timm_name: str, train_loader: DataLoader,
 
 # --- Markdown ----------------------------------------------------------------
 
+
 def write_markdown(results: list[dict]) -> None:
     Path(OUTPUT_MD).parent.mkdir(parents=True, exist_ok=True)
     lines = [
@@ -137,9 +147,7 @@ def write_markdown(results: list[dict]) -> None:
         "|-------|:-------------:|:----------:|:------------------:|",
     ]
     for r in results:
-        lines.append(
-            f"| {r['model']} | {r['acc']:.2f} | {r['params_m']:.1f} | {r['inf_ms']:.1f} |"
-        )
+        lines.append(f"| {r['model']} | {r['acc']:.2f} | {r['params_m']:.1f} | {r['inf_ms']:.1f} |")
     lines += [
         "",
         "## Notes",
@@ -159,18 +167,12 @@ if __name__ == "__main__":
     print("Loading CIFAR-10")
     train_loader, test_loader = get_cifar10_loaders()
 
-    results = [
-        benchmark_model(name, timm_name, train_loader, test_loader)
-        for name, timm_name in MODELS.items()
-    ]
+    results = [benchmark_model(name, timm_name, train_loader, test_loader) for name, timm_name in MODELS.items()]
 
     print("\n\n── Summary ──────────────────────────────────────────")
     print(f"{'Model':<20} {'Acc':>9} {'Params':>10} {'ms/img':>10}")
     print("─" * 53)
     for r in results:
-        print(
-            f"{r['model']:<20} {r['acc']:>8.2f}% "
-            f"{r['params_m']:>9.1f}M {r['inf_ms']:>9.1f}ms"
-        )
+        print(f"{r['model']:<20} {r['acc']:>8.2f}% " f"{r['params_m']:>9.1f}M {r['inf_ms']:>9.1f}ms")
 
     write_markdown(results)

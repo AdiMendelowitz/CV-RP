@@ -47,8 +47,8 @@ class VariateEmbedding(nn.Module):
         Returns:
             Tensor of shape (B, C, d_model), one token per variate.
         """
-        x = x.transpose(1, 2) # (B, seq_len, C) -> (B, C, seq_len)
-        return self.projection(x) # (B, C, d_model)
+        x = x.transpose(1, 2)  # (B, seq_len, C) -> (B, C, seq_len)
+        return self.projection(x)  # (B, C, d_model)
 
 
 class ForecastHead(nn.Module):
@@ -76,8 +76,8 @@ class ForecastHead(nn.Module):
         Returns:
             Tensor of shape (B, pred_len, C).
         """
-        x = self.projection(x) # (B, C, d_model) -> (B, C, pred_len)
-        return x.transpose(1, 2) # (B, pred_len, C)
+        x = self.projection(x)  # (B, C, d_model) -> (B, C, pred_len)
+        return x.transpose(1, 2)  # (B, pred_len, C)
 
 
 class iTransformer(nn.Module):
@@ -100,8 +100,15 @@ class iTransformer(nn.Module):
         dropout: Dropout probability applied in the encoder.
     """
 
-    def __init__(self, seq_len: int, pred_len: int, d_model: int = 512, num_heads: int = 8,
-                 num_layers: int = 3, dropout: float = 0.1) -> None:
+    def __init__(
+        self,
+        seq_len: int,
+        pred_len: int,
+        d_model: int = 512,
+        num_heads: int = 8,
+        num_layers: int = 3,
+        dropout: float = 0.1,
+    ) -> None:
         super().__init__()
 
         if d_model % num_heads != 0:
@@ -122,6 +129,6 @@ class iTransformer(nn.Module):
             Forecast tensor of shape (B, pred_len, C).
         """
 
-        tokens = self.embedding(x) # (B, seq_len, C) -> (B, C, d_model)
-        encoded = self.encoder(tokens) # (B, C, d_model)  [attention over C variate tokens]
-        return self.head(encoded) # (B, pred_len, C)
+        tokens = self.embedding(x)  # (B, seq_len, C) -> (B, C, d_model)
+        encoded = self.encoder(tokens)  # (B, C, d_model)  [attention over C variate tokens]
+        return self.head(encoded)  # (B, pred_len, C)

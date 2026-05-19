@@ -9,6 +9,7 @@ import math
 import torch
 import torch.nn as nn
 
+
 class PatchEmbedding(nn.Module):
     """
     Extract overlapping patches from a univariate series and project to d_model.
@@ -32,10 +33,12 @@ class PatchEmbedding(nn.Module):
     def _sinosoidal_encoding(num_patches: int, d_model: int, device: torch.device) -> torch.Tensor:
         """Return fixed sinusoidal positional encoding of shape (1, num_patches, d_model)."""
         position = torch.arange(num_patches, dtype=torch.float, device=device).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, d_model, 2, dtype=torch.float, device=device) * (-math.log(10000.0) / d_model))
+        div_term = torch.exp(
+            torch.arange(0, d_model, 2, dtype=torch.float, device=device) * (-math.log(10000.0) / d_model)
+        )
         encoding = torch.zeros(1, num_patches, d_model, device=device)
         encoding[0, :, 0::2] = torch.sin(position * div_term)
-        encoding[0, :, 1::2] = torch.cos(position * div_term[:d_model // 2])
+        encoding[0, :, 1::2] = torch.cos(position * div_term[: d_model // 2])
         return encoding
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -64,6 +67,7 @@ class PatchEmbedding(nn.Module):
         x = self.projection(x)
         x = x + self._sinosoidal_encoding(x.size(1), self._d_model, x.device)
         return self.dropout(x)
+
 
 class _TransformerBlock(nn.Module):
     """
@@ -120,8 +124,7 @@ class TransformerEncoder(nn.Module):
 
     def __init__(self, d_model: int, num_heads: int, num_layers: int, dropout: float) -> None:
         super().__init__()
-        self.blocks = nn.ModuleList([_TransformerBlock(d_model, num_heads, dropout=dropout)
-                                     for _ in range(num_layers)])
+        self.blocks = nn.ModuleList([_TransformerBlock(d_model, num_heads, dropout=dropout) for _ in range(num_layers)])
         self.norm = nn.LayerNorm(d_model)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -138,6 +141,7 @@ class TransformerEncoder(nn.Module):
         for block in self.blocks:
             x = block(x)
         return self.norm(x)
+
 
 class ForecastHead(nn.Module):
     """
@@ -166,6 +170,7 @@ class ForecastHead(nn.Module):
         """
         return self.linear(self.flatten(x))
 
+
 class PatchTST(nn.Module):
     """
     Channel-independent PatchTST for multivariate long-horizon forecasting.
@@ -188,9 +193,19 @@ class PatchTST(nn.Module):
                         encoder, enabling cross-variate attention. Default False (channel-independent mode).
     """
 
-    def __init__(self, seq_len: int, pred_len: int, num_variates: int, patch_size: int = 16, stride: int = 8,
-                 d_model: int = 128, num_heads: int = 16, num_layers: int = 3, dropout: float = 0.2,
-                 channel_mixing: bool = False) -> None:
+    def __init__(
+        self,
+        seq_len: int,
+        pred_len: int,
+        num_variates: int,
+        patch_size: int = 16,
+        stride: int = 8,
+        d_model: int = 128,
+        num_heads: int = 16,
+        num_layers: int = 3,
+        dropout: float = 0.2,
+        channel_mixing: bool = False,
+    ) -> None:
         super().__init__()
         self.num_variates = num_variates
         self.pred_len = pred_len
@@ -222,7 +237,7 @@ class PatchTST(nn.Module):
 
         # Channel independence: treat each channel as an independent sample.
         x = x.permute(0, 2, 1).reshape(B * C, seq_len, 1)  # (B*C, seq_len, 1)
-        x = self.patch_embedding(x)                        # (B*C, num_patches, d_model)
+        x = self.patch_embedding(x)  # (B*C, num_patches, d_model)
 
         if self.channel_mixing:
             x = x.reshape(B, C * self.num_patches, -1)  # (B, C*N, D)

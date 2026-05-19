@@ -14,12 +14,6 @@ Usage:
     python analysis.py --checkpoint checkpoints/simclr/simclr_epoch100.pt --tsne-samples 1000
 """
 
-import argparse
-import logging
-from pathlib import Path
-
-_DATA_ROOT = Path(__file__).resolve().parents[3] / "data"
-
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -27,6 +21,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
+
+import argparse
+import logging
+from pathlib import Path
+
+_DATA_ROOT = Path(__file__).resolve().parents[3] / "data"
 
 from linear_eval import (
     ENCODER_DIMS,

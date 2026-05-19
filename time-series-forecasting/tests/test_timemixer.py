@@ -18,7 +18,6 @@ import pytest
 
 from models.timemixer import FMMBlock, PDMBlock, SeriesDecomposition, TimeMixer
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -48,6 +47,7 @@ def default_model() -> TimeMixer:
 # SeriesDecomposition
 # ---------------------------------------------------------------------------
 
+
 class TestSeriesDecomposition:
     def test_output_shapes_match_input(self) -> None:
         """seasonal and trend must have the same shape as the input."""
@@ -69,6 +69,7 @@ class TestSeriesDecomposition:
 # PDMBlock
 # ---------------------------------------------------------------------------
 
+
 class TestPDMBlock:
     def test_output_shape(self) -> None:
         """(B, C, L) seasonal + trend -> (B, C, d_model)."""
@@ -83,6 +84,7 @@ class TestPDMBlock:
 # FMMBlock
 # ---------------------------------------------------------------------------
 
+
 class TestFMMBlock:
     def test_output_shape(self) -> None:
         """List of (B, C, d_model) tensors -> (B, C, pred_len)."""
@@ -94,6 +96,7 @@ class TestFMMBlock:
     def test_scale_weights_sum_to_one(self) -> None:
         """Softmax ensemble weights must sum to 1.0."""
         import torch.nn.functional as F
+
         block = FMMBlock(num_scales=NUM_SCALES, d_model=D_MODEL, pred_len=PRED_LEN)
         weights = F.softmax(block.scale_weights, dim=0)
         assert abs(weights.sum().item() - 1.0) < 1e-6
@@ -102,6 +105,7 @@ class TestFMMBlock:
 # ---------------------------------------------------------------------------
 # TimeMixer end-to-end
 # ---------------------------------------------------------------------------
+
 
 class TestTimeMixer:
     def test_output_shape(self, default_model: TimeMixer) -> None:
@@ -131,9 +135,7 @@ class TestTimeMixer:
             seasonal, trend = default_model.decomposition(x_s)
             rep = pdm(seasonal, trend)
             expected = (BATCH, C, D_MODEL)
-            assert rep.shape == expected, (
-                f"Scale {s}: expected PDM output {expected}, got {rep.shape}"
-            )
+            assert rep.shape == expected, f"Scale {s}: expected PDM output {expected}, got {rep.shape}"
 
     def test_different_pred_lens(self) -> None:
         """Model must produce correct shape for each forecast horizon."""
@@ -141,6 +143,8 @@ class TestTimeMixer:
             model = TimeMixer(seq_len=SEQ_LEN, pred_len=pred_len)
             x = torch.randn(BATCH, SEQ_LEN, C)
             out = model(x)
-            assert out.shape == (BATCH, pred_len, C), (
-                f"pred_len={pred_len}: expected {(BATCH, pred_len, C)}, got {out.shape}"
-            )
+            assert out.shape == (
+                BATCH,
+                pred_len,
+                C,
+            ), f"pred_len={pred_len}: expected {(BATCH, pred_len, C)}, got {out.shape}"

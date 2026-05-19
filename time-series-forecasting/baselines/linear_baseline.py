@@ -57,12 +57,13 @@ CONFIG: dict = {
     "epochs": 50,
     "patience": 10,
     "seed": 42,
-    "num_workers": 0
+    "num_workers": 0,
 }
 
 # --------------------------------------------------------------------------------------------------------------------
 # Reproducibility
 # --------------------------------------------------------------------------------------------------------------------
+
 
 def _seed_everything(seed: int) -> None:
     random.seed(seed)
@@ -75,6 +76,7 @@ def _seed_everything(seed: int) -> None:
 # --------------------------------------------------------------------------------------------------------------------
 # Model
 # --------------------------------------------------------------------------------------------------------------------
+
 
 class ChannelIndependentLinear(nn.Module):
     """
@@ -97,7 +99,7 @@ class ChannelIndependentLinear(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # x: (B, seq_len, C)
         x = x.transpose(-1, -2)  # (B, C, seq_len)
-        out = self.linear(x)    # (B, C, pred_len)
+        out = self.linear(x)  # (B, C, pred_len)
         return out.permute(0, 2, 1)  # (B, pred_len, C)
 
 
@@ -105,8 +107,14 @@ class ChannelIndependentLinear(nn.Module):
 # Training helpers
 # --------------------------------------------------------------------------------------------------------------------
 
-def _run_epoch(model: nn.Module, loader: DataLoader, criterion: nn.Module,
-               optimizer: torch.optim.Optimizer | None, device: torch.device) -> tuple[float, float]:
+
+def _run_epoch(
+    model: nn.Module,
+    loader: DataLoader,
+    criterion: nn.Module,
+    optimizer: torch.optim.Optimizer | None,
+    device: torch.device,
+) -> tuple[float, float]:
     """
     Run one full pass over the loader.
 
@@ -142,8 +150,15 @@ def _run_epoch(model: nn.Module, loader: DataLoader, criterion: nn.Module,
 
     return total_mse / total_samples, total_mae / total_samples
 
-def _train(model: nn.Module, train_loader: DataLoader, val_loader: DataLoader, config: dict,
-           device: torch.device, checkpoint: Path) -> None:
+
+def _train(
+    model: nn.Module,
+    train_loader: DataLoader,
+    val_loader: DataLoader,
+    config: dict,
+    device: torch.device,
+    checkpoint: Path,
+) -> None:
     """Train with early stopping on val MSE, checkpoint best model."""
     optimizer = torch.optim.AdamW(model.parameters(), lr=config["lr"], weight_decay=config["weight_decay"])
     criterion = nn.MSELoss()
@@ -172,6 +187,7 @@ def _train(model: nn.Module, train_loader: DataLoader, val_loader: DataLoader, c
             print(f"  Early stopping at epoch {epoch}")
             break
 
+
 def _evaluate(model: nn.Module, loader: DataLoader, device: torch.device, checkpoint_path: Path) -> tuple[float, float]:
     """Load the best checkpoint and evaluate on the given loader."""
     model.load_state_dict(torch.load(checkpoint_path, map_location=device, weights_only=True))
@@ -184,6 +200,7 @@ def _evaluate(model: nn.Module, loader: DataLoader, device: torch.device, checkp
 # Results logging
 # --------------------------------------------------------------------------------------------------------------------
 
+
 def _append_results(results_path: Path, row: dict) -> None:
     """Append one result row to the CSV. Write the header if the file is new."""
     fieldnames = ["seq_len", "pred_len", "test_mse", "test_mae", "timestamp"]
@@ -193,6 +210,7 @@ def _append_results(results_path: Path, row: dict) -> None:
         if write_header:
             writer.writeheader()
         writer.writerow(row)
+
 
 if __name__ == "__main__":
     _seed_everything(CONFIG["seed"])
@@ -210,8 +228,11 @@ if __name__ == "__main__":
         val_ds = ETTh1Dataset(_CSV_PATH, split="val", seq_len=seq_len, pred_len=pred_len)
         test_ds = ETTh1Dataset(_CSV_PATH, split="test", seq_len=seq_len, pred_len=pred_len)
 
-        loader_kwargs = {"batch_size": CONFIG["batch_size"], "num_workers": CONFIG["num_workers"],
-                         "pin_memory": device.type == "cuda"}
+        loader_kwargs = {
+            "batch_size": CONFIG["batch_size"],
+            "num_workers": CONFIG["num_workers"],
+            "pin_memory": device.type == "cuda",
+        }
 
         train_loader = DataLoader(train_ds, shuffle=True, **loader_kwargs)
         val_loader = DataLoader(val_ds, shuffle=False, **loader_kwargs)
@@ -227,8 +248,13 @@ if __name__ == "__main__":
 
         _append_results(
             _RESULTS_CSV,
-            {"seq_len" : seq_len, "pred_len": pred_len, "test_mse": round(test_mse, 6),
-             "test_mae": round(test_mse, 6), "timestamp": time.strftime("%Y_%m_%d_%H_%M_%S")},
+            {
+                "seq_len": seq_len,
+                "pred_len": pred_len,
+                "test_mse": round(test_mse, 6),
+                "test_mae": round(test_mse, 6),
+                "timestamp": time.strftime("%Y_%m_%d_%H_%M_%S"),
+            },
         )
 
         print(f"Results appended to {_RESULTS_CSV}")

@@ -59,8 +59,8 @@ torch.manual_seed(SEED)
 # ---------------------------------------------------------------------------
 
 SEQ_LEN = 512
-PRED_LEN = 96          # checkpoint output dimension; we use step 0 as 1-step-ahead reconstruction
-BATCH_SIZE = 256       # windows per forward pass during sliding-window inference
+PRED_LEN = 96  # checkpoint output dimension; we use step 0 as 1-step-ahead reconstruction
+BATCH_SIZE = 256  # windows per forward pass during sliding-window inference
 THRESHOLD_PERCENTILE = 95
 N_POINT_ANOMALIES = 20
 N_CONTEXTUAL_WINDOWS = 3
@@ -73,6 +73,7 @@ SPLIT_SIZES = {"train": 8640, "val": 2880, "test": 2880}
 # ---------------------------------------------------------------------------
 # PatchTST model
 # ---------------------------------------------------------------------------
+
 
 class PatchEmbedding(nn.Module):
     def __init__(self, seq_len: int, patch_size: int, stride: int, d_model: int) -> None:
@@ -94,7 +95,7 @@ class PatchEmbedding(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # (B*C, seq_len, 1) -> (B*C, seq_len) -> (B*C, num_patches, patch_size)
         x = x.squeeze(-1).unfold(-1, self.patch_size, self.stride)
-        return self.projection(x) + self._pe.to(x.device)            # (B*C, num_patches, d_model)
+        return self.projection(x) + self._pe.to(x.device)  # (B*C, num_patches, d_model)
 
 
 class EncoderLayer(nn.Module):
@@ -129,6 +130,7 @@ class TransformerEncoder(nn.Module):
             x = block(x)
         return self.norm(x)
 
+
 class ForecastHead(nn.Module):
     def __init__(self, num_patches, d_model, pred_len) -> None:
         super().__init__()
@@ -137,9 +139,20 @@ class ForecastHead(nn.Module):
     def forward(self, x):
         return self.linear(x)
 
+
 class PatchTST(nn.Module):
-    def __init__(self, seq_len: int, pred_len: int, num_variates: int, patch_size: int = 16, stride: int = 8,
-                 d_model: int = 128, num_heads: int = 16, num_layers: int = 3, dropout: float = 0.2) -> None:
+    def __init__(
+        self,
+        seq_len: int,
+        pred_len: int,
+        num_variates: int,
+        patch_size: int = 16,
+        stride: int = 8,
+        d_model: int = 128,
+        num_heads: int = 16,
+        num_layers: int = 3,
+        dropout: float = 0.2,
+    ) -> None:
         super().__init__()
         self.num_variates = num_variates
         self.patch_embedding = PatchEmbedding(seq_len, patch_size, stride, d_model)
@@ -148,18 +161,19 @@ class PatchTST(nn.Module):
         self.head = ForecastHead(num_patches, d_model, pred_len)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        B, L, C = x.shape                              # x: (B, seq_len, C)
-        x = x.permute(0, 2, 1).reshape(B * C, L, 1)    # (B*C, seq_len, 1)
-        x = self.patch_embedding(x)                    # (B*C, num_patches, d_model)
-        x = self.encoder(x)                            # (B*C, num_patches, d_model)
-        x = x.flatten(1)                               # (B*C, num_patches * d_model)
-        x = self.head(x)                               # (B*C, pred_len)
-        return x.reshape(B, C, -1).permute(0, 2, 1)    # (B, pred_len, C)
+        B, L, C = x.shape  # x: (B, seq_len, C)
+        x = x.permute(0, 2, 1).reshape(B * C, L, 1)  # (B*C, seq_len, 1)
+        x = self.patch_embedding(x)  # (B*C, num_patches, d_model)
+        x = self.encoder(x)  # (B*C, num_patches, d_model)
+        x = x.flatten(1)  # (B*C, num_patches * d_model)
+        x = self.head(x)  # (B*C, pred_len)
+        return x.reshape(B, C, -1).permute(0, 2, 1)  # (B, pred_len, C)
 
 
 # ---------------------------------------------------------------------------
 # Data loading
 # ---------------------------------------------------------------------------
+
 
 def load_etth1(csv_path: Path) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
@@ -191,6 +205,7 @@ def load_etth1(csv_path: Path) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.n
 # ---------------------------------------------------------------------------
 # Sliding-window reconstruction
 # ---------------------------------------------------------------------------
+
 
 @torch.no_grad()
 def reconstruction_errors(model: nn.Module, data: np.ndarray, seq_len: int, device: torch.device) -> np.ndarray:
@@ -226,8 +241,8 @@ def reconstruction_errors(model: nn.Module, data: np.ndarray, seq_len: int, devi
         # Actual next timestep: (batch, C)
         batch_y = torch.stack([tensor[i + seq_len] for i in indices])
 
-        pred = model(batch_x)          # (batch, pred_len, C)
-        pred_step0 = pred[:, 0, :]     # (batch, C) -- one-step-ahead reconstruction
+        pred = model(batch_x)  # (batch, pred_len, C)
+        pred_step0 = pred[:, 0, :]  # (batch, C) -- one-step-ahead reconstruction
 
         mse = ((pred_step0 - batch_y) ** 2).mean(dim=-1)  # (batch,) -- mean over channels
         errors[start:end] = mse.cpu().numpy()
@@ -239,8 +254,10 @@ def reconstruction_errors(model: nn.Module, data: np.ndarray, seq_len: int, devi
 # Anomaly injection
 # ---------------------------------------------------------------------------
 
-def inject_point_anomalies(data: np.ndarray, channel_std: np.ndarray, n_anomalies: int,
-                           valid_range: tuple[int, int], rng: np.random.Generator) -> tuple[np.ndarray, np.ndarray]:
+
+def inject_point_anomalies(
+    data: np.ndarray, channel_std: np.ndarray, n_anomalies: int, valid_range: tuple[int, int], rng: np.random.Generator
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Inject Gaussian point anomalies and return corrupted data and binary labels.
 
@@ -261,7 +278,7 @@ def inject_point_anomalies(data: np.ndarray, channel_std: np.ndarray, n_anomalie
 
     positions = rng.choice(np.arange(lo, hi), size=n_anomalies, replace=False)
     noise = rng.standard_normal((n_anomalies, data.shape[1])).astype(np.float32)
-    noise *= (POINT_ANOMALY_STD_MULTIPLIER * channel_std)
+    noise *= POINT_ANOMALY_STD_MULTIPLIER * channel_std
 
     for k, pos in enumerate(positions):
         corrupted[pos] += noise[k]
@@ -270,8 +287,9 @@ def inject_point_anomalies(data: np.ndarray, channel_std: np.ndarray, n_anomalie
     return corrupted, labels
 
 
-def inject_contextual_anomalies(data: np.ndarray, n_windows: int, window_size: int, valid_range: tuple[int, int],
-                                rng: np.random.Generator) -> tuple[np.ndarray, np.ndarray]:
+def inject_contextual_anomalies(
+    data: np.ndarray, n_windows: int, window_size: int, valid_range: tuple[int, int], rng: np.random.Generator
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Zero out contiguous windows and return corrupted data and binary labels.
 
@@ -307,15 +325,17 @@ def inject_contextual_anomalies(data: np.ndarray, n_windows: int, window_size: i
 # Evaluation
 # ---------------------------------------------------------------------------
 
-def evaluate_detection(errors: np.ndarray, labels: np.ndarray, threshold: float,
-                       reconstructable_offset: int) -> dict[str, float]:
+
+def evaluate_detection(
+    errors: np.ndarray, labels: np.ndarray, threshold: float, reconstructable_offset: int
+) -> dict[str, float]:
     predicted = (errors > threshold).astype(np.int32)
     aligned_labels = labels[reconstructable_offset : reconstructable_offset + len(errors)]
 
     return {
-        'precision': precision_score(aligned_labels, predicted, zero_division=0.0),
-        'recall':    recall_score(aligned_labels, predicted, zero_division=0.0),
-        'f1':        f1_score(aligned_labels, predicted, zero_division=0.0),
+        "precision": precision_score(aligned_labels, predicted, zero_division=0.0),
+        "recall": recall_score(aligned_labels, predicted, zero_division=0.0),
+        "f1": f1_score(aligned_labels, predicted, zero_division=0.0),
     }
 
 
@@ -323,8 +343,16 @@ def evaluate_detection(errors: np.ndarray, labels: np.ndarray, threshold: float,
 # Report
 # ---------------------------------------------------------------------------
 
-def write_report(threshold: float, point_metrics: dict[str, float], contextual_metrics: dict[str, float],
-                 n_point: int, n_contextual_timesteps: int, n_test_reconstructable: int, report_path: Path) -> None:
+
+def write_report(
+    threshold: float,
+    point_metrics: dict[str, float],
+    contextual_metrics: dict[str, float],
+    n_point: int,
+    n_contextual_timesteps: int,
+    n_test_reconstructable: int,
+    report_path: Path,
+) -> None:
     lines = [
         "# Anomaly Detection on ETTh1 -- PatchTST Reconstruction Errors",
         "",
@@ -349,9 +377,9 @@ def write_report(threshold: float, point_metrics: dict[str, float], contextual_m
         "",
         "## Configuration",
         "",
-        f"- Model:                  PatchTST (seq_len=512, pred_len=96)",
-        f"- Checkpoint:             patchtst_pred96_best.pt",
-        f"- Dataset:                ETTh1 test split (2880 timesteps)",
+        "- Model:                  PatchTST (seq_len=512, pred_len=96)",
+        "- Checkpoint:             patchtst_pred96_best.pt",
+        "- Dataset:                ETTh1 test split (2880 timesteps)",
         f"- Reconstructable range:  {n_test_reconstructable} timesteps",
         f"- Threshold:              95th percentile of val reconstruction errors = {threshold:.6f}",
         f"- Point anomalies:        {n_point} timesteps (Gaussian noise, std = 5 * channel_std)",
@@ -403,8 +431,17 @@ if __name__ == "__main__":
     train, val, test, channel_std = load_etth1(_DATA_PATH)
 
     # Load model.
-    model = PatchTST(seq_len=SEQ_LEN, pred_len=PRED_LEN, num_variates=len(TARGET_COLS), patch_size=16, stride=8,
-                     d_model=128, num_heads=16, num_layers=3, dropout=0.2).to(device)
+    model = PatchTST(
+        seq_len=SEQ_LEN,
+        pred_len=PRED_LEN,
+        num_variates=len(TARGET_COLS),
+        patch_size=16,
+        stride=8,
+        d_model=128,
+        num_heads=16,
+        num_layers=3,
+        dropout=0.2,
+    ).to(device)
 
     state_dict = torch.load(_CKPT_PATH, map_location=device, weights_only=True)
     model.load_state_dict(state_dict)
@@ -427,13 +464,20 @@ if __name__ == "__main__":
 
     # --- Point anomalies ---
     print("Injecting point anomalies...")
-    test_point, point_labels = inject_point_anomalies(data=test, channel_std=channel_std, n_anomalies=N_POINT_ANOMALIES,
-                                                      valid_range=valid_range, rng=np.random.default_rng(SEED))
+    test_point, point_labels = inject_point_anomalies(
+        data=test,
+        channel_std=channel_std,
+        n_anomalies=N_POINT_ANOMALIES,
+        valid_range=valid_range,
+        rng=np.random.default_rng(SEED),
+    )
     print("Running reconstruction on point-anomaly test split...")
     point_errors = reconstruction_errors(model, test_point, SEQ_LEN, device)
     point_metrics = evaluate_detection(point_errors, point_labels, threshold, SEQ_LEN)
-    print(f"Point anomaly -- P: {point_metrics['precision']:.4f}  "
-          f"R: {point_metrics['recall']:.4f}  F1: {point_metrics['f1']:.4f}")
+    print(
+        f"Point anomaly -- P: {point_metrics['precision']:.4f}  "
+        f"R: {point_metrics['recall']:.4f}  F1: {point_metrics['f1']:.4f}"
+    )
 
     # --- Contextual anomalies ---
     print("Injecting contextual anomalies...")
@@ -447,11 +491,19 @@ if __name__ == "__main__":
     print("Running reconstruction on contextual-anomaly test split...")
     contextual_errors = reconstruction_errors(model, test_contextual, SEQ_LEN, device)
     contextual_metrics = evaluate_detection(contextual_errors, contextual_labels, threshold, SEQ_LEN)
-    print(f"Contextual anomaly -- P: {contextual_metrics['precision']:.4f}  "
-          f"R: {contextual_metrics['recall']:.4f}  F1: {contextual_metrics['f1']:.4f}")
+    print(
+        f"Contextual anomaly -- P: {contextual_metrics['precision']:.4f}  "
+        f"R: {contextual_metrics['recall']:.4f}  F1: {contextual_metrics['f1']:.4f}"
+    )
 
     n_contextual_timesteps = int(contextual_labels.sum())
 
-    write_report(threshold=threshold, point_metrics=point_metrics, contextual_metrics=contextual_metrics,
-                 n_point=N_POINT_ANOMALIES, n_contextual_timesteps=n_contextual_timesteps,
-                 n_test_reconstructable=n_test_reconstructable, report_path=_REPORT_PATH)
+    write_report(
+        threshold=threshold,
+        point_metrics=point_metrics,
+        contextual_metrics=contextual_metrics,
+        n_point=N_POINT_ANOMALIES,
+        n_contextual_timesteps=n_contextual_timesteps,
+        n_test_reconstructable=n_test_reconstructable,
+        report_path=_REPORT_PATH,
+    )

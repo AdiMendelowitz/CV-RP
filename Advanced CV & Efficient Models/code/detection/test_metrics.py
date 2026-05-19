@@ -10,7 +10,6 @@ import pytest
 
 from metrics import compute_ap, compute_iou, compute_map, non_max_suppression
 
-
 # ---------------------------------------------------------------------------
 # compute_iou
 # ---------------------------------------------------------------------------
@@ -64,9 +63,7 @@ class TestComputeIou:
 
 class TestNonMaxSuppression:
     def test_empty_input(self) -> None:
-        kept = non_max_suppression(
-            np.zeros((0, 4)), np.zeros(0), iou_threshold=0.5
-        )
+        kept = non_max_suppression(np.zeros((0, 4)), np.zeros(0), iou_threshold=0.5)
         assert len(kept) == 0
 
     def test_single_box(self) -> None:
@@ -77,21 +74,25 @@ class TestNonMaxSuppression:
 
     def test_suppresses_overlapping_lower_score(self) -> None:
         # Two heavily overlapping boxes -- lower score must be suppressed.
-        boxes = np.array([
-            [0.0, 0.0, 10.0, 10.0],
-            [1.0, 1.0, 11.0, 11.0],
-        ])
+        boxes = np.array(
+            [
+                [0.0, 0.0, 10.0, 10.0],
+                [1.0, 1.0, 11.0, 11.0],
+            ]
+        )
         scores = np.array([0.9, 0.75])
         kept = non_max_suppression(boxes, scores, iou_threshold=0.5)
         assert list(kept) == [0]
 
     def test_keeps_non_overlapping_boxes(self) -> None:
         # Three boxes, none overlapping -- all must be kept.
-        boxes = np.array([
-            [0.0,  0.0, 10.0, 10.0],
-            [20.0, 0.0, 30.0, 10.0],
-            [40.0, 0.0, 50.0, 10.0],
-        ])
+        boxes = np.array(
+            [
+                [0.0, 0.0, 10.0, 10.0],
+                [20.0, 0.0, 30.0, 10.0],
+                [40.0, 0.0, 50.0, 10.0],
+            ]
+        )
         scores = np.array([0.9, 0.8, 0.7])
         kept = non_max_suppression(boxes, scores, iou_threshold=0.5)
         assert set(kept) == {0, 1, 2}
@@ -108,10 +109,12 @@ class TestNonMaxSuppression:
 
     def test_score_ordering_respected(self) -> None:
         # Higher-score box must be kept regardless of array position.
-        boxes = np.array([
-            [0.0, 0.0, 10.0, 10.0],
-            [0.5, 0.5, 10.5, 10.5],
-        ])
+        boxes = np.array(
+            [
+                [0.0, 0.0, 10.0, 10.0],
+                [0.5, 0.5, 10.5, 10.5],
+            ]
+        )
         scores = np.array([0.6, 0.9])  # second box has higher score
         kept = non_max_suppression(boxes, scores, iou_threshold=0.5)
         assert list(kept) == [1]
@@ -120,11 +123,13 @@ class TestNonMaxSuppression:
         # Box A overlaps B; B overlaps C; A does not overlap C.
         # After keeping A and suppressing B, C must survive because it only
         # overlapped B (which is already gone from candidates).
-        boxes = np.array([
-            [0.0, 0.0, 10.0, 10.0],   # A -- highest score, kept
-            [5.0, 0.0, 15.0, 10.0],   # B -- overlaps A (iou>0.5), suppressed
-            [12.0, 0.0, 22.0, 10.0],  # C -- overlaps B but not A, kept
-        ])
+        boxes = np.array(
+            [
+                [0.0, 0.0, 10.0, 10.0],  # A -- highest score, kept
+                [5.0, 0.0, 15.0, 10.0],  # B -- overlaps A (iou>0.5), suppressed
+                [12.0, 0.0, 22.0, 10.0],  # C -- overlaps B but not A, kept
+            ]
+        )
         scores = np.array([0.9, 0.8, 0.7])
         kept = non_max_suppression(boxes, scores, iou_threshold=0.3)
         # Verify A is kept, B is suppressed, C survives.
@@ -154,14 +159,14 @@ class TestComputeAp:
         # Precision=1 for recall<=0.5, precision=0 for recall>0.5.
         # 11-point: thresholds 0..0.5 (6 points) get p=1, rest get p=0.
         # AP = 6/11
-        recall    = np.array([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0])
+        recall = np.array([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0])
         precision = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0])
         assert compute_ap(recall, precision) == pytest.approx(6.0 / 11.0)
 
     def test_single_point(self) -> None:
         # Single point at recall=1.0, precision=0.5.
         # All 11 thresholds have recall >= threshold, so AP = 0.5.
-        recall    = np.array([1.0])
+        recall = np.array([1.0])
         precision = np.array([0.5])
         assert compute_ap(recall, precision) == pytest.approx(0.5)
 
@@ -175,7 +180,7 @@ class TestComputeMap:
     @staticmethod
     def _make_pred(boxes: list[list[float]], scores: list[float], labels: list[int]) -> dict:
         return {
-            "boxes":  np.array(boxes,  dtype=float),
+            "boxes": np.array(boxes, dtype=float),
             "scores": np.array(scores, dtype=float),
             "labels": np.array(labels, dtype=int),
         }
@@ -183,7 +188,7 @@ class TestComputeMap:
     @staticmethod
     def _make_target(boxes: list[list[float]], labels: list[int]) -> dict:
         return {
-            "boxes":  np.array(boxes,  dtype=float),
+            "boxes": np.array(boxes, dtype=float),
             "labels": np.array(labels, dtype=int),
         }
 

@@ -12,13 +12,14 @@ import pytest
 
 from pathlib import Path
 import sys
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from models.itransformer import ForecastHead, VariateEmbedding, iTransformer
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def default_model() -> iTransformer:
@@ -37,6 +38,7 @@ def default_model() -> iTransformer:
 # VariateEmbedding
 # ---------------------------------------------------------------------------
 
+
 class TestVariateEmbedding:
     def test_output_shape(self) -> None:
         """(B, seq_len, C) -> (B, C, d_model)."""
@@ -50,6 +52,7 @@ class TestVariateEmbedding:
 # ForecastHead
 # ---------------------------------------------------------------------------
 
+
 class TestForecastHead:
     def test_output_shape(self) -> None:
         """(B, C, d_model) -> (B, pred_len, C)."""
@@ -62,6 +65,7 @@ class TestForecastHead:
 # ---------------------------------------------------------------------------
 # iTransformer end-to-end
 # ---------------------------------------------------------------------------
+
 
 class TestITransformer:
     def test_output_shape(self, default_model: iTransformer) -> None:
