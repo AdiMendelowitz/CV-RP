@@ -3,13 +3,12 @@ SimCLR pretraining on CIFAR0-10.
 
 Usage:
     python train_simclr.py
-    python train_simclr.py --epochs 200 --batch-size 521 --temperature 0.5
+    python train_simclr.py --epochs 200 --batch-size 256 --temperature 0.5
 """
 
 import argparse
 import logging
 from pathlib import Path
-from typing import Tuple
 
 _DATA_ROOT = Path(__file__).resolve().parents[3] / "data"
 
@@ -27,6 +26,18 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+
+CONFIG = {
+    "encoder": "resnet18",
+    "out_dim": 512,
+    "epochs": 100,
+    "batch_size": 256,
+    "lr": 3e-4,
+    "weight_decay": 1e-4,
+    "temperature": 0.5,
+    "num_workers": 4,
+    "save_every": 10,
+}
 
 # ---------------------------------------------------------------------------
 # Dataset wrapper — applies SimCLR augmentation to return positive pairs
@@ -52,7 +63,7 @@ class SimCLRDataset(Dataset):
     def __len__(self) -> int:
         return len(self.dataset)
 
-    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor, int]:
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor, int]:
         image, label = self.dataset[idx]
         view_i, view_j = self.augmentation(image)
         return view_i, view_j, label
@@ -172,7 +183,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--temperature", type=float, default=0.5)
 
     # Checkpoint
-    parser.add_argument("--save-dir", type=str, default="./checkpoints/simclr")
+    parser.add_argument("--save-dir", type=str, default=str(Path(__file__).resolve().parent / "checkpoints" / "simclr"))
     parser.add_argument("--save-every", type=int, default=10)
 
     return parser.parse_args()

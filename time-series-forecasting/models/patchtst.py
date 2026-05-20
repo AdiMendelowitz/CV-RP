@@ -65,7 +65,7 @@ class PatchEmbedding(nn.Module):
 
         # Project each patch: (B, num_patches, d_model)
         x = self.projection(x)
-        x = x + self._sinosoidal_encoding(x.size(1), self._d_model, x.device)
+        x = x + self._sinusoidal_encoding(x.size(1), self._d_model, x.device)
         return self.dropout(x)
 
 

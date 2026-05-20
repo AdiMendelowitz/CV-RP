@@ -156,7 +156,7 @@ class ISICPipeline:
         if the resulting crop has zero height or width after clamping to image bounds.
 
         Args:
-            image: FloatTensor (1, 3, img_size, img_size) ImageNet-normalised, on self.device.
+            image: FloatTensor (3, H, W) in [0, 1], no normalization. On self.device.
             box: Float ndarray [x1, y1, x2, y2] in pixel coordinates.
 
         Returns:

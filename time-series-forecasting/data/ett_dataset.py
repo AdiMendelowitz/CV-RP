@@ -132,7 +132,7 @@ class ETTh1Dataset(Dataset):
     def _validate_length(data: np.ndarray) -> None:
         if len(data) < _TEST_END:
             raise ValueError(
-                f"ETTH1.csv has {len(data)} rows but at least {_TEST_END} are required for"
+                f"ETTh1.csv has {len(data)} rows but at least {_TEST_END} are required for"
                 " the standard 12/4/4 month split"
             )
 

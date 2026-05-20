@@ -7,7 +7,7 @@ Reference: "Deep Residual Learning for Image Recognition"
 
 import torch
 import torch.nn as nn
-from typing import List
+
 
 
 class BasicBlock(nn.Module):
@@ -56,7 +56,7 @@ class BasicBlock(nn.Module):
                 ),  # 1x1 conv to match dims
                 nn.BatchNorm2d(out_channels),
             )
-        self.skip_add = torch.ao.nn.quantized.FloatFunctional()
+
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -77,8 +77,7 @@ class BasicBlock(nn.Module):
 
         # Skip connection: Identity or projection
         # Then add: output = F(x) + x
-        # out += self.shortcut(x)
-        out = self.skip_add.add(out, self.shortcut(x))
+        out += self.shortcut(x)
         out = self.relu(out)
 
         return out
@@ -112,7 +111,7 @@ class ResNet(nn.Module):
     def __init__(
         self,
         block: type,
-        layers: List[int],
+        layers: list[int],
         num_classes: int = 1000,
         in_channels: int = 3,
     ) -> None:

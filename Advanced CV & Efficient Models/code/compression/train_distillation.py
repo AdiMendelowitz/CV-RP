@@ -41,6 +41,16 @@ torch.manual_seed(SEED)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(message)s", datefmt="%d/%m/%Y %H:%M:%S")
 logger = logging.getLogger(__name__)
 
+CONFIG = {
+    "epochs": 30,
+    "batch_size": 128,
+    "lr": 1e-3,
+    "temperature": 4.0,
+    "alpha": 0.3,
+    "student_arch": "small_cnn",
+    "num_workers": 2,
+}
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Data
@@ -378,7 +388,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--alpha", type=float, default=0.3)  # reduced from 0.7
     p.add_argument("--student-arch", type=str, default="small_cnn")
     p.add_argument("--data-dir", type=str, default=str(_DATA_ROOT))
-    p.add_argument("--checkpoint-dir", type=str, default="checkpoints/distillation")
+    p.add_argument("--checkpoint-dir", type=str, default=str(Path(__file__).resolve().parent / "checkpoints" / "distillation"))
     p.add_argument("--plot-dir", type=str, default="plots/distillation")
     p.add_argument("--num-workers", type=int, default=2)
     return p.parse_args()
@@ -405,9 +415,8 @@ def main() -> None:
     if args.mode in ("distill", "both"):
         logger.info("Loading teacher from %s", args.checkpoint)
         teacher = custom_resnet18(num_classes=10)
-        teacher.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
         teacher.maxpool = nn.Identity()
-        checkpoint = torch.load(args.checkpoint, map_location=device, weights_only=False)
+        checkpoint = torch.load(args.checkpoint, map_location=device, weights_only=True)
         teacher.load_state_dict(checkpoint)
         teacher.eval()
         for param in teacher.parameters():

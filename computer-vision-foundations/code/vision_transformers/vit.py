@@ -8,7 +8,6 @@ Key Innovation: Treat images as sequences of patches, apply standard Transformer
 
 import torch
 import torch.nn as nn
-from typing import Optional
 
 
 class PatchEmbedding(nn.Module):
@@ -44,11 +43,13 @@ class PatchEmbedding(nn.Module):
         self.projection = nn.Conv2d(in_channels, embed_dim, kernel_size=patch_size, stride=patch_size)
 
         # [CLS] token: learnable embedding prepended to sequence, used for classification (similar to BERT)
-        self.cls_token = nn.Parameter(torch.randn(1, 1, embed_dim))
+        self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
+        nn.init.trunc_normal_(self.cls_token, std=0.02)
 
         # Positional embeddings: learnable position encodings
         # +1 for [CLS] token
-        self.positional_embedding = nn.Parameter(torch.randn(1, self.n_patches + 1, embed_dim))
+        self.positional_embedding = nn.Parameter(torch.zeros(1, self.n_patches + 1, embed_dim))
+        nn.init.trunc_normal_(self.positional_embedding, std=0.02)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -189,8 +190,8 @@ class MLP(nn.Module):
     def __init__(
         self,
         in_features: int,
-        hidden_features: Optional[int] = None,
-        out_features: Optional[int] = None,
+        hidden_features: int | None = None,
+        out_features: int | None = None,
         dropout: float = 0.0,
     ) -> None:
         super(MLP, self).__init__()
@@ -350,7 +351,7 @@ class VisionTransformer(nn.Module):
 
         for module in self.modules():
             if isinstance(module, nn.Linear):
-                nn.init.normal_(module.weight, 0, 0.02)
+                nn.init.trunc_normal_(module.weight, std=0.02)
                 if module.bias is not None:
                     nn.init.zeros_(module.bias)
             elif isinstance(module, nn.LayerNorm):
@@ -472,134 +473,3 @@ def vit_large(num_classes: int = 1000, img_size: int = 224, patch_size: int = 16
     )
 
 
-# ======================================================================================
-# Tests
-# ======================================================================================
-
-if __name__ == "__main__":
-    print("=" * 70)
-    print("Vision Transformer (ViT) Implementation Tests")
-    print("=" * 70)
-
-    # Test 1: PatchEmbedding
-    print("\n[TEST 1] PatchEmbedding")
-    print("-" * 70)
-    patch_embed = PatchEmbedding(img_size=224, patch_size=16, in_channels=3, embed_dim=768)
-    print(patch_embed)
-
-    x = torch.randn(2, 3, 224, 224)  # 2 RGB images
-    patches = patch_embed(x)
-    print(f"Input shape:  {x.shape}")
-    print(f"Output shape: {patches.shape}")
-    print("Expected:     (2, 197, 768)  # 196 patches + 1 CLS token")
-    assert patches.shape == (
-        2,
-        197,
-        768,
-    ), f"Expected (2, 197, 768), got {patches.shape}"
-    print("✓ PatchEmbedding test passed!")
-
-    # Test 2: MultiHeadAttention
-    print("\n[TEST 2] MultiHeadAttention")
-    print("-" * 70)
-    attn = MultiHeadAttention(embed_dim=768, num_heads=12)
-    print(attn)
-
-    x = torch.randn(2, 197, 768)
-    attn_out = attn(x)
-    print(f"Input shape:  {x.shape}")
-    print(f"Output shape: {attn_out.shape}")
-    assert attn_out.shape == x.shape, f"Expected {x.shape}, got {attn_out.shape}"
-    print("✓ MultiHeadAttention test passed!")
-
-    # Test 3: TransformerBlock
-    print("\n[TEST 3] TransformerBlock")
-    print("-" * 70)
-    block = TransformerBlock(embed_dim=768, num_heads=12)
-    print(block)
-
-    x = torch.randn(2, 197, 768)
-    block_out = block(x)
-    print(f"Input shape:  {x.shape}")
-    print(f"Output shape: {block_out.shape}")
-    assert block_out.shape == x.shape, f"Expected {x.shape}, got {block_out.shape}"
-    print("✓ TransformerBlock test passed!")
-
-    # Test 4: Full ViT model
-    print("\n[TEST 4] VisionTransformer (ViT-Base)")
-    print("-" * 70)
-    model = vit_base(num_classes=10, img_size=224, patch_size=16)
-    print(model)
-
-    x = torch.randn(2, 3, 224, 224)
-    logits = model(x)
-    print(f"\nInput shape:  {x.shape}")
-    print(f"Output shape: {logits.shape}")
-    print("Expected:     (2, 10)")
-    assert logits.shape == (2, 10), f"Expected (2, 10), got {logits.shape}"
-
-    total_params = model.count_parameters()
-    print(f"\nTotal parameters: {total_params:,}")
-    print("Expected (ViT-Base/16, 10 classes): ~85.8M")
-    print("✓ VisionTransformer test passed!")
-
-    # Test 5: Different model sizes
-    print("\n[TEST 5] Model Variants")
-    print("-" * 70)
-
-    models = {
-        "ViT-Tiny": vit_tiny(num_classes=1000),
-        "ViT-Small": vit_small(num_classes=1000),
-        "ViT-Base": vit_base(num_classes=1000),
-        "ViT-Large": vit_large(num_classes=1000),
-    }
-
-    print(f"{'Model':<15} {'Parameters':<15} {'Forward Pass':<15}")
-    print("-" * 70)
-
-    for name, model in models.items():
-        params = model.count_parameters()
-        x = torch.randn(1, 3, 224, 224)
-        out = model(x)
-        assert out.shape == (1, 1000), f"{name} output shape mismatch"
-        print(f"{name:<15} {params:>12,}   ✓")
-
-    print("\n✓ All model variants tested successfully!")
-
-    # Test 6: Different patch sizes
-    print("\n[TEST 6] Different Patch Sizes")
-    print("-" * 70)
-
-    for patch_size in [8, 16, 32]:
-        model = vit_base(num_classes=10, patch_size=patch_size)
-        n_patches = (224 // patch_size) ** 2
-        print(f"Patch size {patch_size}×{patch_size}: {n_patches} patches + 1 CLS = {n_patches + 1} tokens")
-
-        x = torch.randn(1, 3, 224, 224)
-        out = model(x)
-        assert out.shape == (1, 10)
-        print(f"  Output shape: {out.shape} ✓")
-
-    # Test 7: Attention mechanism visualization
-    print("\n[TEST 7] Attention Weights Shape")
-    print("-" * 70)
-
-    attn = MultiHeadAttention(embed_dim=768, num_heads=12)
-    x = torch.randn(1, 197, 768)
-
-    # Hook to capture attention weights
-    attention_weights = None
-
-    def hook_fn(module, input, output):
-        # This is a simplified version - actual attention weights would need
-        # to be returned from the forward pass
-        pass
-
-    print("Attention shape with 12 heads, 197 tokens:")
-    print("  Q, K, V: (1, 12, 197, 64)  # 64 = 768 / 12 (head_dim)")
-    print("  Attention: (1, 12, 197, 197)  # Each token attends to all tokens")
-    print("✓ Attention mechanism structured correctly!")
-
-    print("\n" + "=" * 70)
-    print("✅ All ViT tests passed!")
-    print("=" * 70)

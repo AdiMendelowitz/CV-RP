@@ -3,7 +3,6 @@ SimCLR: A Simple Framework for Contrastive Learning of Visual Representations
 Paper: https://arxiv.org/abs/2002.05709
 """
 
-from typing import Tuple
 
 import torch
 import torch.nn as nn
@@ -17,7 +16,7 @@ from PIL import Image
 
 # Dataset-specific normalization stats
 CIFAR10_MEAN = [0.4914, 0.4822, 0.4465]
-CIFAR10_STD = [0.2023, 0.1994, 0.2010]
+CIFAR10_STD = [0.2470, 0.2435, 0.2616]
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
 IMAGENET_STD = [0.229, 0.224, 0.225]
 
@@ -72,7 +71,7 @@ class SimCLRAugmentation:
             ]
         )
 
-    def __call__(self, x: Image.Image) -> Tuple[torch.Tensor, torch.Tensor]:
+    def __call__(self, x: Image.Image) -> tuple[torch.Tensor, torch.Tensor]:
         return self.transform(x), self.transform(x)
 
 
@@ -116,7 +115,7 @@ class SimCLR(nn.Module):
     SimCLR encoder + projection head.
 
     Usage:
-        model = SimCLR(base_encoder='resent18', out_dim=128)
+        model = SimCLR(base_encoder='resnet18', out_dim=128)
 
         # During pre-training use project=True
         z_i = model(x_i, project=True)
@@ -125,14 +124,14 @@ class SimCLR(nn.Module):
         h = model(x, project=False)
 
     Args:
-        base_encoder: ResNet variant ('resent18', 'reset50', etc.).
+        base_encoder: ResNet variant ('resnet18', 'resnet50', etc.).
         out_dim: Projection head output dimension.
 
     Note:
         Assumes encoder has a `.fc` attribute (all torchvision ResNets do).
     """
 
-    def __init__(self, base_encoder: str = "resent18", out_dim: int = 128) -> None:
+    def __init__(self, base_encoder: str = "resnet18", out_dim: int = 128) -> None:
         super().__init__()
 
         encoder = getattr(models, base_encoder)(weights=None)

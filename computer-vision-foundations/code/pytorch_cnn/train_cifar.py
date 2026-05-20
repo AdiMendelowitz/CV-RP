@@ -16,10 +16,11 @@ from torch.utils.data import DataLoader
 import numpy as np
 import time
 from pathlib import Path
-from typing import Tuple
+
 from resnet import resnet18
 
 _DATA_ROOT = Path(__file__).resolve().parents[3] / "data"
+_CHECKPOINT_DIR = Path(__file__).resolve().parent / "checkpoints"
 
 CONFIG = {
     "num_epochs": 10,
@@ -49,7 +50,7 @@ CIFAR10_CLASSES = [
 ]
 
 
-def get_transforms() -> Tuple[transforms.Compose, transforms.Compose]:
+def get_transforms() -> tuple[transforms.Compose, transforms.Compose]:
     """
     Get train and test transforms for CIFAR-10.
 
@@ -91,8 +92,8 @@ def get_transforms() -> Tuple[transforms.Compose, transforms.Compose]:
 
 
 def get_dataloaders(
-    data_dir: str, batch_size: int, num_workers: int, subset_size=None
-) -> Tuple[DataLoader, DataLoader]:
+    data_dir: str, batch_size: int, num_workers: int, subset_size: int | None = None
+) -> tuple[DataLoader, DataLoader]:
     """
     Load CIFAR-10 dataset and create DataLoaders.
 
@@ -155,7 +156,7 @@ def train_epoch(
     optimizer: optim.Optimizer,
     device: torch.device,
     epoch: int,
-) -> Tuple[float, float]:
+) -> tuple[float, float]:
     """
     Train for one epoch.
 
@@ -217,7 +218,7 @@ def evaluate(
     test_loader: DataLoader,
     criterion: nn.Module,
     device: torch.device,
-) -> Tuple[float, float]:
+) -> tuple[float, float]:
     """
     Evaluate model on test set.
 
@@ -339,7 +340,7 @@ def train(config: dict) -> dict:
     print(f"Device: {device}")
 
     # Data
-    train_loader, test_loader = get_dataloaders(config["data_dir"], config["batch_size"], config["num_workers"])
+    train_loader, test_loader = get_dataloaders(config["data_dir"], config["batch_size"], config["num_workers"], config.get("subset_size"))
 
     # Model
     print("\nBuilding ResNet-18...")
@@ -390,7 +391,8 @@ def train(config: dict) -> dict:
         # Track best
         if test_acc > best_test_acc:
             best_test_acc = test_acc
-            torch.save(model.state_dict(), "best_resnet18_cifar10.pth")
+            _CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
+            torch.save(model.state_dict(), _CHECKPOINT_DIR / "best_resnet18_cifar10.pth")
 
         # Log
         epoch_time = time.time() - epoch_start
