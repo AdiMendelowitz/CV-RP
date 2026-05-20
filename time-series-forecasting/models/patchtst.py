@@ -30,7 +30,7 @@ class PatchEmbedding(nn.Module):
         self._d_model = d_model
 
     @staticmethod
-    def _sinosoidal_encoding(num_patches: int, d_model: int, device: torch.device) -> torch.Tensor:
+    def _sinusoidal_encoding(num_patches: int, d_model: int, device: torch.device) -> torch.Tensor:
         """Return fixed sinusoidal positional encoding of shape (1, num_patches, d_model)."""
         position = torch.arange(num_patches, dtype=torch.float, device=device).unsqueeze(1)
         div_term = torch.exp(

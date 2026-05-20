@@ -125,7 +125,7 @@ class ETTh1Dataset(Dataset):
         df = pd.read_csv(path)
         numeric = df.drop(columns=["date"])
         if numeric.isnull().any().any():
-            raise ValueError("ETHH1.csv contains NaN values, preprocess required.")
+            raise ValueError("ETTh1.csv contains NaN values, preprocess required.")
         return numeric.to_numpy(dtype=np.float64)
 
     @staticmethod

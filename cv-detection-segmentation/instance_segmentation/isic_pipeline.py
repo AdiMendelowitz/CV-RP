@@ -129,7 +129,7 @@ class ISICPipeline:
 
         Returns:
             (binary_mask, box, score) tuple.
-            binary_mask: Bool ndarray (W, W). All false if detection failed.
+            binary_mask: Bool ndarray (H, W). All false if detection failed.
             box: Float bdarrat [x1, y1, x2, y2]. None if failed.
             score: Confidence of selected detection. 0.0 if failed.
         """
