@@ -40,7 +40,7 @@ _RESULTS_DIR = _PROJECT_DIR / "results"
 _RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
 _CSV_PATH = _DATA_DIR / "ETTh1.csv"
-_RESULTS_CSV = _RESULTS_DIR / "linear_ettch1.csv"
+_RESULTS_CSV = _RESULTS_DIR / "linear_etth1.csv"
 _CHECKPOINT_DIR = _RESULTS_DIR / "checkpoints"
 _CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
 

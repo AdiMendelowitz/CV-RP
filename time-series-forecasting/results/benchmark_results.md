@@ -53,7 +53,7 @@ timescales.
  
 A sweep over d_model in {64, 128, 512} and dropout in {0.1, 0.2, 0.3} was conducted
 (9 configurations, 4 horizons each). The best configuration by average test MSE was
-d_model=64, dropout=0.3. Full sweep results are in `results/itransformer_ettch1_results.md`.
+d_model=64, dropout=0.3. Full sweep results are in `results/itransformer_etth1_results.md`.
  
 Configuration (best run): seq_len=96, d_model=64, num_heads=8, num_layers=3, dropout=0.3,
 AdamW lr=1e-4, CosineAnnealingLR, batch_size=32, seed=42.

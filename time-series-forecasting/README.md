@@ -62,12 +62,12 @@ time-series-forecasting/
 │   └── results_grid.csv                -- CI vs CD synthetic grid results
 ├── results/
 │   ├── RESULTS.md                      -- All benchmark results and analysis
-│   ├── patchtst_ettch1.csv             -- PatchTST per-run metrics, all horizons
-│   ├── itransformer_ettch1.csv         -- iTransformer per-run metrics
-│   ├── timemixer_ettch1.csv            -- TimeMixer per-run metrics
-│   ├── linear_ettch1.csv               -- Linear baseline results
-│   ├── ci_cd_ettch1.csv                -- CI vs CD ablation results
-│   ├── anomaly_ettch1.md               -- Anomaly detection evaluation
+│   ├── patchtst_etth1.csv             -- PatchTST per-run metrics, all horizons
+│   ├── itransformer_etth1.csv         -- iTransformer per-run metrics
+│   ├── timemixer_etth1.csv            -- TimeMixer per-run metrics
+│   ├── linear_etth1.csv               -- Linear baseline results
+│   ├── ci_cd_etth1.csv                -- CI vs CD ablation results
+│   ├── anomaly_etth1.md               -- Anomaly detection evaluation
 │   ├── checkpoints/                    -- Best model state dicts (gitignored)
 │   └── plots/                          -- Figures from analyze_results.py
 ├── tests/
@@ -76,10 +76,10 @@ time-series-forecasting/
 │   └── test_timemixer.py
 ├── notes/
 │   └── architecture-comparison.md
-├── patchtst_train_ettch1.ipynb         -- Kaggle T4: all four horizons
-├── itransformer_train_ettch1.ipynb     -- Kaggle T4: all four horizons
-├── timemixer_train_ettch1.ipynb        -- Kaggle T4: all four horizons
-├── ci_cd_train_ettch1.ipynb            -- Kaggle T4: CI vs CD ablation
+├── patchtst_train_etth1.ipynb         -- Kaggle T4: all four horizons
+├── itransformer_train_etth1.ipynb     -- Kaggle T4: all four horizons
+├── timemixer_train_etth1.ipynb        -- Kaggle T4: all four horizons
+├── ci_cd_train_etth1.ipynb            -- Kaggle T4: CI vs CD ablation
 ├── analyze_results.py                  -- CPU: plots and per-channel analysis
 └── README.md
 ```
@@ -182,7 +182,7 @@ Two synthetic anomaly types are injected into the test split for evaluation:
 - Contextual anomaly: a contiguous 24-hour window zeroed out at 3 random locations.
 
 Precision, recall, and F1 are reported per anomaly type. Full results in
-[`results/anomaly_ettch1.md`](results/anomaly_ettch1.md).
+[`results/anomaly_etth1.md`](results/anomaly_etth1.md).
 
 This is reconstruction-error-based detection, not a purpose-built anomaly model. Methods such as
 Anomaly Transformer (Xu et al., ICLR 2022) use anomaly-specific training objectives and achieve

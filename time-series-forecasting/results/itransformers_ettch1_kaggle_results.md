@@ -215,7 +215,7 @@ using synthetic data to separate variables that are confounded in every existing
 
 ```bash
 # Train iTransformer on ETTh1 at all four horizons
-# Notebook: itransformer_train_ettch1.ipynb (Kaggle T4)
+# Notebook: itransformer_train_etth1.ipynb (Kaggle T4)
 # Best configuration
 CONFIG = {
     'seq_len': 96,
@@ -231,4 +231,4 @@ CONFIG = {
 }
 ```
 
-Results are logged to `results/itransformer_ettch1.csv`.
+Results are logged to `results/itransformer_etth1.csv`.
