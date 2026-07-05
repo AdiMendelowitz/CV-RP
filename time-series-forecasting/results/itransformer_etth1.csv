@@ -1,0 +1,5 @@
+model,dataset,seq_len,pred_len,test_mse,test_mae,best_val_mse,best_epoch,num_params,seed
+iTransformer,ETTh1,96,96,0.484081,0.483114,0.710703,24,162528,42
+iTransformer,ETTh1,96,192,0.544982,0.517424,0.934903,11,168768,42
+iTransformer,ETTh1,96,336,0.610953,0.564418,1.122459,24,178128,42
+iTransformer,ETTh1,96,720,0.716681,0.628251,1.188688,31,203088,42

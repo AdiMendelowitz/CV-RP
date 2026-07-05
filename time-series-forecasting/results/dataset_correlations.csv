@@ -1,0 +1,3 @@
+dataset,num_variates,mean_abs_pearson,median_abs_pearson,min_abs_pearson,max_abs_pearson
+ETTh1,7,0.311013,0.232797,0.037538,0.983724
+ECL,321,0.502707,0.482658,1.8e-05,0.999993

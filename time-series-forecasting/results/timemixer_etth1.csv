@@ -1,0 +1,5 @@
+model,dataset,seq_len,pred_len,test_mse,test_mae,best_val_mse,best_epoch,num_params,seed
+TimeMixer,ETTh1,512,96,0.453905,0.452372,0.657428,17,33667,42
+TimeMixer,ETTh1,512,192,0.498951,0.481448,0.876336,11,38563,42
+TimeMixer,ETTh1,512,336,0.543081,0.514292,0.980741,16,45907,42
+TimeMixer,ETTh1,512,720,0.675258,0.601949,0.984405,10,65491,42
