@@ -88,3 +88,7 @@ time-series-forecasting/paper/
 /cv-detection-segmentation/instance_segmentation/outputs/task3/checkpoints/
 time-series-forecasting/results/checkpoints/
 /time-series-forecasting/data/iTransformer_datasets/
+
+*.pth
+.virtual_documents/
+computer-vision-foundations/code/pytorch_cnn/data/
