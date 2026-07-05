@@ -1,4 +1,4 @@
-﻿# Python
+# Python
 __pycache__/
 *.py[cod]
 *.so
@@ -55,7 +55,6 @@ desktop.ini
 .tmp/
 
 # Output images and videos (regeneratable)
-results/
 *.jpg
 *.jpeg
 *.gif
@@ -72,12 +71,20 @@ results/
 
 # Large data files
 *.csv
+!time-series-forecasting/results/*.csv
 *.zip
 *.tar.gz
 *.npy
 *.npz
 
+
+# Time-series experiment artifacts
+time-series-forecasting/results/.virtual_documents/
+time-series-forecasting/results/state.db
+
+# Paper source (maintained in separate repo)
+time-series-forecasting/paper/
 /cv-detection-segmentation/instance_segmentation/outputs/task1/checkpoints/
 /cv-detection-segmentation/instance_segmentation/outputs/task3/checkpoints/
-time-series-forecasting/results/*.csv
 time-series-forecasting/results/checkpoints/
+/time-series-forecasting/data/iTransformer_datasets/
