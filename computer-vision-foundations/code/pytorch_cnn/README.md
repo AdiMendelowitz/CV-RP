@@ -31,7 +31,7 @@ pytorch_cnn/
 ├── training_history.json           # Training metrics log
 │
 ├── best_resnet18_cifar10.pth       # Best model checkpoint
-├── best_resnet18_cifar10 (1).pth   # Backup checkpoint
+├── best_resnet18_cifar10.pth   # Backup checkpoint
 │
 ├── cifar10_samples.png             # Dataset samples
 ├── resnet_cifar10_training.png     # Training curves
