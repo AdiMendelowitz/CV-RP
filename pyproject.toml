@@ -223,6 +223,7 @@ exclude = '(__MACOSX|\.git|\.venv|notebooks)'
 [dependency-groups]
 dev = [
     "flake8>=7.3.0",
+    "matplotlib>=3.10.8",
     "ruff>=0.15.13",
 ]
 
@@ -232,3 +233,6 @@ unsafe-fixes = true
 [tool.ruff.lint]
 fixable = ["ALL"]
 ignore = ["E402", "E741"]
+
+[tool.setuptools]
+py-modules = ["main"]
