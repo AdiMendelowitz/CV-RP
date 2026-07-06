@@ -92,3 +92,14 @@ time-series-forecasting/results/checkpoints/
 *.pth
 .virtual_documents/
 computer-vision-foundations/code/pytorch_cnn/data/
+
+time-series-forecasting/notes/architecture-comparison.md
+time-series-forecasting/results/ci_cd_*.csv
+time-series-forecasting/results/results_boundary_*
+time-series-forecasting/results/results_grid_canonical.csv
+time-series-forecasting/results/ecl_*.csv
+*.pt
+
+time-series-forecasting/experiments/ci_cd_train_etth1.ipynb
+time-series-forecasting/experiments/ecl_ci_cd_train.ipynb
+time-series-forecasting/experiments/run_ci_cd_grid.ipynb
