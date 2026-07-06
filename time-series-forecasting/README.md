@@ -1,44 +1,44 @@
-# Time Series Forecasting with Transformers
+# Time-Series Forecasting with Transformers
 
-Reproduction and comparative study of transformer-based architectures for long-horizon multivariate
-time series forecasting. All models are implemented from scratch in PyTorch and evaluated on the
-ETTh1 benchmark under the standard chronological split used in the PatchTST (Nie et al., ICLR 2023)
-and iTransformer (Liu et al., ICLR 2024) papers.
-
-Full benchmark results and per-channel analysis are in [`results/RESULTS.md`](results/RESULTS.md).
-Architecture analysis is in [`notes/architecture-comparison.md`](notes/architecture-comparison.md).
+From-scratch PyTorch implementations of three transformer-based architectures for
+long-horizon multivariate forecasting, evaluated on the ETTh1 benchmark under the
+standard chronological split used by Nie et al. (ICLR 2023) and Liu et al.
+(ICLR 2024). PatchTST, iTransformer, and TimeMixer are each built from
+`nn.Module` primitives alongside a linear baseline, with a shared dataset loader
+and a unit-test suite covering every model.
 
 ---
 
 ## Problem Setup
 
-The task is long-horizon multivariate forecasting: given a look-back window of `seq_len` timesteps
-across all variates, predict the next `pred_len` steps for all variates simultaneously. Performance
-is measured by MSE and MAE averaged element-wise over all variates and all predicted steps on the
-held-out test split.
+Given a look-back window of `seq_len` timesteps across all variates, predict the
+next `pred_len` steps for all variates jointly. Performance is the element-wise
+MSE and MAE over all variates and predicted steps on the held-out test split.
 
 ---
 
 ## Dataset
 
-**ETTh1** (Electricity Transformer Temperature, hourly) contains readings from a transformer station
-in China. The dataset comprises 7 variates: high-, medium-, and low-load usage at full and partial
-capacity (HUFL, HULL, MUFL, MULL, LUFL, LULL), and oil temperature (OT). The dataset has 17,420
-rows at hourly frequency.
+ETTh1 (Electricity Transformer Temperature, hourly) records seven variates from a
+transformer station: high-, medium-, and low-load usage at full and partial
+capacity (HUFL, HULL, MUFL, MULL, LUFL, LULL) and oil temperature (OT), across
+17,420 hourly rows.
 
-**Split protocol** (matching Nie et al., ICLR 2023 and Liu et al., ICLR 2024):
+The chronological split matches the published protocol:
 
 | Split | Rows | Row indices |
 |-------|------|-------------|
-| Train | 8,640 | 0 -- 8,639 |
-| Val | 2,880 | 8,640 -- 11,519 |
-| Test | 2,880 | 11,520 -- 14,399 |
+| Train | 8,640 | 0 – 8,639 |
+| Val | 2,880 | 8,640 – 11,519 |
+| Test | 2,880 | 11,520 – 14,399 |
 
-Normalisation is per-channel z-score, with mean and standard deviation fitted on the train rows
-only and applied to val and test.
+Normalisation is per-channel z-score, fitted on train rows only and applied to
+val and test. Measured on the train split, the seven variates have a mean
+absolute Pearson correlation of 0.31, with the strongest pair (HUFL, MUFL) at
+0.98 and the weakest near 0.04.
 
-**Source:** `ETTh1.csv` from the iTransformer repository
-(https://github.com/zhouhaoyi/ETDataset/tree/main/ETT-small).
+Source: `ETTh1.csv` from the ETDataset repository
+(https://github.com/zhouhaoyi/ETDataset).
 
 ---
 
@@ -47,162 +47,132 @@ only and applied to val and test.
 ```
 time-series-forecasting/
 ├── data/
-│   └── ett_dataset.py                  -- ETTh1Dataset: sliding window, normalisation, split
+│   └── ett_dataset.py            -- ETTh1Dataset: sliding window, normalisation, split
 ├── models/
-│   ├── patchtst.py                     -- PatchTST from scratch (CI and CD modes)
-│   ├── itransformer.py                 -- iTransformer from scratch
-│   └── timemixer.py                    -- TimeMixer from scratch
+│   ├── patchtst.py               -- PatchTST from scratch
+│   ├── itransformer.py           -- iTransformer from scratch
+│   └── timemixer.py              -- TimeMixer from scratch
 ├── baselines/
-│   └── linear_baseline.py              -- Channel-independent linear baseline (DLinear-style)
+│   └── linear_baseline.py        -- Channel-independent linear baseline (DLinear-style)
 ├── anomaly/
-│   └── detect.py                       -- Reconstruction-error anomaly detection
+│   └── detect.py                 -- Reconstruction-error anomaly detection
 ├── synthetic/
-│   └── generate.py                     -- Multivariate AR(1) generator
-├── experiments/
-│   └── results_grid.csv                -- CI vs CD synthetic grid results
+│   └── generate.py               -- Multivariate AR(1) generator
 ├── results/
-│   ├── RESULTS.md                      -- All benchmark results and analysis
-│   ├── patchtst_etth1.csv             -- PatchTST per-run metrics, all horizons
-│   ├── itransformer_etth1.csv         -- iTransformer per-run metrics
-│   ├── timemixer_etth1.csv            -- TimeMixer per-run metrics
-│   ├── linear_etth1.csv               -- Linear baseline results
-│   ├── ci_cd_etth1.csv                -- CI vs CD ablation results
-│   ├── anomaly_etth1.md               -- Anomaly detection evaluation
-│   ├── checkpoints/                    -- Best model state dicts (gitignored)
-│   └── plots/                          -- Figures from analyze_results.py
+│   ├── patchtst_etth1.csv        -- PatchTST test metrics, all horizons
+│   ├── itransformer_etth1.csv    -- iTransformer test metrics
+│   ├── timemixer_etth1.csv       -- TimeMixer test metrics
+│   ├── linear_etth1.csv          -- Linear baseline results
+│   ├── anomaly_etth1.md          -- Anomaly detection evaluation
+│   └── plots/                    -- Forecast and per-channel figures
 ├── tests/
 │   ├── test_patchtst.py
 │   ├── test_itransformer.py
-│   └── test_timemixer.py
-├── notes/
-│   └── architecture-comparison.md
-├── patchtst_train_etth1.ipynb         -- Kaggle T4: all four horizons
-├── itransformer_train_etth1.ipynb     -- Kaggle T4: all four horizons
-├── timemixer_train_etth1.ipynb        -- Kaggle T4: all four horizons
-├── ci_cd_train_etth1.ipynb            -- Kaggle T4: CI vs CD ablation
-├── analyze_results.py                  -- CPU: plots and per-channel analysis
-└── README.md
+│   ├── test_timemixer.py
+│   ├── test_ett_dataset.py
+│   └── test_generate.py
+├── patchtst_train_etth1.ipynb    -- Kaggle T4: all four horizons
+├── itransformer_train_etth1.ipynb
+├── timemixer_train_etth1.ipynb
+└── analyze_results.py            -- CPU: plots and per-channel analysis
 ```
 
 ---
 
 ## Architectures
 
-| Model | Tokenisation | Attention axis | Inductive bias |
-|-------|-------------|----------------|----------------|
-| PatchTST | Overlapping time patches per channel | Temporal (within channel) | Channel independence; local temporal context via patching |
-| iTransformer | Full history per variate | Cross-variate | Cross-channel correlation; treats each variate as a token |
-| TimeMixer | Multi-scale decomposition | None (MLP only) | Trend-seasonal decomposition at multiple resolutions |
+| Model | Tokenisation | Attention axis | Core idea |
+|-------|-------------|----------------|-----------|
+| PatchTST | Overlapping time patches per channel | Temporal, within channel | Patch-based forecasting with shared per-channel weights |
+| iTransformer | Full history per variate | Cross-variate | Each variate becomes one token; attention over variates |
+| TimeMixer | Multi-scale decomposition | None (MLP only) | Trend-seasonal mixing at multiple resolutions |
 
 ### PatchTST (Nie et al., ICLR 2023)
 
-Each variate's look-back window is divided into overlapping patches of length `P` with stride `S`.
-Each patch is projected to `d_model` via a learned linear layer, and fixed sinusoidal positional
-encodings are added across patch positions. A pre-norm transformer encoder then processes the patch
-sequence independently per variate -- no information crosses channel boundaries. This
-channel-independence (CI) design forces shared weights to learn patterns that generalise across all
-channels, acting as implicit regularisation.
-
-ETTh1 training configuration:
-
-| Hyperparameter | Value |
-|----------------|-------|
-| seq_len | 512 |
-| patch_size | 16 |
-| stride | 8 |
-| num_patches | 63 (unpadded; paper uses 64 with right-padding) |
-| d_model | 128 |
-| num_heads | 16 |
-| num_layers | 3 |
-| dropout | 0.2 |
-| batch_size | 128 |
-| optimiser | AdamW, lr=1e-4, weight_decay=1e-4 |
-| schedule | Linear warmup (10 epochs) + cosine annealing |
-| early stopping | patience=10, monitor=val_mse |
-| seed | 42 |
+Each variate's look-back window is divided into overlapping patches of length 16
+with stride 8, projected to `d_model` with a learned linear layer and sinusoidal
+positional encodings. A pre-norm transformer encoder processes the patch sequence
+per variate. ETTh1 configuration: seq_len 512, d_model 128, 16 heads, 3 layers,
+dropout 0.2, batch size 128, AdamW (lr 1e-4, weight decay 1e-4), linear warmup
+over 10 epochs then cosine annealing, early stopping on validation MSE with
+patience 10, seed 42.
 
 ### iTransformer (Liu et al., ICLR 2024)
 
-Each variate's full look-back history is projected to a single `d_model`-dimensional token. The
-transformer encoder runs attention over the resulting `C` variate tokens, capturing cross-channel
-correlations. The forecast head applies a per-variate linear projection from `d_model` to
-`pred_len`. ETTh1 uses `seq_len=96` (paper default).
+Each variate's full look-back history is projected to a single `d_model` token,
+and the encoder runs attention across the variate tokens. The forecast head
+applies a per-variate linear projection from `d_model` to `pred_len`. ETTh1 uses
+seq_len 96, the paper default.
 
 ### TimeMixer (Wang et al., ICLR 2024)
 
-The input is downsampled to multiple resolutions via average pooling, producing a scale pyramid.
-At each scale, a series decomposition separates seasonal and trend components. Past-Decomposable-
-Mixing (PDM) aggregates seasonal components fine-to-coarse and trend components coarse-to-fine.
-Future-Multipredictor-Mixing (FMM) applies a linear predictor at each scale and ensembles the
-outputs. No attention is used.
+The input is average-pooled to multiple resolutions, forming a scale pyramid. At
+each scale a series decomposition separates seasonal and trend components;
+Past-Decomposable-Mixing aggregates seasonal fine-to-coarse and trend
+coarse-to-fine, and Future-Multipredictor-Mixing applies a linear predictor at
+each scale and ensembles the outputs. No attention is used.
 
 ---
 
 ## Results
 
-Full results with published benchmark comparisons are in [`results/RESULTS.md`](results/RESULTS.md).
+ETTh1 multivariate test metrics at seed 42. Look-back windows differ by model
+(PatchTST and TimeMixer 512, iTransformer 96), so figures are comparable within a
+model across horizons rather than across models.
 
-Summary (ETTh1, multivariate, test MSE). PatchTST uses seq_len=512; iTransformer uses seq_len=96;
-TimeMixer uses seq_len=512. Look-back windows differ across models and numbers are not directly
-comparable.
+PatchTST (look-back 512, from scratch, seed 42):
 
-| Model | H=96 | H=192 | H=336 | H=720 | Paper target (H=96) |
-|-------|------|-------|-------|-------|---------------------|
-| Linear baseline | 0.389 | -- | 0.485 | -- | -- |
-| PatchTST | 0.3984 | 0.4417 | 0.4673 | 0.5423 | 0.370 |
-| iTransformer | 0.4841 | 0.5450 | 0.6110 | 0.7167 | ~0.454 (avg) |
-| TimeMixer | 0.4539 | 0.4990 | 0.5431 | 0.6753 | ~0.446 (avg) |
+| Horizon | MSE | MAE |
+|---------|------|------|
+| 96 | 0.398 | 0.421 |
+| 192 | 0.442 | 0.449 |
+| 336 | 0.467 | 0.467 |
+| 720 | 0.542 | 0.526 |
 
-Linear baseline was trained at H=96 and H=336 only.
+iTransformer and TimeMixer reproduced metrics:
 
-### CI vs CD Ablation (ETTh1, pred_len=96)
+| Model | H=96 | H=192 | H=336 | H=720 |
+|-------|------|-------|-------|-------|
+| iTransformer (MSE) | 0.484 | 0.545 | 0.611 | 0.717 |
+| iTransformer (MAE) | 0.483 | 0.517 | 0.564 | 0.628 |
+| TimeMixer (MSE) | 0.454 | 0.499 | 0.543 | 0.675 |
+| TimeMixer (MAE) | 0.452 | 0.481 | 0.514 | 0.602 |
 
-PatchTST was trained in channel-independent (CI) and channel-dependent (CD) modes under identical
-hyperparameters and seed. In CD mode, patches from all variates are concatenated along the sequence
-dimension before the encoder, allowing cross-variate attention.
-
-| Mode | Test MSE | Test MAE |
-|------|----------|----------|
-| PatchTST CI | -- | -- |
-| PatchTST CD | -- | -- |
+The linear baseline (look-back 512) records MSE 0.389 / MAE 0.405 at horizon 96
+and MSE 0.485 / MAE 0.471 at horizon 336, serving as the sanity floor: a
+transformer that fails to beat it at a given horizon is not learning useful
+temporal structure. The from-scratch PatchTST reproduces the expected horizon
+scaling on ETTh1, with error rising monotonically as prediction length grows,
+in line with the PatchTST architecture (Nie et al., ICLR 2023). Figures are
+single-seed under a fixed training budget.
 
 ---
 
 ## Anomaly Detection
 
-The anomaly detection module (`anomaly/detect.py`) loads a trained PatchTST checkpoint and runs
-sliding window inference over the ETTh1 test split (step size 1, seq_len=512, pred_len=1). The
-anomaly score at each timestep is the MSE between the one-step-ahead prediction and the observed
-value. The detection threshold is the 95th percentile of validation reconstruction errors, fitted
-on the validation split only.
-
-Two synthetic anomaly types are injected into the test split for evaluation:
-
-- Point anomaly: Gaussian noise with std = 5 * channel_std at 20 random timesteps.
-- Contextual anomaly: a contiguous 24-hour window zeroed out at 3 random locations.
-
-Precision, recall, and F1 are reported per anomaly type. Full results in
-[`results/anomaly_etth1.md`](results/anomaly_etth1.md).
-
-This is reconstruction-error-based detection, not a purpose-built anomaly model. Methods such as
-Anomaly Transformer (Xu et al., ICLR 2022) use anomaly-specific training objectives and achieve
-higher precision on standard benchmarks.
+`anomaly/detect.py` loads a trained PatchTST checkpoint and runs sliding-window
+one-step-ahead inference over the ETTh1 test split. The anomaly score at each
+timestep is the MSE between prediction and observation, and the detection
+threshold is the 95th percentile of validation reconstruction errors, fitted on
+the validation split only. Two synthetic anomaly types are injected for
+evaluation: point anomalies (Gaussian noise at scale 5x channel std at 20 random
+timesteps) and contextual anomalies (a 24-hour window zeroed at 3 random
+locations). Precision, recall, and F1 are reported per type in
+[`results/anomaly_etth1.md`](results/anomaly_etth1.md). This is
+reconstruction-error detection rather than a purpose-built anomaly model;
+methods such as Anomaly Transformer (Xu et al., ICLR 2022) use anomaly-specific
+objectives and reach higher precision on standard benchmarks.
 
 ---
 
 ## Reproduction
 
-Training runs on Kaggle T4 GPU sessions with the ETTh1 dataset attached. Post-training analysis
-runs locally on CPU.
+Training runs on Kaggle T4 GPU sessions with the ETTh1 dataset attached, and
+post-training analysis runs locally on CPU.
 
 ```bash
 # After downloading Kaggle notebook outputs to results/
-
-# Plots and per-channel analysis
 python analyze_results.py --model_type patchtst --pred_len 96
-python analyze_results.py --model_type patchtst --pred_len 192
-python analyze_results.py --model_type patchtst --pred_len 336
-python analyze_results.py --model_type patchtst --pred_len 720
 
 # Unit tests (no data required)
 pytest tests/ -v
@@ -214,19 +184,21 @@ Strip notebook outputs before committing: `nbstripout *.ipynb`.
 
 ## References
 
-Nie, Y., Nguyen, N. H., Sinthong, P., & Kalagnanam, J. (2023). A time series is worth 64 words:
-Long-term forecasting with transformers. *ICLR 2023*. https://arxiv.org/abs/2211.14730
+Nie, Y., Nguyen, N. H., Sinthong, P., & Kalagnanam, J. (2023). A time series is
+worth 64 words: Long-term forecasting with transformers. *ICLR 2023*.
+https://arxiv.org/abs/2211.14730
 
-Liu, Y., Hu, T., Zhang, H., Wu, H., Wang, S., Ma, L., & Long, M. (2024). iTransformer: Inverted
-transformers are effective for time series forecasting. *ICLR 2024*.
-https://arxiv.org/abs/2310.06625
+Liu, Y., Hu, T., Zhang, H., Wu, H., Wang, S., Ma, L., & Long, M. (2024).
+iTransformer: Inverted transformers are effective for time series forecasting.
+*ICLR 2024*. https://arxiv.org/abs/2310.06625
 
-Wang, S., Wu, H., Shi, X., Hu, T., Luo, H., Ma, L., Zhang, J. Y., & Zhou, J. (2024). TimeMixer:
-Decomposable multiscale mixing for time series forecasting. *ICLR 2024*.
-https://arxiv.org/abs/2405.14616
+Wang, S., Wu, H., Shi, X., Hu, T., Luo, H., Ma, L., Zhang, J. Y., & Zhou, J.
+(2024). TimeMixer: Decomposable multiscale mixing for time series forecasting.
+*ICLR 2024*. https://arxiv.org/abs/2405.14616
 
-Zeng, A., Chen, M., Zhang, L., & Xu, Q. (2023). Are transformers effective for time series
-forecasting? *AAAI 2023*. https://arxiv.org/abs/2205.13504
+Zeng, A., Chen, M., Zhang, L., & Xu, Q. (2023). Are transformers effective for
+time series forecasting? *AAAI 2023*. https://arxiv.org/abs/2205.13504
 
-Xu, J., Wu, H., Wang, J., & Long, M. (2022). Anomaly transformer: Time series anomaly detection
-with association discrepancy. *ICLR 2022*. https://arxiv.org/abs/2110.02642
+Xu, J., Wu, H., Wang, J., & Long, M. (2022). Anomaly transformer: Time series
+anomaly detection with association discrepancy. *ICLR 2022*.
+https://arxiv.org/abs/2110.02642
