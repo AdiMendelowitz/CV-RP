@@ -24,7 +24,7 @@ _project_root = Path(__file__).resolve().parents[3]
 _DATA_ROOT = _project_root / "data"
 
 TEACHER_CHECKPOINT = (
-    _project_root / "computer-vision-foundations" / "code" / "pytorch_cnn" / "best_resnet18_cifar10 (1).pth"
+    _project_root / "computer-vision-foundations" / "code" / "pytorch_cnn" / "best_resnet18_cifar10.pth"
 )
 
 DISTILL_CHECKPOINT = Path(__file__).resolve().parent / "checkpoints" / "distillation" / "best_student_distill.pth"

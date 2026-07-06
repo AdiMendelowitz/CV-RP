@@ -376,7 +376,7 @@ def plot_results(
 def parse_args() -> argparse.Namespace:
     _project_root = Path(__file__).resolve().parents[3]
     _default_checkpoint = (
-        _project_root / "computer-vision-foundations" / "code" / "pytorch_cnn" / "best_resnet18_cifar10 (1).pth"
+        _project_root / "computer-vision-foundations" / "code" / "pytorch_cnn" / "best_resnet18_cifar10.pth"
     )
     p = argparse.ArgumentParser(description="Knowledge distillation on CIFAR-10")
     p.add_argument("--mode", choices=["distill", "baseline", "both"], default="both")
