@@ -228,7 +228,7 @@ N_CALIBRATION_BATCHES = 100
 def parse_args() -> argparse.Namespace:
 
     _default_checkpoint = (
-        _REPO_ROOT / "computer-vision-foundations" / "code" / "pytorch_cnn" / "best_resnet18_cifar10.pth"
+        _REPO_ROOT / "computer-vision-foundations" / "code" / "pytorch_cnn" / "best_resnet18_cifar10 (1).pth"
     )
     parser = argparse.ArgumentParser(description="PTQ benchmarks for ResNet-18 on CIFAR-10")
     parser.add_argument(
