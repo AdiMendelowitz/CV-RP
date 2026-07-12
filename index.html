@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Adi Mendelowitz — ML Researcher & Data Scientist</title>
+<title>Adi Mendelowitz · Data Scientist · Applied ML</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script>
@@ -12,17 +12,35 @@
 <script defer src="/_vercel/insights/script.js"></script>
 <style>
   :root {
-    --bg:          #262422;
-    --bg-card:     #1e1c1a;
-    --bg-nav:      #232120;
-    --text:        #ece6dc;
-    --muted:       #968e84;
-    --faint:       #333;
-    --faint-2:     #302e2b;
-    --orange:      #bf6030;
-    --orange-dim:  #2e2420;
-    --orange-bdr:  #3d2e22;
-    --text-dim:    #635d57;
+    color-scheme: light;
+    --bg:              #f8f6f1;
+    --bg-card:         #fdfcf8;
+    --bg-nav:          #f5f2ea;
+    --text:            #232019;
+    --muted:           #655f50;
+    --faint:           #e2dccd;
+    --faint-2:         #eae4d6;
+    --accent:          #33604d;
+    --accent-dim:      #e8efe6;
+    --accent-bdr:      #c9dacd;
+    --accent-contrast: #f6f9f6;
+    --text-dim:        #78715c;
+  }
+
+  html[data-theme="dark"] {
+    color-scheme: dark;
+    --bg:              #151814;
+    --bg-card:         #1b1f1a;
+    --bg-nav:          #181c17;
+    --text:            #e9e6da;
+    --muted:           #a5a293;
+    --faint:           #2b2f28;
+    --faint-2:         #23271f;
+    --accent:          #82b89c;
+    --accent-dim:      #1f2b24;
+    --accent-bdr:      #31473a;
+    --accent-contrast: #122019;
+    --text-dim:        #8d8a7a;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -31,8 +49,9 @@
   body {
     background: var(--bg);
     color: var(--text);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 18px;
+    transition: background 0.2s ease, color 0.2s ease;
+    font-family: 'Inter', sans-serif;
+    font-size: 1.125rem;
     line-height: 1.7;
     -webkit-font-smoothing: antialiased;
   }
@@ -51,8 +70,8 @@
   }
 
   nav .logo {
-    font-family: 'Lora', serif;
-    font-size: 17px;
+    font-family: 'Newsreader', serif;
+    font-size: 1.0625rem;
     font-weight: 600;
     color: var(--text);
     text-decoration: none;
@@ -62,13 +81,41 @@
   nav ul { list-style: none; display: flex; gap: 2rem; }
 
   nav ul a {
-    font-size: 15px;
+    font-size: 0.9375rem;
     color: var(--muted);
     text-decoration: none;
     transition: color 0.15s;
   }
 
-  nav ul a:hover { color: var(--orange); }
+  nav ul a:hover { color: var(--accent); }
+
+  .nav-right { display: flex; align-items: center; gap: 1.5rem; }
+
+  html[data-fontsize="lg"] { font-size: 112.5%; }
+  html[data-fontsize="sm"] { font-size: 87.5%; }
+
+  .nav-btn {
+    background: transparent;
+    border: 0.5px solid var(--faint);
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+    padding: 0;
+  }
+
+  .nav-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .nav-btn.font-toggle { font-size: 13px; font-weight: 500; font-family: 'Inter', sans-serif; }
+
+  #theme-toggle .icon-sun { display: none; }
+  html[data-theme="dark"] #theme-toggle .icon-sun { display: block; }
+  html[data-theme="dark"] #theme-toggle .icon-moon { display: none; }
 
   .container { max-width: 760px; margin: 0 auto; padding: 0 2rem; }
 
@@ -76,18 +123,18 @@
   section:last-of-type { border-bottom: none; }
 
   .section-label {
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: 500;
     letter-spacing: 2.5px;
-    color: var(--orange);
+    color: var(--accent);
     text-transform: uppercase;
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Inter', sans-serif;
     margin-bottom: 6px;
   }
 
   .section-title {
-    font-family: 'Lora', serif;
-    font-size: 26px;
+    font-family: 'Newsreader', serif;
+    font-size: 1.625rem;
     font-weight: 700;
     color: var(--text);
     margin-bottom: 32px;
@@ -98,14 +145,14 @@
   .hero-rule {
     width: 32px;
     height: 2px;
-    background: var(--orange);
+    background: var(--accent);
     margin-bottom: 20px;
     border-radius: 1px;
   }
 
   .hero h1 {
-    font-family: 'Lora', serif;
-    font-size: clamp(30px, 5vw, 42px);
+    font-family: 'Newsreader', serif;
+    font-size: clamp(1.875rem, 5vw, 2.625rem);
     font-weight: 700;
     color: var(--text);
     line-height: 1.15;
@@ -113,15 +160,15 @@
   }
 
   .hero-sub {
-    font-family: 'Lora', serif;
-    font-size: 17px;
+    font-family: 'Newsreader', serif;
+    font-size: 1.0625rem;
     font-style: italic;
     color: var(--text-dim);
     margin-bottom: 28px;
   }
 
   .hero-bio {
-    font-size: 16px;
+    font-size: 1rem;
     color: var(--muted);
     max-width: 600px;
     line-height: 1.85;
@@ -133,15 +180,15 @@
   .hero-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 
   .btn-primary {
-    background: var(--orange);
-    color: #f5ede4;
-    font-size: 15px;
+    background: var(--accent);
+    color: var(--accent-contrast);
+    font-size: 0.9375rem;
     font-weight: 500;
     padding: 10px 24px;
     border-radius: 20px;
     text-decoration: none;
     transition: opacity 0.15s;
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Inter', sans-serif;
   }
 
   .btn-primary:hover { opacity: 0.85; }
@@ -149,13 +196,13 @@
   .btn-ghost {
     background: transparent;
     color: var(--text-dim);
-    font-size: 15px;
+    font-size: 0.9375rem;
     padding: 10px 24px;
     border-radius: 20px;
     border: 0.5px solid var(--faint);
     text-decoration: none;
     transition: border-color 0.15s, color 0.15s;
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Inter', sans-serif;
   }
 
   .btn-ghost:hover { border-color: var(--muted); color: var(--muted); }
@@ -170,20 +217,20 @@
     transition: border-color 0.2s;
   }
 
-  .research-card:hover { border-color: var(--orange); }
+  .research-card:hover { border-color: var(--accent); }
 
   .research-card-title {
-    font-family: 'Lora', serif;
-    font-size: 17px;
+    font-family: 'Newsreader', serif;
+    font-size: 1.0625rem;
     font-weight: 600;
     color: var(--text);
     margin-bottom: 5px;
   }
 
-  .research-card-stack { font-size: 13px; color: var(--text-dim); margin-bottom: 10px; }
+  .research-card-stack { font-size: 0.8125rem; color: var(--text-dim); margin-bottom: 10px; }
 
   .research-card-desc {
-    font-size: 15px;
+    font-size: 0.9375rem;
     color: var(--muted);
     line-height: 1.7;
     margin-bottom: 14px;
@@ -192,14 +239,14 @@
   .metrics { display: flex; flex-wrap: wrap; gap: 6px; }
 
   .metric {
-    font-size: 13px;
+    font-size: 0.78125rem;
     font-weight: 500;
-    color: var(--orange);
-    background: var(--orange-dim);
-    border: 0.5px solid var(--orange-bdr);
+    color: var(--accent);
+    background: var(--accent-dim);
+    border: 0.5px solid var(--accent-bdr);
     border-radius: 3px;
     padding: 3px 8px;
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'IBM Plex Mono', monospace;
   }
 
   .exp-item { padding: 22px 0; border-bottom: 0.5px solid var(--faint); }
@@ -216,26 +263,26 @@
   }
 
   .exp-company {
-    font-family: 'Lora', serif;
-    font-size: 17px;
+    font-family: 'Newsreader', serif;
+    font-size: 1.0625rem;
     font-weight: 600;
     color: var(--text);
   }
 
-  .exp-dates { font-size: 13px; color: var(--text-dim); white-space: nowrap; }
+  .exp-dates { font-size: 0.8125rem; color: var(--text-dim); white-space: nowrap; }
 
   .exp-role {
-    font-size: 14px;
+    font-size: 0.875rem;
     font-style: italic;
     color: var(--text-dim);
     margin-bottom: 12px;
-    font-family: 'Lora', serif;
+    font-family: 'Newsreader', serif;
   }
 
   .exp-bullets { list-style: none; display: flex; flex-direction: column; gap: 6px; }
 
   .exp-bullets li {
-    font-size: 15px;
+    font-size: 0.9375rem;
     color: var(--muted);
     padding-left: 16px;
     position: relative;
@@ -246,9 +293,9 @@
     content: '·';
     position: absolute;
     left: 0;
-    color: var(--orange);
+    color: var(--accent);
     font-weight: 700;
-    font-size: 16px;
+    font-size: 1rem;
     line-height: 1.4;
   }
 
@@ -261,26 +308,26 @@
     margin-bottom: 4px;
   }
 
-  .edu-degree { font-family: 'Lora', serif; font-size: 17px; font-weight: 600; color: var(--text); }
-  .edu-school { font-size: 15px; color: var(--muted); font-style: italic; font-family: 'Lora', serif; margin-top: 2px; }
-  .edu-note { font-size: 13px; color: var(--text-dim); margin-top: 4px; }
+  .edu-degree { font-family: 'Newsreader', serif; font-size: 1.0625rem; font-weight: 600; color: var(--text); }
+  .edu-school { font-size: 0.9375rem; color: var(--muted); font-style: italic; font-family: 'Newsreader', serif; margin-top: 2px; }
+  .edu-note { font-size: 0.8125rem; color: var(--text-dim); margin-top: 4px; }
 
   .contact-links { display: flex; gap: 20px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
 
   .contact-link {
-    font-size: 16px;
-    color: var(--orange);
+    font-size: 1rem;
+    color: var(--accent);
     text-decoration: none;
     font-weight: 500;
-    border-bottom: 1px solid var(--orange-bdr);
+    border-bottom: 1px solid var(--accent-bdr);
     padding-bottom: 2px;
     transition: border-color 0.15s;
   }
 
-  .contact-link:hover { border-color: var(--orange); }
+  .contact-link:hover { border-color: var(--accent); }
 
   footer { padding: 28px 0; text-align: center; border-top: 0.5px solid var(--faint); }
-  footer p { font-size: 13px; color: var(--text-dim); }
+  footer p { font-size: 0.8125rem; color: var(--text-dim); }
 
   @keyframes fadeUp {
     from { opacity: 0; transform: translateY(14px); }
@@ -305,11 +352,18 @@
 
 <nav>
   <a href="#top" class="logo">Adi Mendelowitz</a>
-  <ul>
-    <li><a href="#research">Research</a></li>
-    <li><a href="#experience">Experience</a></li>
-    <li><a href="#contact">Contact</a></li>
-  </ul>
+  <div class="nav-right">
+    <ul>
+      <li><a href="#research">Research</a></li>
+      <li><a href="#experience">Experience</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ul>
+    <button class="nav-btn font-toggle" id="font-toggle" type="button" aria-label="Adjust text size">Aa</button>
+    <button class="nav-btn" id="theme-toggle" type="button" aria-label="Switch between light and dark mode">
+      <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg class="icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+    </button>
+  </div>
 </nav>
 
 <div class="container">
@@ -317,10 +371,10 @@
   <section class="hero" id="top">
     <div class="hero-rule"></div>
     <h1>Adi Mendelowitz</h1>
-    <p class="hero-sub">Senior Data Scientist → ML Researcher</p>
+    <p class="hero-sub">Data Scientist · Applied Machine Learning</p>
     <div class="hero-bio">
-      <p>Senior data scientist with six years across medical AI and energy systems. At GE Healthcare I built NLP pipelines and MLOps infrastructure for clinical teams. At SolarEdge I led fleet data — monitoring, anomaly detection, and root cause attribution across millions of devices.</p>
-      <p>The work has always pulled toward the research end. These days that means building computer vision architectures from scratch — ResNet, ViT, Mask R-CNN, YOLOv8, SimCLR — and benchmarking them against published results. Most recently: lesion segmentation on ISIC 2018 medical imaging data, object detection on PCB defect datasets, and model compression down to 65x with measurable inference speedup.</p>
+      <p>Data scientist with six years of applied machine learning in production, across medical AI and energy systems. At GE Healthcare I directed the design of clinical speech and text pipelines with clustering-based workflow automation. At SolarEdge I led fleet data: time series forecasting, survival modelling, anomaly detection, and root cause attribution across millions of devices.</p>
+      <p>The work has always pulled toward the research end. These days that means building deep learning architectures from scratch (ResNet, ViT, Mask R-CNN, YOLOv8, SimCLR, and the transformer forecasters PatchTST, iTransformer, and TimeMixer) and benchmarking them against published results. Most recently: long-horizon forecasting on the ETTh1 benchmark, lesion segmentation on ISIC 2018 medical imaging data, and model compression down to 65x with measurable inference speedup.</p>
       <p>Mathematics undergraduate. The code is on GitHub.</p>
     </div>
     <div class="hero-actions">
@@ -332,8 +386,19 @@
 
   <section id="research">
     <div class="section-label">Independent Research</div>
-    <h2 class="section-title">Computer Vision & Deep Learning</h2>
+    <h2 class="section-title">Computer Vision, Time Series & Deep Learning</h2>
     <div class="research-grid">
+
+      <div class="research-card">
+        <div class="research-card-title">Time series forecasting with transformers</div>
+        <div class="research-card-stack">PyTorch · ETTh1 · Kaggle T4</div>
+        <div class="research-card-desc">PatchTST, iTransformer, and TimeMixer built from scratch and evaluated on ETTh1 at four horizons against a DLinear-style linear baseline, with a unit-test suite covering every model. Reconstruction-error anomaly detection reports per-type precision, recall, and F1.</div>
+        <div class="metrics">
+          <span class="metric">3 architectures from scratch</span>
+          <span class="metric">PatchTST MSE 0.398 at H=96</span>
+          <span class="metric">4 horizons</span>
+        </div>
+      </div>
 
       <div class="research-card">
         <div class="research-card-title">Architecture implementations</div>
@@ -349,18 +414,18 @@
       <div class="research-card">
         <div class="research-card-title">Medical image segmentation & classification</div>
         <div class="research-card-stack">Mask R-CNN · EfficientNet-B0 · ISIC 2018 · Kaggle T4</div>
-        <div class="research-card-desc">Mask R-CNN for skin lesion segmentation on ISIC 2018 Task 1. EfficientNet-B0 for 7-class disease classification on HAM10000. Winner benchmark included for reference.</div>
+        <div class="research-card-desc">Mask R-CNN for skin lesion segmentation on ISIC 2018 Task 1. EfficientNet-B0 for 7-class disease classification on HAM10000.</div>
         <div class="metrics">
           <span class="metric">Jaccard 0.782</span>
           <span class="metric">Balanced acc. 0.746</span>
-          <span class="metric">Winner benchmark 0.802</span>
+          <span class="metric">7-class HAM10000</span>
         </div>
       </div>
 
       <div class="research-card">
         <div class="research-card-title">Object detection</div>
         <div class="research-card-stack">YOLOv8 · PCB defect dataset · Kaggle T4</div>
-        <div class="research-card-desc">YOLOv8n fine-tuned on a PCB defect detection dataset using a pretrained backbone with domain-specific augmentation. All six defect classes above 0.984 AP@0.5.</div>
+        <div class="research-card-desc">YOLOv8n fine-tuned on a public PCB defect detection dataset using a pretrained backbone with domain-specific augmentation: mAP@0.5 of 0.990 across six defect classes.</div>
         <div class="metrics">
           <span class="metric">mAP@0.5 0.990</span>
           <span class="metric">6 defect classes</span>
@@ -391,12 +456,12 @@
       </div>
       <div class="exp-role">Senior Data Science Engineer · Fleet Data Team Lead · Data Scientist</div>
       <ul class="exp-bullets">
-        <li>Built telemetry analysis pipelines monitoring millions of inverters and battery units across heterogeneous device fleets at 24-hour latency; drove anomaly detection and root cause attribution at scale.</li>
-        <li>Led failure and survival analysis across large heterogeneous device fleets; improved preemptive failure detection by 25% and reduced maintenance costs by 20%.</li>
+        <li>Built telemetry pipelines monitoring millions of inverters and battery units at 24-hour latency; drove anomaly detection and root cause attribution at scale across noisy, correlated multivariate sensor signals.</li>
+        <li>Led failure and survival analysis across device fleets; improved preemptive failure detection by 25% and reduced maintenance costs by 20%.</li>
         <li>Automated warranty cost projection models, reducing processing time by 90% and direct costs by 15%.</li>
         <li>Built a Python/Streamlit SQL interface so non-analyst managers could query fleet data without analyst support.</li>
-        <li>Built multilingual translation pipelines across three to four languages for thousands of recorded customer-support conversations; validated output quality through iterative review with Tier 1/2 domain experts.</li>
-        <li>Mentored a team of 4 data scientists and engineers; established Agile practices and code quality standards.</li>
+        <li>Built multilingual translation pipelines for thousands of recorded customer-support conversations; validated output quality with domain experts.</li>
+        <li>Mentored a cross-functional team of 4-5; established Agile practices and code quality standards.</li>
       </ul>
     </div>
 
@@ -405,12 +470,23 @@
         <span class="exp-company">GE Healthcare – Life Care Solutions</span>
         <span class="exp-dates">Nov 2019 – Jan 2022</span>
       </div>
-      <div class="exp-role">NLP Data Operations Engineer · Medical AI · MLOps</div>
+      <div class="exp-role">Data Operations Engineer</div>
       <ul class="exp-bullets">
-        <li>Built NLP pipelines processing clinical speech and text from hospital teams across multiple sites; curated a 10,000+ utterance ground truth dataset to train and evaluate a conversational interface for medical professionals.</li>
-        <li>Built MLOps pipelines for continuous model retraining with a production/shadow deployment pattern; automated performance diagnostics and drift detection determined whether new models replaced the live version.</li>
-        <li>Automated annotation pipelines by routing utterances to cluster-specific tagging workflows based on intent domain; replaced a manual multi-step process with backend automation.</li>
-        <li>Supervised a team of 2–4 engineers and 10+ remote clinical domain experts across annotation, evaluation, and model development.</li>
+        <li>Directed the design of a multi-step pipeline for clinical speech and text data across hospital sites, and the automation of a proprietary tagging tool by intent domain, creating a more intuitive and cost-effective process.</li>
+        <li>Managed the continuous learning cycle of ML/DL models using performance diagnostics against a 10,000+ utterance ground truth set, as well as reviews by the tagging team.</li>
+        <li>Led a team of 2–4 developers and data science interns, plus 10+ remote clinical domain experts.</li>
+      </ul>
+    </div>
+
+    <div class="exp-item">
+      <div class="exp-header">
+        <span class="exp-company">Zeek Mobile – Marketplace for Gift Cards</span>
+        <span class="exp-dates">May 2018 – Jan 2019</span>
+      </div>
+      <div class="exp-role">Junior Data Scientist</div>
+      <ul class="exp-bullets">
+        <li>Implemented feature selection methods in Python and Node.js to address overfitting.</li>
+        <li>Ran SQL-based exploratory analysis and presented findings via Periscope.</li>
       </ul>
     </div>
 
@@ -450,6 +526,7 @@
 
   // Map each card title to its corresponding README path
   const readmeMappings = {
+    'Time series forecasting with transformers': 'time-series-forecasting/README.md',
     'Architecture implementations': 'computer-vision-foundations/README.md',
     'Medical image segmentation & classification': 'cv-detection-segmentation/instance_segmentation/ISIC2018_results.md',
     'Object detection': 'Advanced%20CV%20%26%20Efficient%20Models/README.md',
@@ -470,6 +547,32 @@
           window.open(`${repoBaseUrl}/${readmePath}`, '_blank');
         });
       }
+    });
+
+    var toggle = document.getElementById('theme-toggle');
+    toggle.addEventListener('click', function () {
+      var root = document.documentElement;
+      var toDark = root.getAttribute('data-theme') !== 'dark';
+      if (toDark) {
+        root.setAttribute('data-theme', 'dark');
+      } else {
+        root.removeAttribute('data-theme');
+      }
+      try { localStorage.setItem('theme', toDark ? 'dark' : 'light'); } catch (e) { /* storage unavailable */ }
+    });
+
+    var fontToggle = document.getElementById('font-toggle');
+    var fontSteps = ['default', 'lg', 'sm'];
+    fontToggle.addEventListener('click', function () {
+      var root = document.documentElement;
+      var current = root.getAttribute('data-fontsize') || 'default';
+      var next = fontSteps[(fontSteps.indexOf(current) + 1) % fontSteps.length];
+      if (next === 'default') {
+        root.removeAttribute('data-fontsize');
+      } else {
+        root.setAttribute('data-fontsize', next);
+      }
+      try { localStorage.setItem('fontsize', next); } catch (e) { /* storage unavailable */ }
     });
   });
 </script>
