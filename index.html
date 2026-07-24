@@ -413,33 +413,32 @@
 
       <div class="research-card">
         <div class="research-card-title">Architecture implementations</div>
-        <div class="research-card-stack">PyTorch · torchvision · timm · CIFAR-10</div>
-        <div class="research-card-desc">ResNet-18 and Vision Transformer (ViT-Tiny) built from scratch in PyTorch, including multi-head self-attention and transformer encoder blocks. SimCLR contrastive pretraining reproduced from the original paper.</div>
+        <div class="research-card-stack">PyTorch · torchvision · timm · CIFAR-10 · MNIST</div>
+        <div class="research-card-desc">ResNet-18 and Vision Transformer (ViT-Tiny) built from scratch in PyTorch, including multi-head self-attention and transformer encoder blocks, plus a convolutional network implemented from scratch in NumPy. SimCLR contrastive pretraining reproduced from the original paper, confirming its label-efficiency results; augmentation and temperature ablations quantified each component's contribution.</div>
         <div class="metrics">
           <span class="metric">ResNet-18 93.4%</span>
           <span class="metric">ViT-Tiny 86.7%</span>
           <span class="metric">SimCLR 68.2% linear eval</span>
+          <span class="metric">61.6% at 1% labels</span>
+          <span class="metric">CNN in NumPy 90.9% MNIST</span>
         </div>
       </div>
 
       <div class="research-card">
-        <div class="research-card-title">Medical image segmentation & classification</div>
-        <div class="research-card-stack">Mask R-CNN · EfficientNet-B0 · ISIC 2018 · Kaggle T4</div>
-        <div class="research-card-desc">Mask R-CNN for skin lesion segmentation on ISIC 2018 Task 1. EfficientNet-B0 for 7-class disease classification on HAM10000.</div>
+        <div class="research-card-title">Medical image segmentation</div>
+        <div class="research-card-stack">Mask R-CNN · ISIC 2018 · Kaggle T4</div>
+        <div class="research-card-desc">Mask R-CNN for skin lesion segmentation on ISIC 2018 Task 1.</div>
         <div class="metrics">
           <span class="metric">Jaccard 0.782</span>
-          <span class="metric">Balanced acc. 0.746</span>
-          <span class="metric">7-class HAM10000</span>
         </div>
       </div>
 
       <div class="research-card">
         <div class="research-card-title">Object detection</div>
         <div class="research-card-stack">YOLOv8 · PCB defect dataset · Kaggle T4</div>
-        <div class="research-card-desc">YOLOv8n fine-tuned on a public PCB defect detection dataset using a pretrained backbone with domain-specific augmentation: mAP@0.5 of 0.990 across six defect classes.</div>
+        <div class="research-card-desc">YOLOv8n fine-tuned on a public PCB defect detection dataset using a pretrained backbone with domain-specific augmentation.</div>
         <div class="metrics">
-          <span class="metric">mAP@0.5 0.990</span>
-          <span class="metric">6 defect classes</span>
+          <span class="metric">mAP@0.5 0.9896</span>
         </div>
       </div>
 
@@ -469,7 +468,10 @@
       <ul class="exp-bullets">
         <li>Built telemetry pipelines monitoring millions of inverters and battery units at 24-hour latency; drove anomaly detection and root cause attribution at scale across noisy, correlated multivariate sensor signals.</li>
         <li>Led failure and survival analysis across device fleets; improved preemptive failure detection by 25% and reduced maintenance costs by 20%.</li>
+        <li>Represented fleet data on a cross-departmental tiger team (20+ people) resolving the most severe inverter malfunctions; drove root cause analysis and A/B tests staged from thousands to hundreds of thousands of live devices, across 3 models with millions of units each.</li>
         <li>Automated warranty cost projection models, reducing processing time by 90% and direct costs by 15%.</li>
+        <li>Led log and telemetry analysis to identify critical software bugs, achieving 98% detection accuracy.</li>
+        <li>Built a real-time thermal estimation system for inverter devices, cutting overheating incidents by 30%; reduced product failure rates by 60% through systematic root cause analysis.</li>
         <li>Built a Python/Streamlit SQL interface so non-analyst managers could query fleet data without analyst support.</li>
         <li>Built multilingual translation pipelines for thousands of recorded customer-support conversations; validated output quality with domain experts.</li>
         <li>Mentored a cross-functional team of 4-5; established Agile practices and code quality standards.</li>
@@ -539,7 +541,7 @@
   const readmeMappings = {
     'Time series forecasting with transformers': 'time-series-forecasting/README.md',
     'Architecture implementations': 'computer-vision-foundations/README.md',
-    'Medical image segmentation & classification': 'cv-detection-segmentation/instance_segmentation/ISIC2018_results.md',
+    'Medical image segmentation': 'cv-detection-segmentation/instance_segmentation/ISIC2018_results.md',
     'Object detection': 'Advanced%20CV%20%26%20Efficient%20Models/README.md',
     'Model compression': 'Advanced%20CV%20%26%20Efficient%20Models/README.md'
   };
