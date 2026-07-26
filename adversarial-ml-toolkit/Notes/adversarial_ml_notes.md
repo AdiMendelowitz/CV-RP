@@ -79,6 +79,11 @@ a broken model loading path is caught on its own, and one checks attack effectiv
 The split ensures the effectiveness test cannot pass for the wrong reason on a
 near-random model.
 
+The checkpoint of record is best_resnet18_cifar10 (1).pth. An earlier resnet.py had
+regressed to the 7x7 ImageNet stem while this checkpoint was trained with the 3x3 CIFAR
+stem; correcting the stem restored a strict state-dict load and reconfirmed 93.43% over
+the full test set.
+
 ## Empirical evaluation
 
 The target model is a ResNet-18 with the CIFAR stem (3x3 stride-1 first convolution, no
