@@ -120,7 +120,7 @@ class ResNet(nn.Module):
 
         # Inital conv 7x7 to quickly reduce spatial dims
         # Input: (batch, 3, 224, 224) -> Output: (batch, 64, 112, 112)
-        self.conv1 = nn.Conv2d(in_channels, 64, kernel_size=7, stride=2, padding=3, bias=False)
+        self.conv1 = nn.Conv2d(in_channels, 64, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
 
@@ -200,7 +200,6 @@ class ResNet(nn.Module):
         x = self.conv1(x)  # -> (batch, 64, 112, 112)
         x = self.bn1(x)
         x = self.relu(x)
-        x = self.maxpool(x)  # -> (batch, 64, 56, 56)
 
         # Residual layers (batch, 64, 56, 56) -> ... -> (batch, 512, 7, 7)
         x = self.layer1(x)

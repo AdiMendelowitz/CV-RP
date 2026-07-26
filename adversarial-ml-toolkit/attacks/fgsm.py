@@ -16,11 +16,11 @@ from torch import nn
 
 LossFn = Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
 
-def fgsm(model: nn.Module, images: torch.Tensor, labels: torch.Tensor, epsilon: float,
+def fgsm(model: nn.Module, images: torch.Tensor, labels: torch.Tensor, eps: float,
          loss_fn: LossFn = F.cross_entropy, targeted: bool = False) -> torch.Tensor:
     """
     Craft FGSM advarserial examples.
-    Takes on gradient step of size "epsilon" along the sign of the input gradient.
+    Takes on gradient step of size "eps" along the sign of the input gradient.
     In untargeted mode "labels" are the true labels and the step increases the loss.
     In targeted mode "labels" are the desired target classes and the step decreases the loss towards them.
 
@@ -35,7 +35,7 @@ def fgsm(model: nn.Module, images: torch.Tensor, labels: torch.Tensor, epsilon: 
          model: Classifier mapping images to logits.
          images: Clean inputs in [0,1], shape (N, C, H, W).
          labels: True classes (untargeted) or target classes (targets), shape (N,).
-         epsilon: L-infinity perturbation budget, must be >= 0.
+         eps: L-infinity perturbation budget, must be >= 0.
          loss_fn: Loss taking (logits, labels) and reducing to a scalar, defaults to cross-entropy. The reduction
                   doesn't affect the result, since the sign of the gradient is invariant to positive scaling.
          targeted: If true step towards "labels".
@@ -44,11 +44,11 @@ def fgsm(model: nn.Module, images: torch.Tensor, labels: torch.Tensor, epsilon: 
          Adversarial images in [0, 1], same shape and dtype as "images", detached.
 
     Raises:
-        ValueError: if "epsilon" is negative.
+        ValueError: if "eps" is negative.
     """
 
-    if epsilon < 0:
-        raise ValueError(f"Epsilon must be >= 0, got {epsilon}")
+    if eps < 0:
+        raise ValueError(f"eps must be >= 0, got {eps}")
 
     clean = images.detach()
     with torch.enable_grad():
@@ -56,7 +56,7 @@ def fgsm(model: nn.Module, images: torch.Tensor, labels: torch.Tensor, epsilon: 
         loss = loss_fn(model(adv), labels)
         grad = torch.autograd.grad(loss, adv)[0]
 
-    step = -epsilon if targeted else epsilon
+    step = -eps if targeted else eps
     adv = clean + step * grad.sign()
 
-    return adv.clamp(0.0, 1.0).detach
+    return adv.clamp(0.0, 1.0).detach()

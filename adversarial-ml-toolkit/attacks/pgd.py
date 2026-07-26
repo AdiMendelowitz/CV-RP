@@ -42,11 +42,41 @@ def pgd(model: nn.Module, images: torch.Tensor, labels: torch.Tensor, epsilon: f
         epsilon: L-infinity perturbation budget, must be non-negative.
         alpha: Step size per iteration, must be >= 0.
         steps: Number of iterations, must be >= 1.
-        random_start: True: initialize uniformly within the epsilon-ball.
-        loss_fn: Loss taking (logits, labels) and reducing to scalar
-        targeted:
+        random_start: If true: initialize uniformly within the epsilon-ball.
+        loss_fn: Takes (logits, labels) and reduces to a scalar. Reduction doesn't affect the result since the
+                 gradient's sign is invariant to positive scaling. Defaults to cross-entropy.
+        targeted: If true: step towards "labels" instead of away from them.
 
     Returns:
+        Adversarial image in [0, 1], same shape and dtype as "images", detached.
 
+    Raises:
+        ValueError: If epsilon or alpha < 0 or steps < 1.
     """
-    return
+
+    if epsilon < 0:
+        raise ValueError(f"Epsilon must be >= 0, got {epsilon}")
+    if alpha < 0:
+        raise ValueError(f"Alpha must be >= 0, got {alpha}")
+    if steps < 1:
+        raise ValueError(f"steps must be >= 1, got {steps}")
+
+    clean = images.detach()
+    if random_start:
+        adv = (clean + torch.empty_like(clean).uniform_(-epsilon, epsilon)).clamp(0.0, 1.0)
+    else:
+        adv = clean.clone()
+
+    step = -alpha if targeted else alpha
+    with torch.enable_grad():
+        for _ in range(steps):
+            adv = adv.detach().requires_grad_(True)
+            loss = loss_fn(model(adv), labels)
+            grad = torch.autograd.grad(loss, adv)[0]
+
+            # Detach before update, otherwise the graph chains across iteration
+            adv = adv.detach() * step * grad.sign()
+            delta = (adv - clean).clamp(-epsilon, epsilon)
+            adv = (clean + delta).clamp(0.0, 1.0)
+
+    return adv.detach()
