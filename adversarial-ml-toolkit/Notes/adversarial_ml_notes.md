@@ -1,4 +1,4 @@
-# Adversarial Examples and the Fast Gradient Sign Method
+# Adversarial Examples: Attacks and Robustness Evaluation
 
 These notes cover the theory behind the first attack in this toolkit, the design of its
 implementation, and the results of evaluating it against a trained CIFAR-10 classifier.
@@ -80,7 +80,7 @@ a broken model loading path is caught on its own, and one checks attack effectiv
 The split ensures the effectiveness test cannot pass for the wrong reason on a
 near-random model.
 
-The checkpoint of record is best_resnet18_cifar10 (1).pth. An earlier resnet.py had
+The checkpoint of record is 'best_resnet18_cifar10 (1).pth'. An earlier resnet.py had
 regressed to the 7x7 ImageNet stem while this checkpoint was trained with the 3x3 CIFAR
 stem; correcting the stem restored a strict state-dict load and reconfirmed 93.43% over
 the full test set.
@@ -187,6 +187,8 @@ python -m experiments.robustness_eval
 ```
 
 This writes the robustness table to `experiments/results/robustness_table.csv`.
+
+
 ## References
 
 Szegedy, C., Zaremba, W., Sutskever, I., Bruna, J., Erhan, D., Goodfellow, I. and
