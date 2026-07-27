@@ -2,8 +2,9 @@
 
 These notes cover the theory behind the first attack in this toolkit, the design of its
 implementation, and the results of evaluating it against a trained CIFAR-10 classifier.
-Every number quoted here is reproduced from `experiments/results/clean_vs_adversarial.csv`,
-which the sweep script regenerates deterministically.
+Every number quoted here is reproduced from the CSV files under
+`experiments/results/`, which the sweep and evaluation scripts regenerate
+deterministically.
 
 ## Background
 
@@ -128,6 +129,45 @@ line passes through at least three decision regions within a distance impercepti
 human. This is a compact illustration of how close and irregular the decision boundaries
 of an undefended network are.
 
+## The saddle-point view and why restarts matter
+
+Madry et al. (2018) frame robust training as a saddle-point problem,
+
+$$\min_\theta \; \mathbb{E}_{(x,y)\sim\mathcal{D}} \Big[ \max_{\delta \in S} L(\theta, x+\delta, y) \Big],$$
+
+where $S$ is the allowed perturbation set, here the $L_\infty$ ball of radius
+$\varepsilon$. The inner maximisation is the adversary finding the worst perturbation
+of a fixed input; the outer minimisation trains parameters against that worst case.
+The two attacks evaluated here are inner maximisers of differing strength: FGSM takes
+one gradient step, PGD takes many with projection back into the ball after each. The
+PGD evaluation uses a step size of 2/255, following Madry et al.'s CIFAR-10 setup.
+
+The inner problem is not concave, so a single starting point can settle at a weak
+local maximum and understate the true worst-case loss. Starting PGD from a random
+point inside the ball, and repeating from several random starts while keeping the
+strongest result per sample, gives a tighter estimate of that inner maximum, meaning
+a stronger attack and a more honest robustness number. For the naturally trained model
+here a single start already drives accuracy to zero, so restarts change nothing. Their
+importance shows when evaluating a defended model: reporting robustness from one weak
+PGD run is how defences come to look stronger than they are, and multiple restarts
+guard against that illusion.
+
+Measured on the naturally trained ResNet-18, from
+`experiments/results/robustness_table.csv`, all attacks at $\varepsilon = 8/255$:
+
+| attack | steps | accuracy |
+|--------|-------|----------|
+| none   | -     | 0.9340   |
+| FGSM   | 1     | 0.1660   |
+| PGD    | 20    | 0.0000   |
+| PGD    | 50    | 0.0000   |
+
+PGD drives accuracy to zero where FGSM at the same budget leaves 16.6% standing. The
+one-step attack understates vulnerability by a wide margin, and the gap is the standard
+demonstration that robustness claims must be tested against a strong iterative
+adversary. A naturally trained network has effectively no robustness in this threat
+model, which is the motivation for adversarial training.
+
 ## Reproduction
 
 From the toolkit root:
@@ -141,6 +181,12 @@ repository locations; `CIFAR10_DATA_ROOT` and `CIFAR10_RESNET18_CKPT` override t
 Dataset downloading is intentionally disabled. Outputs are the CSV quoted above and the
 figure `experiments/results/fgsm_examples_by_eps.png`.
 
+
+```powershell
+python -m experiments.robustness_eval
+```
+
+This writes the robustness table to `experiments/results/robustness_table.csv`.
 ## References
 
 Szegedy, C., Zaremba, W., Sutskever, I., Bruna, J., Erhan, D., Goodfellow, I. and

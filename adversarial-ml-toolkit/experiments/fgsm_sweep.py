@@ -1,58 +1,39 @@
-"""
-FGSM epsilon sweep on CIFAR-10:
-Runs FGSM at eps in {2, 4, 8, 16}/255 on the first 1000 CIFAR-10 test images, logs clean accuracy, avdersarial
-accuracy and mean L-inf perturbation to experiments/results/clean_vs_avdversarial.csv, and saves a 10-example
-side by side figure at eps = 8/255.
+"""FGSM epsilon sweep on CIFAR-10.
+
+Runs FGSM at eps in {2, 4, 8, 16}/255 on the first 1,000 CIFAR-10 test images, logs clean accuracy, adversarial
+accuracy, and mean L-inf perturbation to experiments/results/clean_vs_adversarial.csv, and saves a grid figure of ten
+samples across all four budgets, predictions coloured by correctness.
 
 Deterministic by construction: fixed test subset, no shuffling, no random start.
 
 Run from the toolkit root:
     python -m experiments.fgsm_sweep
 
-Data and checkpoints paths default to their known repo locations. Override with CIFAR10_DATA_ROOT and
-CIFAR10_RESENT18_CKPT if needed. Downloading is disabled.
+Data and checkpoint paths default to their known repo locations. Override with CIFAR10_DATA_ROOT and
+CIFAR10_RESNET18_CKPT if needed. Downloading is disabled.
 """
 
 import csv
-import os
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 import torch
 from torch import Tensor
-from torch.utils.data import DataLoader, Subset
-from torchvision import transforms
-from torchvision.datasets import CIFAR10
+from torch.utils.data import DataLoader
 
 import sys
-
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
-from attacks.fgsm import fgsm  # noqa: E402
-from models.normalized_model import NormalizedModel  # noqa: E402
-from models.resnet import resnet18  # noqa: E402
+from attacks.fgsm import fgsm
+from experiments._common import DEFAULT_NUM_SAMPLES, build_loader, load_model
+from models.normalized_model import NormalizedModel
 
 TOOLKIT_ROOT = Path(__file__).resolve().parents[1]
-REPO_ROOT = Path(__file__).resolve().parents[2]
 
-CKPT_ENV = "CIFAR10_RESNET18_CKPT"
-DATA_ENV = "CIFAR10_DATA_ROOT"
-PYTORCH_CNN_DIR = REPO_ROOT / "computer-vision-foundations" / "code" / "pytorch_cnn"
-
-CKPT_ENV = "CIFAR10_RESNET18_CKPT"
-DATA_ENV = "CIFAR10_DATA_ROOT"
-DEFAULT_CKPT = PYTORCH_CNN_DIR / "best_resnet18_cifar10 (1).pth"
-DEFAULT_DATA_ROOT = PYTORCH_CNN_DIR / "data"
-
-CIFAR10_MEAN = (0.4914, 0.4822, 0.4465)
-CIFAR10_STD = (0.2470, 0.2435, 0.2616)
 CIFAR10_CLASSES = ("airplane", "automobile", "bird", "cat", "deer", "dog", "frog", "horse", "ship", "truck")
 
-EPS_LIST = (2/255, 4/255, 8/255, 16/255)
-SELECTION_EPS = 8/255
-NUM_SAMPLES = 1000
-BATCH_SIZE = 250
+EPS_LIST = (2 / 255, 4 / 255, 8 / 255, 16 / 255)
+SELECTION_EPS = 8 / 255
 NUM_FIGURE_EXAMPLES = 10
 
 RESULTS_DIR = TOOLKIT_ROOT / "experiments" / "results"
@@ -63,39 +44,6 @@ FIGURE_PATH = RESULTS_DIR / "fgsm_examples_by_eps.png"
 type Sample = tuple[Tensor, int]
 # (eps, adversarial images on CPU, predicted labels)
 type Panel = tuple[float, Tensor, list[int]]
-
-
-def _resolve_data_root() -> Path:
-    """Return the CIFAR-10 root, failing fast rather than downloading."""
-    root = Path(os.environ.get(DATA_ENV, str(DEFAULT_DATA_ROOT)))
-    if not (root / "cifar-10-batches-py").is_dir():
-        raise RuntimeError(f"No cifar-10-batches-py directory under {root}. "
-                           f"Set {DATA_ENV} to override. Downloading is disabled.")
-    return root
-
-def _resolve_checkpoint() -> Path:
-    """Return the checkpoint path, honouring the env override used by the tests."""
-    path = Path(os.environ.get(CKPT_ENV, str(DEFAULT_CKPT)))
-    if not path.is_file():
-        raise FileNotFoundError(f"Checkpoint not found at {path}. Set {CKPT_ENV} or restore the file.")
-    return path
-
-
-def _load_model(device: torch.device) -> NormalizedModel:
-    """Load the trained ResNet-18, wrap it for input normalisation, set eval mode."""
-    net = resnet18(num_classes=10)
-    state = torch.load(_resolve_checkpoint(), map_location=device, weights_only=True)
-    net.load_state_dict(state)
-    model = NormalizedModel(net, CIFAR10_MEAN, CIFAR10_STD).to(device)
-    model.eval()
-    return model
-
-
-def _build_loader() -> DataLoader:
-    """First NUM_SAMPLES test images in [0, 1] pixel space, in dataset order."""
-    dataset = CIFAR10(root=str(_resolve_data_root()), train=False, download=False, transform=transforms.ToTensor())
-    subset = Subset(dataset, range(NUM_SAMPLES))
-    return DataLoader(subset, batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
 
 
 @torch.no_grad()
@@ -200,11 +148,11 @@ def _write_csv(rows: list[list[str]], path: Path) -> None:
 def main() -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Device: {device}")
-    model = _load_model(device)
-    loader = _build_loader()
+    model = load_model(device)
+    loader = build_loader()
 
     clean_preds, clean_acc = _clean_pass(model, loader, device)
-    print(f"Clean accuracy on {NUM_SAMPLES} samples: {clean_acc:.4f}")
+    print(f"Clean accuracy on {DEFAULT_NUM_SAMPLES} samples: {clean_acc:.4f}")
 
     rows: list[list[str]] = []
     figure_samples: list[Sample] | None = None

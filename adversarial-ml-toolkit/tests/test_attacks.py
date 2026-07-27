@@ -23,6 +23,8 @@ from torch import nn
 from torch.utils.data import DataLoader
 
 from attacks.fgsm import fgsm
+from attacks.pgd import pgd
+from attacks.cw import cw
 
 CKPT_ENV = "CIFAR10_RESNET18_CKPT"
 DATA_ENV = "CIFAR10_DATA_ROOT"
@@ -37,6 +39,8 @@ DEFAULT_CKPT = (
     / "pytorch_cnn"
     / "best_resnet18_cifar10 (1).pth"
 )
+
+_PGD_EVAL_STEPS = 50
 
 
 class _TinyNet(nn.Module):
@@ -209,3 +213,167 @@ def test_fgsm_effectiveness_on_trained_resnet() -> None:
     with torch.no_grad():
         adv_acc = (model(adv).argmax(dim=1) == labels).float().mean().item()
     assert adv_acc < 0.50, f"adversarial accuracy {adv_acc:.3f}; check gradient flow"
+
+def _pgd_alpha(eps: float) -> float:
+    """Step size for tests: a quarter of the budget, with a floor for eps = 0."""
+    return max(eps / 4.0, 1e-3)
+
+
+@pytest.fixture(scope="module")
+def trained_resnet_batch():
+    """(model, images, labels) on the trained ResNet; skips if data is unavailable."""
+    if DATA_ENV not in os.environ:
+        pytest.skip(f"{DATA_ENV} not set; skipping trained-model test.")
+    model = _load_trained_resnet()
+    images, labels = _cifar_test_batch(n=256)
+    return model, images, labels
+
+
+@pytest.fixture(scope="module")
+def trained_resnet_batch_small():
+    """Smaller batch for the expensive C&W optimisation; same skip behaviour."""
+    if DATA_ENV not in os.environ:
+        pytest.skip(f"{DATA_ENV} not set; skipping trained-model test.")
+    model = _load_trained_resnet()
+    images, labels = _cifar_test_batch(n=64)
+    return model, images, labels
+
+
+# ----------------------------- PGD -----------------------------
+
+@pytest.mark.parametrize("eps", [0.0, 8 / 255, 16 / 255])
+@pytest.mark.parametrize("targeted", [False, True])
+def test_pgd_preserves_shape_and_dtype(tiny_model, sample_batch, eps, targeted):
+    images, labels = sample_batch
+    adv = pgd(tiny_model, images, labels, eps, _pgd_alpha(eps), steps=5, targeted=targeted)
+    assert adv.shape == images.shape
+    assert adv.dtype == images.dtype
+
+
+@pytest.mark.parametrize("eps", [0.0, 8 / 255, 16 / 255])
+def test_pgd_respects_linf_budget_and_pixel_range(tiny_model, sample_batch, eps):
+    images, labels = sample_batch
+    adv = pgd(tiny_model, images, labels, eps, _pgd_alpha(eps), steps=10)
+    assert (adv - images).abs().amax().item() <= eps + 1e-6
+    assert adv.min().item() >= 0.0
+    assert adv.max().item() <= 1.0
+
+
+def test_pgd_zero_eps_is_identity(tiny_model, sample_batch):
+    images, labels = sample_batch
+    adv = pgd(tiny_model, images, labels, 0.0, _pgd_alpha(0.0), steps=5, random_start=True)
+    assert torch.allclose(adv, images, atol=1e-6)
+
+
+def test_pgd_does_not_mutate_input(tiny_model, sample_batch):
+    images, labels = sample_batch
+    original = images.clone()
+    pgd(tiny_model, images, labels, 8 / 255, _pgd_alpha(8 / 255), steps=5)
+    assert torch.equal(images, original)
+
+
+def test_pgd_leaves_parameter_grads_none(tiny_model, sample_batch):
+    images, labels = sample_batch
+    pgd(tiny_model, images, labels, 8 / 255, _pgd_alpha(8 / 255), steps=5)
+    assert all(p.grad is None for p in tiny_model.parameters())
+
+
+def test_pgd_runs_inside_no_grad(tiny_model, sample_batch):
+    images, labels = sample_batch
+    with torch.no_grad():
+        adv = pgd(tiny_model, images, labels, 8 / 255, _pgd_alpha(8 / 255), steps=5)
+    assert not adv.requires_grad
+
+
+def test_pgd_random_start_is_seed_deterministic(tiny_model, sample_batch):
+    images, labels = sample_batch
+    eps, alpha = 8 / 255, _pgd_alpha(8 / 255)
+    torch.manual_seed(0)
+    first = pgd(tiny_model, images, labels, eps, alpha, steps=5)
+    torch.manual_seed(0)
+    second = pgd(tiny_model, images, labels, eps, alpha, steps=5)
+    assert torch.equal(first, second)
+
+
+def test_pgd_random_start_moves_off_clean(tiny_model, sample_batch):
+    images, labels = sample_batch
+    eps, alpha = 8 / 255, _pgd_alpha(8 / 255)
+    started = pgd(tiny_model, images, labels, eps, alpha, steps=1, random_start=True)
+    no_start = pgd(tiny_model, images, labels, eps, alpha, steps=1, random_start=False)
+    assert not torch.equal(started, no_start)
+
+
+@pytest.mark.slow
+def test_pgd_at_least_as_strong_as_fgsm(trained_resnet_batch):
+    # Empirical, not a theorem: on the undefended model at eps = 8/255 with 50 steps,
+    # PGD reliably matches or beats FGSM. The 256-sample batch keeps one flipped
+    # sample from crossing the inequality.
+    model, images, labels = trained_resnet_batch
+    eps = 8 / 255
+    torch.manual_seed(0)
+    pgd_adv = pgd(model, images, labels, eps, eps / 4.0, steps=_PGD_EVAL_STEPS)
+    fgsm_adv = fgsm(model, images, labels, eps)
+    with torch.no_grad():
+        pgd_acc = (model(pgd_adv).argmax(1) == labels).float().mean().item()
+        fgsm_acc = (model(fgsm_adv).argmax(1) == labels).float().mean().item()
+    assert pgd_acc <= fgsm_acc + 1e-6
+
+
+# ----------------------------- C&W -----------------------------
+
+def test_cw_preserves_shape_and_dtype(tiny_model, sample_batch):
+    images, labels = sample_batch
+    adv = cw(tiny_model, images, labels, steps=20)
+    assert adv.shape == images.shape
+    assert adv.dtype == images.dtype
+
+
+def test_cw_stays_in_pixel_range(tiny_model, sample_batch):
+    images, labels = sample_batch
+    adv = cw(tiny_model, images, labels, steps=20)
+    assert adv.min().item() >= 0.0
+    assert adv.max().item() <= 1.0
+
+
+def test_cw_does_not_mutate_input(tiny_model, sample_batch):
+    images, labels = sample_batch
+    original = images.clone()
+    cw(tiny_model, images, labels, steps=20)
+    assert torch.equal(images, original)
+
+
+def test_cw_restores_parameter_requires_grad(tiny_model, sample_batch):
+    images, labels = sample_batch
+    before = [p.requires_grad for p in tiny_model.parameters()]
+    cw(tiny_model, images, labels, steps=20)
+    after = [p.requires_grad for p in tiny_model.parameters()]
+    assert before == after
+
+
+def test_cw_leaves_parameter_grads_none(tiny_model, sample_batch):
+    images, labels = sample_batch
+    cw(tiny_model, images, labels, steps=20)
+    assert all(p.grad is None for p in tiny_model.parameters())
+
+
+def test_cw_runs_inside_no_grad(tiny_model, sample_batch):
+    images, labels = sample_batch
+    with torch.no_grad():
+        adv = cw(tiny_model, images, labels, steps=20)
+    assert not adv.requires_grad
+
+
+@pytest.mark.parametrize("bad_kwargs", [{"c": -1.0}, {"kappa": -1.0}, {"steps": 0}, {"lr": 0.0}])
+def test_cw_validates_arguments(tiny_model, sample_batch, bad_kwargs):
+    images, labels = sample_batch
+    with pytest.raises(ValueError):
+        cw(tiny_model, images, labels, **bad_kwargs)
+
+
+@pytest.mark.slow
+def test_cw_flips_a_meaningful_fraction(trained_resnet_batch_small):
+    model, images, labels = trained_resnet_batch_small
+    adv = cw(model, images, labels, c=1.0, steps=100)
+    with torch.no_grad():
+        acc = (model(adv).argmax(1) == labels).float().mean().item()
+    assert acc < 0.5
