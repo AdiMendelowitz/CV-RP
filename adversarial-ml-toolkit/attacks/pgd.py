@@ -39,7 +39,7 @@ def pgd(model: nn.Module, images: torch.Tensor, labels: torch.Tensor, eps: float
         images: Clean inputs in [0, 1], shape (N, C, H, W).
         labels: True classes (untargeted) or target classes (targeted), shape (N,).
         eps: L-infinity perturbation budget, must be non-negative.
-        alpha: Step size per iteration, must be non-negative.
+        alpha: Step size per iteration, must be > 0.
         steps: Number of iterations, must be >= 1.
         random_start: If true, initialise uniformly within the eps-ball.
         loss_fn: Takes (logits, labels) and reduces to a scalar. Reduction does not affect the result since the
@@ -50,12 +50,12 @@ def pgd(model: nn.Module, images: torch.Tensor, labels: torch.Tensor, eps: float
         Adversarial images in [0, 1], same shape and dtype as images, detached.
 
     Raises:
-        ValueError: If eps or alpha is negative, or steps < 1.
+        ValueError: If eps is negative, alpha is not positive, or steps < 1.
     """
     if eps < 0:
         raise ValueError(f"eps must be >= 0, got {eps}")
-    if alpha < 0:
-        raise ValueError(f"alpha must be >= 0, got {alpha}")
+    if alpha <= 0:
+        raise ValueError(f"alpha must be > 0, got {alpha}")
     if steps < 1:
         raise ValueError(f"steps must be >= 1, got {steps}")
 

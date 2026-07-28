@@ -68,7 +68,8 @@ def _fgsm_pass(model: NormalizedModel, loader: DataLoader, clean_preds: list[Ten
     Flip: a sample classified correctly clean but wrongly under attack. Reuses the stored clean predictions so flip
     selection cannot disagree with the reported clean accuracy; strict zip guards batch alignment.
     """
-    correct, total, linf_sum = 0, 0 , 0.0
+
+    correct, total, linf_sum = 0, 0, 0.0
     examples: list[Sample] = []
     for (images, labels), batch_clean_preds in zip(loader, clean_preds, strict=True):
         images, labels = images.to(device), labels.to(device)

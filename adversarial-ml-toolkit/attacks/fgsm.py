@@ -5,7 +5,7 @@ Goodfellow, Shlens, Szegedy. "Explaining and Harnessing Adversarial Examples."
 ICLR 2015. https://arxiv.org/abs/1412.6572
 
 Threat model: L-infinity perturbations on images scaled to [0,1]. Models trained on normalised inputs must carry the
-normalisation as an internal first later so that the attack operate in pixel space
+normalisation as an internal first layer so that the attack operates in pixel space.
 """
 
 from collections.abc import Callable
@@ -14,18 +14,20 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
+
 LossFn = Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
+
 
 def fgsm(model: nn.Module, images: torch.Tensor, labels: torch.Tensor, eps: float,
          loss_fn: LossFn = F.cross_entropy, targeted: bool = False) -> torch.Tensor:
     """
-    Craft FGSM advarserial examples.
-    Takes on gradient step of size "eps" along the sign of the input gradient.
+    Craft FGSM adversarial examples.
+    Takes one gradient step of size "eps" along the sign of the input gradient.
     In untargeted mode "labels" are the true labels and the step increases the loss.
     In targeted mode "labels" are the desired target classes and the step decreases the loss towards them.
 
     The model must be in eval mode: with BatchNorm in train mode the batch statistics couple samples together, which
-    weakens the attack and makes it depend on batch composition. The model itself is left unchanged, and no paramater
+    weakens the attack and makes it depend on batch composition. The model itself is left unchanged, and no parameter
     gradients are populated.
 
     Gradients are computed under an explicit torch.enable_grad context, so the call is safe inside a torch.no_grad
@@ -34,7 +36,7 @@ def fgsm(model: nn.Module, images: torch.Tensor, labels: torch.Tensor, eps: floa
     Args:
          model: Classifier mapping images to logits.
          images: Clean inputs in [0,1], shape (N, C, H, W).
-         labels: True classes (untargeted) or target classes (targets), shape (N,).
+         labels: True classes (untargeted) or target classes (targeted), shape (N,).
          eps: L-infinity perturbation budget, must be >= 0.
          loss_fn: Loss taking (logits, labels) and reducing to a scalar, defaults to cross-entropy. The reduction
                   doesn't affect the result, since the sign of the gradient is invariant to positive scaling.

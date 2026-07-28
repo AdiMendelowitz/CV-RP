@@ -58,8 +58,20 @@ def load_model(device: torch.device) -> NormalizedModel:
     return model
 
 
-def build_loader() -> DataLoader:
-    """First NUM_SAMPLES test images in [0, 1] pixel space, in dataset order."""
+def build_loader(num_samples: int = DEFAULT_NUM_SAMPLES, batch_size: int = DEFAULT_BATCH_SIZE) -> DataLoader:
+    """First num_samples test images in [0, 1] pixel space, in dataset order.
+
+    Defaults reproduce the canonical evaluation subset exactly.
+
+    Raises:
+        ValueError: If num_samples or batch_size is < 1, or num_samples exceeds the test set size.
+    """
+    if num_samples < 1:
+        raise ValueError(f"num_samples must be >= 1, got {num_samples}")
+    if batch_size < 1:
+        raise ValueError(f"batch_size must be >= 1, got {batch_size}")
     dataset = CIFAR10(root=str(resolve_data_root()), train=False, download=False, transform=transforms.ToTensor())
-    subset = Subset(dataset, range(DEFAULT_NUM_SAMPLES))
-    return DataLoader(subset, batch_size=DEFAULT_BATCH_SIZE, shuffle=False, num_workers=0)
+    if num_samples > len(dataset):
+        raise ValueError(f"num_samples must be <= {len(dataset)}, got {num_samples}")
+    subset = Subset(dataset, range(num_samples))
+    return DataLoader(subset, batch_size=batch_size, shuffle=False, num_workers=0)

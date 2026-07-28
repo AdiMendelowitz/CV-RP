@@ -157,22 +157,31 @@ guard against that illusion.
 
 Measured on the naturally trained ResNet-18, from
 `experiments/results/robustness_table.csv`. FGSM and PGD use eps = 8/255 (L-inf);
-C&W is an L2 attack with no L-inf budget. Norms are averaged over flipped samples.
+C&W is an L2 attack with no L-inf budget. Success is a sample classified correctly before
+the attack and incorrectly after it, reported over the 934 clean-correct samples; norms are
+averaged over those successes. Values are the CSV's, rounded to four decimals.
 
 | attack | steps | accuracy | success | mean L-inf | mean L2 |
 |--------|-------|----------|---------|------------|---------|
 | none   | -     | 0.9340   | -       | -          | -       |
-| FGSM   | 1     | 0.1660   | 0.8340  | 0.031373   | 1.7237  |
-| PGD    | 20    | 0.0000   | 1.0000  | 0.031373   | 1.3218  |
-| PGD    | 50    | 0.0000   | 1.0000  | 0.031373   | 1.3781  |
-| C&W    | 100   | 0.0000   | 1.0000  | 0.023141   | 0.2156  |
+| FGSM   | 1     | 0.1660   | 0.8223  | 0.031373   | 1.7236  |
+| PGD    | 20    | 0.0000   | 1.0000  | 0.031373   | 1.3225  |
+| PGD    | 50    | 0.0000   | 1.0000  | 0.031373   | 1.3786  |
+| C&W    | 100   | 0.0000   | 1.0000  | 0.024777   | 0.2309  |
 
-The three L-infinity attacks spend their full 8/255 budget, so their mean L-inf is
-the budget exactly, and their L2 is large because every pixel moves. C&W reaches the
-same complete success at roughly a sixth of PGD's L2 distortion, which is the reason
-the attack matters: measuring only accuracy hides that adversarial examples exist far
-closer to the clean image than an L-infinity attack reveals. C&W's mean L-inf sits
-below 8/255 here only incidentally, since it constrains L2 rather than L-infinity.
+The mean L-inf column is a mean over samples of each sample's maximum pixel change, so it
+equals the budget as soon as one pixel saturates. How much of the budget is actually spent
+is visible in the L2 column instead. A perturbation sitting at the full budget on every
+pixel of a 3x32x32 image has L2 equal to eps * sqrt(3072) = 1.7388. FGSM reaches 99.1% of
+that ceiling, saturating almost every coordinate in a single step, exactly as the closed
+form solution above predicts. PGD reaches 76.1% at 20 steps and 79.3% at 50, leaving a
+quarter of the available perturbation unused while driving accuracy to zero, so iterative
+descent is not simply spending more of the budget than FGSM does. C&W reaches the same
+complete success at 13.3% of the ceiling, 5.7 times below PGD-20's L2 and 6.0 times below
+PGD-50's, which is the reason the attack matters: measuring only accuracy hides that
+adversarial examples exist far closer to the clean image than an L-infinity attack reveals.
+C&W's mean L-inf sits below 8/255 here only incidentally, since it constrains L2 rather
+than L-infinity.
 
 ## Reproduction
 

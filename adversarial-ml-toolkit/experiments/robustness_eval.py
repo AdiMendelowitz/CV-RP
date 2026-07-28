@@ -7,15 +7,15 @@ defense, attack, eps, steps, accuracy, success_rate, mean_linf, mean_l2.
 
 Both perturbation norms are reported for every attack, measured from the returned adversarial images rather than
 assumed, so the L-infinity attacks and the L2 attack can be compared honestly rather than forced onto a shared budget.
-The norms are averaged over successful samples only (those the attack flips), so they measure the distortion a
-successful attack costs rather than being diluted by samples the attack left unchanged; success_rate reports what
-fraction that is. The eps column is blank for attacks with no L-infinity budget; steps holds the iteration count where
-it applies.
+The norms are averaged over successful samples only, where a success is a sample classified correctly before the attack
+and incorrectly after it, so they measure the distortion a successful attack costs rather than being diluted by samples
+the attack left unchanged. success_rate reports the fraction of attackable samples that were broken. The eps column is
+blank for attacks with no L-infinity budget; steps holds the iteration count where it applies.
 
 The PGD step size is fixed at 2/255 (Madry et al.'s CIFAR-10 value), so PGD-50 is a more thorough search of the same
-eps-ball then PGD-20 rather than a differently scaled attack. Evaluation is deterministic: a fixed test subset with no
-shuffling, and PGD seeds the global RNG per restart, so the table reproduces exactly under any row order or batch size.
-C&W is deterministic given the model and input.
+eps-ball then PGD-20 rather than a differently scaled attack. Evaluation is deterministic at a fixed batch size and
+ordering: a fixed test subset with no shuffling, and PGD reseeds the global RNG per restart. C&W is deterministic
+given the model and input.
 
 PGD uses a single random start by default. The number of restarts is set by PGD_RESTARTS: with more than one, the
 strongest (highest cross-entropy loss) result per sample is kept, which is the correct inner maximiser for evaluating
@@ -81,22 +81,33 @@ class Evaluation:
 class Result:
     """Measured outcome of one evaluation over the test subset."""
 
-    accuracy: float       # top-1 accuracy under the attack
-    success_rate: float   # fraction of samples flipped (0.0 for the clean pass)
-    mean_linf: float      # mean L-inf over flipped samples (0.0 if none flipped)
-    mean_l2: float        # mean L2 over flipped samples (0.0 if none flipped)
+    accuracy: float  # top-1 accuracy under the attack
+    success_rate: float  # fraction of clean-correct samples the attack broke (0.0 for the clean pass)
+    mean_linf: float  # mean L-inf over broken samples (0.0 if none)
+    mean_l2: float  # mean L2 over broken samples (0.0 if none)
+
+
+@torch.no_grad()
+def _clean_predictions(model: NormalizedModel, loader: DataLoader, device: torch.device) -> list[Tensor]:
+    """Per-batch clean predictions, computed once and shared by every evaluation.
+
+    Reusing one set of clean predictions keeps the clean row, the success rate, and the norm mask
+    consistent with each other, and matches the pattern in fgsm_sweep.py.
+    """
+    return [model(images.to(device)).argmax(dim=1) for images, _ in loader]
 
 
 def _pgd_multi_restart(model: NormalizedModel, images: Tensor, labels: Tensor, eps: float, alpha: float,
-                       steps: int, restarts: int, base_seed: int,) -> Tensor:
+                       steps: int, restarts: int, base_seed: int) -> Tensor:
     """PGD keeping, per sample, the highest cross-entropy loss over random restarts.
 
     A single restart returns the plain PGD result. With more, the strongest perturbation per sample is retained, which
     is the inner maximiser used when a weak single run would overstate a defended model's robustness.
 
-    Each restart reseeds the global RNG to base_seed + restart_index before drawing its random start, so a given
-    restart's initialisation is fixed independently of batch size or of how many batches precede it. The result is
-    Wtherefore identical under any batching of the same data.
+    Each restart reseeds the global RNG to base_seed + restart_index before drawing its random start, so a given restart
+    is reproducible across runs at a fixed batch size and ordering. The reseed happens once per call, and a call handles
+    one batch, so the random start is not invariant to a change of batch size; making it so would require a
+    dedicated generator advanced per sample.
     """
     def _one_restart(index: int) -> Tensor:
         torch.manual_seed(base_seed + index)
@@ -118,22 +129,27 @@ def _pgd_multi_restart(model: NormalizedModel, images: Tensor, labels: Tensor, e
     return best_adv
 
 
-def _evaluate(model: NormalizedModel, loader: DataLoader, device: torch.device, spec: Evaluation,) -> Result:
-    """Accuracy, success rate, and mean L-inf and L2 over flipped samples.
+def _evaluate(model: NormalizedModel, loader: DataLoader, device: torch.device, spec: Evaluation,
+              clean_preds: list[Tensor]) -> Result:
+    """Accuracy, success rate, and mean L-inf and L2 over successfully attacked samples.
 
-    Norms are measured from the returned adversarial images and averaged over flipped samples only, so they report the
-    distortion a successful attack costs rather than being diluted by samples the attack left unchanged (C&W returns the
-    clean image for samples it never flips). The scoring forward pass runs under no_grad; attacks manage their own
-    gradient context internally. The clean pass has no attack, so its success rate and norms are zero.
+    Success: a sample the model classified correctly before the attack and incorrectly after it. The attack takes no
+    credit for the model's pre-existing errors and success_rate is not a restatement of 1 - accuracy. The rate is
+    reported over the attackable samples, those correct on clean input. Norms are measured from the returned adversarial
+    images and averaged over successes only, so they report what a successful attack costs rather than being diluted by
+    samples the attack left unchanged (C&W returns the clean image both for samples it never flips and for samples that
+    were already misclassified, where its margin is satisfied at the first iteration).
+
+    The scoring forward pass runs under no_grad; attacks manage their own gradient context. The clean pass has no
+    attack, so its success rate and norms are zero.
     """
-    correct, total, flipped_total = 0, 0, 0
+    correct, total, attackable_total, flipped_total = 0, 0, 0, 0
     linf_sum, l2_sum = 0.0, 0.0
-    for images, labels in loader:
+    for (images, labels), batch_clean_preds in zip(loader, clean_preds, strict=True):
         images, labels = images.to(device), labels.to(device)
+        clean_correct = batch_clean_preds == labels
         if spec.attack_fn is None:
-            with torch.no_grad():
-                preds = model(images).argmax(dim=1)
-            correct += (preds == labels).sum().item()
+            correct += clean_correct.sum().item()
             total += labels.size(0)
             continue
 
@@ -142,8 +158,9 @@ def _evaluate(model: NormalizedModel, loader: DataLoader, device: torch.device, 
             preds = model(adv).argmax(dim=1)
         correct += (preds == labels).sum().item()
         total += labels.size(0)
+        attackable_total += clean_correct.sum().item()
 
-        flipped = preds != labels
+        flipped = clean_correct & (preds != labels)
         flipped_total += flipped.sum().item()
         if flipped.any():
             delta = (adv - images).flatten(1)[flipped]
@@ -151,7 +168,7 @@ def _evaluate(model: NormalizedModel, loader: DataLoader, device: torch.device, 
             l2_sum += delta.norm(dim=1).sum().item()
 
     accuracy = correct / total
-    success_rate = flipped_total / total if spec.attack_fn is not None else 0.0
+    success_rate = flipped_total / attackable_total if attackable_total else 0.0
     mean_linf = linf_sum / flipped_total if flipped_total else 0.0
     mean_l2 = l2_sum / flipped_total if flipped_total else 0.0
     return Result(accuracy, success_rate, mean_linf, mean_l2)
@@ -188,10 +205,11 @@ def main() -> None:
     print(f"Device: {device}")
     model = load_model(device)
     loader = build_loader()
+    clean_preds = _clean_predictions(model, loader, device)
 
     rows: list[list[str]] = []
     for spec in _evaluations(model):
-        res = _evaluate(model, loader, device, spec)
+        res = _evaluate(model, loader, device, spec, clean_preds)
         eps_field = "" if math.isnan(spec.eps) else f"{spec.eps:.6f}"
         rows.append(
             [

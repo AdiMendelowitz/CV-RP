@@ -20,8 +20,9 @@ def cw(model: nn.Module, images: torch.Tensor, labels: torch.Tensor, c: float = 
     Optimises a tanh-space perturbation to minimise ||adv - clean||_2^2 + c * f(adv) -- where f is the margin between
     the true-class logit and the best other logit, floored at -kappa. The tanh reparametrisation keeps every iterate in
     [0, 1] by construction, so no clipping is needed. For each sample the lowest-distortion perturbation that actually
-    flips the prediction is returned; samples that never flip are returned unchanged. The attack is deterministic given
-    the model and input, so no seeding is required.
+    flips the prediction is returned; samples that never flip are returned unchanged. Each iterate is scored before the
+    optimiser step that follows it, so the point produced by the final step isn't evaluated and the effective search
+    length is steps - 1 scored iterates.
 
     The model must be in eval mode: the repeated forward passes would otherwise overwrite BatchNorm running statistics
     with adversarial batches. Its parameters' requires_grad flags are saved and restored, and no parameter gradients are
@@ -62,7 +63,7 @@ def cw(model: nn.Module, images: torch.Tensor, labels: torch.Tensor, c: float = 
     optimizer = torch.optim.Adam([w], lr=lr)
 
     best_adv = clean.clone()
-    best_dist = torch.full((clean.shape[0],), float("inf"), device=clean.device)
+    best_dist = torch.full((clean.shape[0],), float("inf"), device=clean.device, dtype=clean.dtype)
 
     grad_flags = [p.requires_grad for p in model.parameters()]
     for p in model.parameters():
@@ -93,7 +94,7 @@ def cw(model: nn.Module, images: torch.Tensor, labels: torch.Tensor, c: float = 
                     sample_mask = improved.view(-1, *([1] * (clean.dim() - 1)))
                     best_adv = torch.where(sample_mask, adv.detach(), best_adv)
     finally:
-        for p, flag in zip(model.parameters(), grad_flags):
+        for p, flag in zip(model.parameters(), grad_flags, strict=True):
             p.requires_grad_(flag)
 
     return best_adv.detach()
