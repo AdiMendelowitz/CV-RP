@@ -1,7 +1,7 @@
 # Adversarial Examples: Attacks and Robustness Evaluation
 
-These notes cover the theory behind the first attack in this toolkit, the design of its
-implementation, and the results of evaluating it against a trained CIFAR-10 classifier.
+These notes cover the theory behind the toolkit's attacks, the design of their
+implementation, and the results of evaluating them against a trained CIFAR-10 classifier.
 Every number quoted here is reproduced from the CSV files under
 `experiments/results/`, which the sweep and evaluation scripts regenerate
 deterministically.
@@ -138,9 +138,12 @@ $$\min_\theta \; \mathbb{E}_{(x,y)\sim\mathcal{D}} \Big[ \max_{\delta \in S} L(\
 where $S$ is the allowed perturbation set, here the $L_\infty$ ball of radius
 $\varepsilon$. The inner maximisation is the adversary finding the worst perturbation
 of a fixed input; the outer minimisation trains parameters against that worst case.
-The two attacks evaluated here are inner maximisers of differing strength: FGSM takes
+FGSM and PGD are inner maximisers of this problem, of differing strength: FGSM takes
 one gradient step, PGD takes many with projection back into the ball after each. The
-PGD evaluation uses a step size of 2/255, following Madry et al.'s CIFAR-10 setup.
+PGD evaluation uses a step size of 2/255, following Madry et al.'s CIFAR-10 setup. The
+Carlini-Wagner attack in the table below sits outside this L-infinity framing; it
+solves a different, L2-constrained problem, and appears here for comparison rather than
+as an inner maximiser of the saddle point.
 
 The inner problem is not concave, so a single starting point can settle at a weak
 local maximum and understate the true worst-case loss. Starting PGD from a random
@@ -153,20 +156,23 @@ PGD run is how defences come to look stronger than they are, and multiple restar
 guard against that illusion.
 
 Measured on the naturally trained ResNet-18, from
-`experiments/results/robustness_table.csv`, all attacks at $\varepsilon = 8/255$:
+`experiments/results/robustness_table.csv`. FGSM and PGD use eps = 8/255 (L-inf);
+C&W is an L2 attack with no L-inf budget. Norms are averaged over flipped samples.
 
-| attack | steps | accuracy |
-|--------|-------|----------|
-| none   | -     | 0.9340   |
-| FGSM   | 1     | 0.1660   |
-| PGD    | 20    | 0.0000   |
-| PGD    | 50    | 0.0000   |
+| attack | steps | accuracy | success | mean L-inf | mean L2 |
+|--------|-------|----------|---------|------------|---------|
+| none   | -     | 0.9340   | -       | -          | -       |
+| FGSM   | 1     | 0.1660   | 0.8340  | 0.031373   | 1.7237  |
+| PGD    | 20    | 0.0000   | 1.0000  | 0.031373   | 1.3218  |
+| PGD    | 50    | 0.0000   | 1.0000  | 0.031373   | 1.3781  |
+| C&W    | 100   | 0.0000   | 1.0000  | 0.023141   | 0.2156  |
 
-PGD drives accuracy to zero where FGSM at the same budget leaves 16.6% standing. The
-one-step attack understates vulnerability by a wide margin, and the gap is the standard
-demonstration that robustness claims must be tested against a strong iterative
-adversary. A naturally trained network has effectively no robustness in this threat
-model, which is the motivation for adversarial training.
+The three L-infinity attacks spend their full 8/255 budget, so their mean L-inf is
+the budget exactly, and their L2 is large because every pixel moves. C&W reaches the
+same complete success at roughly a sixth of PGD's L2 distortion, which is the reason
+the attack matters: measuring only accuracy hides that adversarial examples exist far
+closer to the clean image than an L-infinity attack reveals. C&W's mean L-inf sits
+below 8/255 here only incidentally, since it constrains L2 rather than L-infinity.
 
 ## Reproduction
 
