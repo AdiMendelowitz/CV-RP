@@ -68,17 +68,27 @@ parameter gradients are never populated and the model's state is untouched. The 
 wrapped in `torch.enable_grad()` so the attack works inside a `torch.no_grad()`
 evaluation loop. The budget is expressed once, in `[0, 1]` pixel space; input
 normalisation lives in a `NormalizedModel` wrapper that registers the dataset mean and
-standard deviation as buffers and applies them in its forward pass. Normalisation is
-linear and differentiable, so pixel-space gradients flow through it unchanged, and the
-attack never needs to know the normalisation constants.
+standard deviation as buffers and computes $(x - \mu) / \sigma$ in its forward pass.
+Normalisation is differentiable, so gradients reach pixel space, rescaled per channel by
+$1/\sigma$. Since every $\sigma$ is positive, the rescaling cannot change the sign of any
+coordinate, and the sign is the only thing FGSM and PGD consume. C&W consumes the
+magnitude, so for that attack the per-channel scaling does affect the search, which is a
+further reason to keep normalisation inside the model rather than in the transform
+pipeline: the attack then operates on the same pixel-space geometry the budget is
+expressed in.
 
-The pytest suite enforces this contract directly: shape and dtype preservation, the
+The pytest suite enforces this contract for all three attacks. It collects 45 items after
+parametrisation over $\varepsilon$ and targeting: 17 for FGSM, 16 for PGD, 11 for C&W,
+and one shared wiring check. The fast tests cover shape and dtype preservation, the
 $L_\infty$ budget and pixel range, non-mutation of inputs, absence of parameter-gradient
-side effects, and correct operation under `no_grad`. Two integration tests run against
-the trained network, and they are deliberately split: one checks clean accuracy so that
-a broken model loading path is caught on its own, and one checks attack effectiveness.
-The split ensures the effectiveness test cannot pass for the wrong reason on a
-near-random model.
+side effects, correct operation under `no_grad`, restoration of `requires_grad` flags,
+and argument validation. Four tests are marked slow and run against the trained network.
+Two of those are deliberately split so that a broken model-loading path cannot be
+mistaken for a broken attack: one checks clean accuracy in isolation, the other checks
+FGSM effectiveness. The remaining two are empirical rather than contractual, asserting
+that PGD is at least as strong as FGSM and that C&W flips a meaningful fraction of a
+batch. Contract tests constrain shape, not strength, so an attack that is subtly weak
+passes all of them; at least one empirical assertion is needed to catch that.
 
 The checkpoint of record is 'best_resnet18_cifar10 (1).pth'. An earlier resnet.py had
 regressed to the 7x7 ImageNet stem while this checkpoint was trained with the 3x3 CIFAR
@@ -88,8 +98,8 @@ the full test set.
 ## Empirical evaluation
 
 The target model is a ResNet-18 with the CIFAR stem (3x3 stride-1 first convolution, no
-max-pool), which reaches 93.43% on the full CIFAR-10 test set. The sweep runs FGSM on
-the first 1,000 test images with no shuffling and no random start, so results are exactly
+max-pool in the forward pass), which reaches 93.43% on the full CIFAR-10 test set. The
+sweep runs FGSM on the first 1,000 test images with no shuffling, so results are exactly
 reproducible.
 
 | eps | clean accuracy | FGSM accuracy | mean L-inf |
@@ -105,29 +115,39 @@ Several observations follow from the table and the figure.
 
 Most of the damage arrives at the smallest budget. A perturbation of 2/255, genuinely
 imperceptible at native resolution and at enlargement, drops accuracy from 93.4% to
-35.9%. In the figure, nine of the ten displayed samples are already misclassified at
-this budget. The returns then diminish: quadrupling the budget from 4/255 to 16/255
-buys another twelve points of degradation, and even at 16/255 some 12% of samples
-resist a single gradient step, which is part of the motivation for iterative attacks
-such as PGD.
+35.9%. Of the 934 samples the model classified correctly before the attack, 575 have
+already flipped, a rate of 61.6%. The returns then diminish: quadrupling the budget from
+4/255 to 16/255 buys another twelve points of degradation, and even at 16/255 some 12% of
+samples resist a single gradient step, which is part of the motivation for iterative
+attacks such as PGD.
 
-The budget is fully spent. The mean over samples of the per-sample maximum perturbation
-matches $\varepsilon$ to all six reported decimal places at every budget. Since clipping
-can only reduce a pixel's step below $\varepsilon$, any clipped shortfall would pull
-this mean down; at the reported precision, essentially every sample contains at least
-one pixel that took the full step without hitting the pixel-range boundary.
+The figure is not evidence about those population rates. Its ten samples are the first
+ten in dataset order that are classified correctly clean and flip at 8/255, so they are
+selected for susceptibility to this attack. Nine of the ten are already misclassified at
+2/255, a rate of 90% against the population's 61.6%, and the gap is the selection rather
+than a property of the attack. What the figure does show is per-sample behaviour, which
+the table cannot.
+
+Every sample saturates at least one pixel. The mean over samples of the per-sample
+maximum perturbation matches $\varepsilon$ to all six reported decimal places at every
+budget. That quantity stays at $\varepsilon$ as long as one pixel in each sample takes
+the full step without hitting the pixel-range boundary, so it confirms saturation
+somewhere in every sample and says nothing about how much of the budget the perturbation
+spends overall. The L2 column of the comparison table below is what answers that.
 
 Robustness thresholds are per-sample properties. The first column's cat survives 2/255
-and falls at 4/255, so $\varepsilon$ behaves as a budget with sample-specific breaking
-points rather than a global switch.
+and is classified frog at 4/255, so $\varepsilon$ behaves as a budget with
+sample-specific breaking points rather than a global switch.
 
 A single ray crosses several class regions. Because the gradient is computed at the
 clean input, the four adversarial versions of each sample lie on one straight line
-wherever no pixel is clipped at the pixel-range boundary. The
-fifth column's frog is classified deer at 2/255 through 8/255 and cat at 16/255, so that
-line passes through at least three decision regions within a distance imperceptible to a
-human. This is a compact illustration of how close and irregular the decision boundaries
-of an undefended network are.
+wherever no pixel is clipped at the pixel-range boundary. The fifth column's frog is
+classified deer at 2/255 through 8/255 and cat at 16/255, so that line passes through at
+least three decision regions. The first two of those transitions happen at budgets that
+are invisible; the third does not, since at 16/255 the perturbation is plainly visible as
+a dither texture across every panel in the bottom row. That budget therefore sits outside
+the imperceptibility premise the threat model rests on, which is part of why 8/255 is the
+field's standard choice.
 
 ## The saddle-point view and why restarts matter
 
@@ -140,22 +160,58 @@ $\varepsilon$. The inner maximisation is the adversary finding the worst perturb
 of a fixed input; the outer minimisation trains parameters against that worst case.
 FGSM and PGD are inner maximisers of this problem, of differing strength: FGSM takes
 one gradient step, PGD takes many with projection back into the ball after each. The
-PGD evaluation uses a step size of 2/255, following Madry et al.'s CIFAR-10 setup. The
-Carlini-Wagner attack in the table below sits outside this L-infinity framing; it
-solves a different, L2-constrained problem, and appears here for comparison rather than
-as an inner maximiser of the saddle point.
+PGD evaluation uses a step size of 2/255, following Madry et al.'s CIFAR-10 setup, where
+training used 7 steps of size 2 at $\varepsilon = 8$ on the 0 to 255 scale and the
+strongest evaluation adversary used 20 steps at the same settings.
 
-The inner problem is not concave, so a single starting point can settle at a weak
-local maximum and understate the true worst-case loss. Starting PGD from a random
-point inside the ball, and repeating from several random starts while keeping the
-strongest result per sample, gives a tighter estimate of that inner maximum, meaning
-a stronger attack and a more honest robustness number. For the naturally trained model
-here a single start already drives accuracy to zero, so restarts change nothing. Their
-importance shows when evaluating a defended model: reporting robustness from one weak
-PGD run is how defences come to look stronger than they are, and multiple restarts
-guard against that illusion.
+The inner problem is not concave, so in principle a single starting point can settle at a
+weak local maximum and understate the worst-case loss. Madry et al. investigated this
+directly and found the opposite in practice: over $10^5$ random restarts the loss of the
+final iterate follows a well-concentrated distribution without extreme outliers, which is
+why they report no benefit from restarting PGD within a training batch. Restarts earn
+their cost when evaluating a defence rather than when training one. A defence that
+obscures gradients rather than removing adversarial examples produces a loss surface
+where a single start does get stuck, and reporting robustness from one weak PGD run is
+how such defences come to look stronger than they are (Athalye, Carlini and Wagner,
+2018). Keeping the strongest result over several random starts guards against that
+illusion. For the naturally trained model here a single start already drives accuracy to
+zero, so restarts change nothing.
 
-Measured on the naturally trained ResNet-18, from
+## Minimum distortion and the C&W attack
+
+The attacks above fix a budget and ask how much accuracy falls. Carlini and Wagner (2017)
+invert the question: fix the requirement that the prediction change, and ask for the
+smallest perturbation that achieves it. Their untargeted L2 attack minimises
+
+$$\lVert \delta \rVert_2^2 + c \cdot f(x + \delta), \qquad
+f(x') = \max\big(Z(x')_y - \max_{i \ne y} Z(x')_i, \; -\kappa\big),$$
+
+where $Z$ denotes logits, $y$ the true class, and $\kappa$ a confidence margin left at
+zero here. The margin term is negative exactly when the prediction has flipped, so the
+optimiser trades distortion against misclassification rather than requiring a hard
+constraint. Working on logits rather than on the softmax loss is deliberate: a saturated
+softmax gives almost no gradient once the model is confident, which is what defensive
+distillation exploited and what this objective defeats.
+
+The box constraint is handled by a change of variables rather than by clipping. The
+attack optimises an unconstrained $w$ and evaluates
+$x' = \tfrac{1}{2}(\tanh(w) + 1)$, so every iterate lies in $[0, 1]$ by construction and
+Adam's momentum is never corrupted by a projection step. Initialising
+$w = \mathrm{atanh}(2x - 1)$ makes the first iterate the clean input.
+
+The implementation here departs from the paper in one respect that matters for reading
+its results. Carlini and Wagner select $c$ per example with 20 steps of binary search;
+`attacks/cw.py` fixes it, and the evaluation below uses $c = 1$ with 100 Adam steps,
+keeping for each sample the lowest-distortion iterate that actually flipped. The paper
+reports that below roughly $c = 0.1$ the attack rarely succeeds while above roughly
+$c = 1$ it always succeeds at the cost of larger perturbations, so $c = 1$ sits at the
+useful end of that range and the distortions reported below are an upper bound on what a
+binary search would find. Each iterate is scored before the optimiser step that follows
+it, so a 100-step run performs 99 scored iterates.
+
+## Attack comparison
+
+Measured on the naturally trained ResNet-18, on CPU, from
 `experiments/results/robustness_table.csv`. FGSM and PGD use eps = 8/255 (L-inf);
 C&W is an L2 attack with no L-inf budget. Success is a sample classified correctly before
 the attack and incorrectly after it, reported over the 934 clean-correct samples; norms are
@@ -163,7 +219,7 @@ averaged over those successes. Values are the CSV's, rounded to four decimals.
 
 | attack | steps | accuracy | success | mean L-inf | mean L2 |
 |--------|-------|----------|---------|------------|---------|
-| none   | -     | 0.9340   | -       | -          | -       |
+| none   | 0     | 0.9340   | 0.0000  | 0.0000     | 0.0000  |
 | FGSM   | 1     | 0.1660   | 0.8223  | 0.031373   | 1.7236  |
 | PGD    | 20    | 0.0000   | 1.0000  | 0.031373   | 1.3225  |
 | PGD    | 50    | 0.0000   | 1.0000  | 0.031373   | 1.3786  |
@@ -196,13 +252,15 @@ repository locations; `CIFAR10_DATA_ROOT` and `CIFAR10_RESNET18_CKPT` override t
 Dataset downloading is intentionally disabled. Outputs are the CSV quoted above and the
 figure `experiments/results/fgsm_examples_by_eps.png`.
 
-
 ```powershell
 python -m experiments.robustness_eval
 ```
 
-This writes the robustness table to `experiments/results/robustness_table.csv`.
-
+This writes the attack comparison to `experiments/results/robustness_table.csv`. It takes
+a few minutes on CPU, dominated by the C&W optimisation. Both scripts select CUDA when it
+is available, and the tables above were produced on CPU. Accuracies are device
+independent, while the norm columns can differ in their last decimals between devices, so
+the device belongs beside any published table.
 
 ## References
 
@@ -212,8 +270,14 @@ Fergus, R. (2014). Intriguing properties of neural networks. ICLR 2014. arXiv:13
 Goodfellow, I., Shlens, J. and Szegedy, C. (2015). Explaining and harnessing adversarial
 examples. ICLR 2015. arXiv:1412.6572.
 
+Carlini, N. and Wagner, D. (2017). Towards evaluating the robustness of neural networks.
+IEEE Symposium on Security and Privacy 2017. arXiv:1608.04644.
+
 Madry, A., Makelov, A., Schmidt, L., Tsipras, D. and Vladu, A. (2018). Towards deep
 learning models resistant to adversarial attacks. ICLR 2018. arXiv:1706.06083.
+
+Athalye, A., Carlini, N. and Wagner, D. (2018). Obfuscated gradients give a false sense
+of security: circumventing defenses to adversarial examples. ICML 2018. arXiv:1802.00420.
 
 Krizhevsky, A. (2009). Learning multiple layers of features from tiny images. Technical
 report, University of Toronto.
