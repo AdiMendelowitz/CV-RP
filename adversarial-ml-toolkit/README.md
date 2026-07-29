@@ -1,7 +1,7 @@
 # Adversarial ML Toolkit
 
-PyTorch implementations of gradient-based adversarial attacks, with a tested evaluation
-pipeline for image classifiers on CIFAR-10.
+PyTorch implementations of gradient-based adversarial attacks and PGD adversarial training,
+with a tested evaluation pipeline for image classifiers on CIFAR-10.
 
 A ResNet-18 that scores 93.4% on clean CIFAR-10 drops to 35.9% under FGSM noise of
 2/255 per pixel, a perturbation invisible to the human eye, and to 12.0% at 16/255. The
@@ -31,7 +31,7 @@ averages each sample's largest pixel change, so it reaches the budget as soon as
 saturates and does not report how much of the budget was spent overall.
 
 The full analysis, including the FGSM derivation and the linearity hypothesis behind it,
-is in [`notes/adversarial_ml_notes.md`](notes/adversarial_ml_notes.md); raw numbers are in
+is in [`Notes/adversarial_ml_notes.md`](Notes/adversarial_ml_notes.md); raw numbers are in
 [`experiments/results/clean_vs_adversarial.csv`](experiments/results/clean_vs_adversarial.csv).
 
 ## Attack comparison
@@ -72,6 +72,105 @@ it does not saturate at either end the way accuracy at a fixed budget does. The
 implementation fixes the penalty at c = 1 rather than running the paper's per-example
 binary search, so 0.230860 is an upper bound on the distortion a full search would find.
 
+## PGD adversarial training
+
+The same ResNet-18 architecture trained against a 7-step PGD adversary at 8/255 with step
+size 2/255, following Madry et al. (2018). Thirty epochs on 45,000 images with 5,000 held
+out for checkpoint selection, SGD at lr 0.1 with decays at epochs 15 and 22, seed 0. Two
+hours on a T4 at 239 seconds per epoch, peaking at 1.41 GB of GPU memory. The selected
+checkpoint is epoch 26 by held-out robust accuracy; the test set was touched once, after
+selection.
+
+Reported on the full 10,000-image test set with 95% Wilson intervals.
+
+| model | clean accuracy | robust accuracy (PGD-20, 10 restarts) |
+|-------|----------------|---------------------------------------|
+| naturally trained | 0.9343 | 0.0000 |
+| PGD adversarially trained | 0.7803 [0.7721, 0.7883] | 0.4724 [0.4626, 0.4822] |
+
+The defence buys 47.2 points of robust accuracy for 15.4 points of clean accuracy. Rice,
+Wong and Kolter (2020) reach roughly 53% robust and 82% clean with a pre-activation
+ResNet-18 at 200 epochs, so this lands 6 and 4 points below at 15% of that budget.
+
+On the 1,000-image subset, for comparison with the natural model row for row:
+
+| attack | steps | accuracy | success | mean L-inf | mean L2 |
+|--------|-------|----------|---------|------------|---------|
+| none   | 0     | 0.7920   | 0.0000  | 0.000000   | 0.000000 |
+| FGSM   | 1     | 0.5250   | 0.3371  | 0.031373   | 1.729898 |
+| PGD    | 20    | 0.4660   | 0.4116  | 0.031373   | 1.685636 |
+| PGD    | 50    | 0.4620   | 0.4167  | 0.031373   | 1.692547 |
+| C&W L2 | 100   | 0.2540   | 0.6793  | 0.165916   | 0.717793 |
+
+### Restarts changed nothing measurable
+
+Ten random restarts, keeping the strongest per sample, moved PGD-20 from 0.4690 to 0.4660
+and PGD-50 by the same three images out of 792 attackable. Three samples broke only with
+restarts and none broke only without.
+
+This is worth stating because a single random start is the standard way a defence comes to
+look stronger than it is, and it does not happen here. A weak start gets stuck when a
+defence obscures gradients; adversarial training removes adversarial examples rather than
+hiding them, so there is nothing for restarts to expose. The transfer result below says the
+same thing from the other direction.
+
+### The evaluation passes all four obfuscated-gradient checks
+
+Athalye, Carlini and Wagner (2018) identify characteristic behaviours of defences that
+merely make gradients uninformative. Four are checkable here and all four hold.
+
+An unbounded attack, PGD-50 with the entire pixel box available, drives accuracy to
+0.0000. Accuracy is monotone non-increasing in the budget. Iterative beats single-step and
+more steps do not hurt: PGD-20 at 0.4660 against FGSM at 0.5250, and PGD-50 at 0.4620.
+Black-box transfer does not beat white-box: adversarial examples crafted on the naturally
+trained model and evaluated on the defended one leave it at 0.7810, breaking 1.9% of
+attackable samples against the white-box attack's 41.2%.
+
+The evaluation additionally recomputes the reported PGD-20 row through an independent code
+path and reproduces it to within 1e-12, which is the project's only direct demonstration
+that the deterministic cuDNN configuration holds.
+
+### Robustness falls away past the training budget
+
+PGD-20 at ten restarts, across four budgets on the 1,000-image subset:
+
+| eps | defended | naturally trained |
+|-----|----------|-------------------|
+| 2/255 | 0.7310 | 0.0000 |
+| 4/255 | 0.6660 | 0.0000 |
+| 8/255 | 0.4660 | 0.0000 |
+| 16/255 | 0.1520 | 0.0000 |
+
+The model was trained at 8/255 and keeps 15.2% at double that, so the defence still helps
+well outside its training budget while the margin collapses. Robustness from adversarial
+training is specific to the epsilon it was trained against, and a figure quoted without its
+budget says very little.
+
+### C&W needs three times the distortion
+
+Against the defended model, C&W's mean L2 over 538 broken samples rises to 0.717793 from
+the natural model's 0.230860, a factor of 3.11. The median is 0.664148 with an
+interquartile range of [0.365128, 1.022333] and a maximum of 2.306616, so the mean is
+pulled up by a tail of hard samples and the median is the better single figure. Its mean
+L-inf is 0.165916, 5.3 times the 8/255 budget, which is why its accuracy of 0.2540 must
+never be read alongside the PGD rows.
+
+Minimum distortion is arguably the better robustness measure precisely here: accuracy at a
+fixed budget saturates at both ends, while the distortion an attacker must spend does not.
+
+### PGD works harder against the defence
+
+Against the L2 ceiling of 1.7388, PGD-20 spends 96.9% of the available perturbation on the
+defended model where it spent 76.1% on the natural one. The natural model could be broken
+from partway into the ball; the defended one forces the attack out to the corners.
+
+### The adversarial predictions do not collapse
+
+Over the 326 subset samples broken by PGD-20 at ten restarts, the predicted classes spread
+across all ten labels, the largest being frog at 15.3% against a uniform 10% and the
+smallest airplane at 7.4%. The concentration visible in ten FGSM images at 16/255 does not
+hold at population scale.
+
 ## Design
 
 Attacks are pure functions over a model. They compute input gradients with
@@ -81,6 +180,12 @@ correctly inside `torch.no_grad()` evaluation loops. Perturbation budgets are ex
 once, in `[0, 1]` pixel space; dataset normalisation lives in a `NormalizedModel`
 wrapper, so attack code never handles normalisation constants and the budget is measured
 in the space the images live in. The test suite enforces this contract for every attack.
+
+Adversarial examples are generated in eval mode during training, so the attack's forward
+passes leave BatchNorm's running statistics untouched and the training-time threat model
+matches the evaluation harness. The consequence, expected rather than faulty, is that those
+statistics are estimated from the adversarial distribution alone, which is part of why
+clean accuracy lands well below the natural model's.
 
 Evaluation is deterministic. PGD's random start is seeded per call, so a rerun on the
 same device reproduces the CSV byte for byte, and multi-restart PGD seeds each restart
@@ -94,8 +199,8 @@ attacks/          FGSM, PGD, Carlini-Wagner
 defenses/         PGD adversarial training
 models/           ResNet-18 (CIFAR stem) and the normalisation wrapper
 tests/            pytest suite, including integration tests against the trained model
-experiments/      evaluation scripts and their results (CSV, figures)
-notes/            derivations and analysis
+experiments/      evaluation scripts, the training notebook, and results (CSV, figures)
+Notes/            derivations and analysis
 ```
 
 ## Reproducing the results
@@ -109,10 +214,14 @@ python -m experiments.robustness_eval   # the attack comparison table
 
 Paths default to their repository locations and can be overridden with
 `CIFAR10_DATA_ROOT` and `CIFAR10_RESNET18_CKPT`. Dataset downloading is intentionally
-disabled. Both scripts select CUDA when it is available; the tables above were produced
-on CPU, where `robustness_eval` takes a few minutes, dominated by C&W. Accuracies are
-device independent, while the norm columns can differ in their last decimals between
-devices.
+disabled. Both scripts select CUDA when it is available; the natural-model tables were
+produced on CPU, where `robustness_eval` takes a few minutes, dominated by C&W. Accuracies
+are device independent, while the norm columns can differ in their last decimals between
+devices, and the defended tables come from a T4.
+
+Adversarial training runs from `experiments/adversarial_training.ipynb` on a GPU. Two hours
+on a T4 for 30 epochs, plus roughly forty minutes for the full evaluation. Every expensive
+measurement is cached to disk, so an interrupted session resumes rather than restarts.
 
 Tests:
 
@@ -129,34 +238,26 @@ and that C&W flips a meaningful fraction of a batch. Contract tests constrain sh
 than strength, so an attack that is subtly weak passes all of them and only an empirical
 assertion catches it. The full run takes about 349 seconds on CPU, again dominated by C&W.
 
-## Status
-
-All three attacks are complete, with their behavioural contracts and empirical strength
-enforced by the test suite. PGD adversarial training is implemented in
-`defenses/adversarial_training.py` and its evaluation is in progress; no robustness
-figure for the defended model appears here until that evaluation is complete.
-
 ## Limitations
 
 Worth stating plainly, since a robustness number without them is not one to trust.
 
-Every figure above comes from a single evaluation on 1,000 images. At the accuracies in
-the table the binomial standard error is under a point, so the comparisons hold, but
-differences of a few points elsewhere would not be distinguishable at this sample size.
-The 1,000 images are the first 1,000 in dataset order rather than a random sample; on
-this model the bias is 0.03 points against the full test set, and it would be larger on
-a model whose accuracy sits nearer the middle of the range.
+Every figure comes from a single training run at one seed. Rice et al. report 0.41 points
+of seed variance on their CIFAR-10 robust error, so a difference of a couple of points
+between this and another run would mean nothing. A second seed is the single change that
+would turn this from a run into a measurement.
 
-The PGD rows use a single random start. That is immaterial here, since both are already
-at zero accuracy and restarts cannot lower them, and it would matter a great deal on a
-defended model, where a weak single start overstates robustness.
+Thirty epochs is too short for robust overfitting to appear. Held-out robust accuracy moved
+between 0.4639 and 0.4961 from the first decay to the end, a spread inside two standard
+errors on 1,024 images, so the phenomenon Rice et al. describe was not observed rather than
+absent. Sixty epochs would be needed to look for it.
 
-The C&W row fixes the penalty rather than searching over it, so it reports an upper bound
-on minimum distortion rather than the minimum itself.
+The natural model's C&W row fixes the penalty rather than searching over it, so it reports
+an upper bound on minimum distortion rather than the minimum itself.
 
 AutoAttack (Croce and Hein, ICML 2020) is the standard for any robustness claim, and a
-hand-rolled PGD number is not a substitute. Nothing in this repository has been
-evaluated against it.
+hand-rolled PGD number is not a substitute. Nothing here has been evaluated against it, and
+it would be the single most credible addition.
 
 ## References
 

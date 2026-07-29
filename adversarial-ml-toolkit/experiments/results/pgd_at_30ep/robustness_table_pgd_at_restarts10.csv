@@ -1,0 +1,6 @@
+model,defense,attack,eps,steps,accuracy,success_rate,mean_linf,mean_l2
+resnet18,pgd_at,none,,0,0.7920,0.0000,0.000000,0.000000
+resnet18,pgd_at,fgsm,0.031373,1,0.5250,0.3371,0.031373,1.729898
+resnet18,pgd_at,pgd,0.031373,20,0.4660,0.4116,0.031373,1.685636
+resnet18,pgd_at,pgd,0.031373,50,0.4620,0.4167,0.031373,1.692547
+resnet18,pgd_at,cw_l2,,100,0.2540,0.6793,0.165916,0.717793
