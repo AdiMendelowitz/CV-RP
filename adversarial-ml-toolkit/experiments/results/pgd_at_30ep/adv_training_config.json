@@ -1,0 +1,27 @@
+{
+  "epochs": 30,
+  "batch_size": 128,
+  "lr": 0.1,
+  "momentum": 0.9,
+  "weight_decay": 0.0005,
+  "lr_milestones": [
+    0.5,
+    0.75
+  ],
+  "lr_gamma": 0.1,
+  "eps": 0.03137254901960784,
+  "alpha": 0.00784313725490196,
+  "attack_steps": 7,
+  "val_attack_steps": 10,
+  "val_size": 5000,
+  "val_eval_samples": 1024,
+  "val_batch_size": 256,
+  "seed": 0,
+  "num_workers": 2,
+  "device": "cuda",
+  "out_dir": "/kaggle/working/results/pgd_at_30ep",
+  "ckpt_dir": "/kaggle/working/checkpoints/pgd_at_30ep",
+  "split_seed": 12345,
+  "resolved_device": "cuda",
+  "torch_version": "2.10.0+cu128"
+}
