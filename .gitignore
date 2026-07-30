@@ -35,6 +35,7 @@ resources/datasets/*
 !resources/datasets/.gitkeep
 resources/models/*
 !resources/models/.gitkeep
+**/data/cifar-10-batches-py/
 
 # Papers PDFs
 papers/**/*.pdf
