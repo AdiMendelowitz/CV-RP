@@ -55,8 +55,9 @@ Three readings matter more than the accuracies themselves.
 **Success is not one minus accuracy.** A success here is a sample the model classified
 correctly before the attack and incorrectly after it, reported over the 934 samples that
 were correct to begin with. Samples the model already got wrong belong to neither count.
-The identity that catches a mistake in this definition is that accuracy and success over
-a common denominator must sum to clean accuracy: 0.1660 plus 0.7680 is 0.9340.
+The identity that catches a mistake in this definition is that accuracy and success over a
+common denominator must sum to clean accuracy. FGSM's 0.8223 over 934 is 768 images, which
+is 0.7680 of the thousand, and 0.1660 plus 0.7680 is 0.9340.
 
 **PGD wins on direction, not magnitude.** Every L-infinity attack in the table is capped
 at the same 8/255, and a perturbation at the full budget on every pixel of a 3x32x32
@@ -76,10 +77,12 @@ binary search, so 0.230860 is an upper bound on the distortion a full search wou
 
 The same ResNet-18 architecture trained against a 7-step PGD adversary at 8/255 with step
 size 2/255, following Madry et al. (2018). Thirty epochs on 45,000 images with 5,000 held
-out for checkpoint selection, SGD at lr 0.1 with decays at epochs 15 and 22, seed 0. Two
-hours on a T4 at 239 seconds per epoch, peaking at 1.41 GB of GPU memory. The selected
-checkpoint is epoch 26 by held-out robust accuracy; the test set was touched once, after
-selection.
+out for checkpoint selection, SGD at lr 0.1 with decays after epochs 15 and 22, training
+seed 0 and the train/validation split drawn at seed 12345. Two hours on a T4 at 239
+seconds per epoch, peaking at 1.41 GB of GPU memory. The selected checkpoint is epoch 26
+by held-out robust accuracy, measured with PGD-10 on a fixed 1,024-image subset of the
+validation split; every figure reported below uses PGD-20 at ten restarts, and the test
+set was touched once, after selection.
 
 Reported on the full 10,000-image test set with 95% Wilson intervals.
 
@@ -102,11 +105,23 @@ On the 1,000-image subset, for comparison with the natural model row for row:
 | PGD    | 50    | 0.4620   | 0.4167  | 0.031373   | 1.692547 |
 | C&W L2 | 100   | 0.2540   | 0.6793  | 0.165916   | 0.717793 |
 
+Every row on this page comes from
+[`experiments/results/pgd_at_30ep/robustness_analysis.csv`](experiments/results/pgd_at_30ep/robustness_analysis.csv),
+which also carries Wilson intervals for every row, the single-restart variants, the
+attackable and broken counts behind each success rate, and the distortion quartiles. The
+norm columns above are the file's `mean_linf_success` and `mean_l2_success`, averaged over
+successful attacks only, on the reasoning that a perturbation which failed to flip a label
+is not a distortion cost. The file also carries `mean_linf_all` and `mean_l2_all` over
+every sample, which are different numbers and should not be read as these. That file is
+regenerated from the per-sample caches by `python -m experiments.export_cached_analysis`,
+so no figure quoted here was transcribed by hand.
+
 ### Restarts changed nothing measurable
 
-Ten random restarts, keeping the strongest per sample, moved PGD-20 from 0.4690 to 0.4660
-and PGD-50 by the same three images out of 792 attackable. Three samples broke only with
-restarts and none broke only without.
+Ten random restarts, keeping the strongest per sample, moved PGD-20 from 0.4690 to 0.4660,
+which is 323 broken samples against 326 of the 792 that were attackable, and moved PGD-50
+by the same three images. Three samples broke only with restarts and none broke only
+without.
 
 This is worth stating because a single random start is the standard way a defence comes to
 look stronger than it is, and it does not happen here. A weak start gets stuck when a
@@ -120,19 +135,25 @@ Athalye, Carlini and Wagner (2018) identify characteristic behaviours of defence
 merely make gradients uninformative. Four are checkable here and all four hold.
 
 An unbounded attack, PGD-50 with the entire pixel box available, drives accuracy to
-0.0000. Accuracy is monotone non-increasing in the budget. Iterative beats single-step and
-more steps do not hurt: PGD-20 at 0.4660 against FGSM at 0.5250, and PGD-50 at 0.4620.
-Black-box transfer does not beat white-box: adversarial examples crafted on the naturally
-trained model and evaluated on the defended one leave it at 0.7810, breaking 1.9% of
-attackable samples against the white-box attack's 41.2%.
+0.0000; that is the `pgd-50 unbounded` row of the analysis file. Accuracy is monotone
+non-increasing in the budget, which the four `pgd-20 x10 sweep` rows show directly.
+Iterative beats single-step and more steps do not hurt: PGD-20 at 0.4660 against FGSM at
+0.5250, and PGD-50 at 0.4620. Black-box transfer does not beat white-box: adversarial
+examples crafted on the naturally trained model and evaluated on the defended one leave it
+at 0.7810, breaking 15 of the 792 attackable samples, or 1.9%, against the white-box
+attack's 41.2%. Accuracy falls by 11 rather than 15 because four samples that were already
+misclassified happen to land on the correct label under the transferred perturbation.
 
 The evaluation additionally recomputes the reported PGD-20 row through an independent code
 path and reproduces it to within 1e-12, which is the project's only direct demonstration
-that the deterministic cuDNN configuration holds.
+that the deterministic cuDNN configuration holds. The recomputation is the sweep row at the
+training budget, which is why that row appears alongside `pgd-20 x10` with the same
+accuracy under a different name.
 
 ### Robustness falls away past the training budget
 
-PGD-20 at ten restarts, across four budgets on the 1,000-image subset:
+PGD-20 at ten restarts, across four budgets on the 1,000-image subset, from the four
+`pgd-20 x10 sweep` rows of the analysis file:
 
 | eps | defended | naturally trained |
 |-----|----------|-------------------|
@@ -151,9 +172,11 @@ budget says very little.
 Against the defended model, C&W's mean L2 over 538 broken samples rises to 0.717793 from
 the natural model's 0.230860, a factor of 3.11. The median is 0.664148 with an
 interquartile range of [0.365128, 1.022333] and a maximum of 2.306616, so the mean is
-pulled up by a tail of hard samples and the median is the better single figure. Its mean
-L-inf is 0.165916, 5.3 times the 8/255 budget, which is why its accuracy of 0.2540 must
-never be read alongside the PGD rows.
+pulled up by a tail of hard samples and the median is the better single figure. Those four
+statistics are the `q1_l2_success`, `median_l2_success`, `q3_l2_success` and
+`max_l2_success` columns of the `cw_l2` row. Its mean L-inf is 0.165916, 5.3 times the
+8/255 budget, which is why its accuracy of 0.2540 must never be read alongside the PGD
+rows.
 
 Minimum distortion is arguably the better robustness measure precisely here: accuracy at a
 fixed budget saturates at both ends, while the distortion an attacker must spend does not.
@@ -167,9 +190,10 @@ from partway into the ball; the defended one forces the attack out to the corner
 ### The adversarial predictions do not collapse
 
 Over the 326 subset samples broken by PGD-20 at ten restarts, the predicted classes spread
-across all ten labels, the largest being frog at 15.3% against a uniform 10% and the
-smallest airplane at 7.4%. The concentration visible in ten FGSM images at 16/255 does not
-hold at population scale.
+across all ten labels, the largest being frog at 50 samples or 15.3% against a uniform 10%,
+and the smallest airplane at 24 or 7.4%. The concentration visible in ten FGSM images at
+16/255 does not hold at population scale. Full counts are in
+[`experiments/results/pgd_at_30ep/adversarial_class_distribution.csv`](experiments/results/pgd_at_30ep/adversarial_class_distribution.csv).
 
 ## Design
 
@@ -192,6 +216,12 @@ same device reproduces the CSV byte for byte, and multi-restart PGD seeds each r
 independently so that restart zero is identical to a single-restart run. Reproducibility
 is not invariant to batch size, since one call handles one batch.
 
+Reported figures are derived from per-sample predictions rather than typed in. Each
+evaluation writes the predictions, labels and per-sample norms to a cache, and
+`experiments/export_cached_analysis.py` reduces those caches to the results file, verifying
+as it goes that no cache is left unpublished and that every recomputed row agrees with what
+is already committed.
+
 ## Layout
 
 ```
@@ -208,20 +238,33 @@ Notes/            derivations and analysis
 From the toolkit root, with the trained checkpoint and a local CIFAR-10 copy in place:
 
 ```powershell
-python -m experiments.fgsm_sweep        # the epsilon sweep and its figure
-python -m experiments.robustness_eval   # the attack comparison table
+python -m experiments.fgsm_sweep              # the epsilon sweep and its figure
+python -m experiments.robustness_eval         # the attack comparison table
+python -m experiments.export_cached_analysis  # the defended results file, from the caches
 ```
 
 Paths default to their repository locations and can be overridden with
 `CIFAR10_DATA_ROOT` and `CIFAR10_RESNET18_CKPT`. Dataset downloading is intentionally
-disabled. Both scripts select CUDA when it is available; the natural-model tables were
-produced on CPU, where `robustness_eval` takes a few minutes, dominated by C&W. Accuracies
-are device independent, while the norm columns can differ in their last decimals between
-devices, and the defended tables come from a T4.
+disabled. Both attack scripts select CUDA when it is available; the natural-model tables
+were produced on CPU, where `robustness_eval` takes a few minutes, dominated by C&W.
+Accuracies are device independent, while the norm columns can differ in their last decimals
+between devices, and the defended tables come from a T4 under torch 2.10.0+cu128.
+
+`export_cached_analysis` needs no GPU and no checkpoint, since it reads only the cached
+per-sample outcomes. It writes nothing by default, instead reporting every difference
+against the committed file, and overwrites only under `--write`.
 
 Adversarial training runs from `experiments/adversarial_training.ipynb` on a GPU. Two hours
 on a T4 for 30 epochs, plus roughly forty minutes for the full evaluation. Every expensive
-measurement is cached to disk, so an interrupted session resumes rather than restarts.
+measurement is cached to disk under `experiments/results/pgd_at_30ep/cache/`, so an
+interrupted session resumes rather than restarts. The per-epoch training trace is in
+[`experiments/results/pgd_at_30ep/adv_training_history.csv`](experiments/results/pgd_at_30ep/adv_training_history.csv)
+and the run configuration in
+[`experiments/results/pgd_at_30ep/adv_training_config.json`](experiments/results/pgd_at_30ep/adv_training_config.json).
+
+The trained checkpoint is not committed. It is 44,773,451 bytes with MD5
+`677927be486d59d3728d2893868b3598`, and it stores a bare `state_dict` for the ResNet-18
+defined in `models/`, so it loads with `load_state_dict` and carries no optimiser state.
 
 Tests:
 
@@ -242,18 +285,33 @@ assertion catches it. The full run takes about 349 seconds on CPU, again dominat
 
 Worth stating plainly, since a robustness number without them is not one to trust.
 
-Every figure comes from a single training run at one seed. Rice et al. report 0.41 points
-of seed variance on their CIFAR-10 robust error, so a difference of a couple of points
-between this and another run would mean nothing. A second seed is the single change that
-would turn this from a run into a measurement.
+Every figure comes from a single training run at one seed, so nothing here separates a
+property of PGD adversarial training from a property of this particular run. The Wilson
+intervals quoted above cover sampling of the test set alone and say nothing about training
+variance. A second seed is the single change that would turn this from a run into a
+measurement.
 
-Thirty epochs is too short for robust overfitting to appear. Held-out robust accuracy moved
-between 0.4639 and 0.4961 from the first decay to the end, a spread inside two standard
-errors on 1,024 images, so the phenomenon Rice et al. describe was not observed rather than
-absent. Sixty epochs would be needed to look for it.
+Thirty epochs is too short for robust overfitting to appear. Held-out robust accuracy after
+the first decay runs from 0.4502 at epoch 16 to a maximum of 0.4961 at epoch 26, closing at
+0.4932, so the trace climbs to the selected epoch and then drifts flat. Rice, Wong and Kolter
+describe a sustained decline over the epochs following the first decay, and no such decline
+is present in this run. The 0.046 spread comfortably exceeds the 0.016 standard error of a
+single measurement on the fixed 1,024-image evaluation subset, so this describes the shape of
+the trace and makes no claim that the individual epochs are indistinguishable. Sixty epochs
+would be needed to test for the phenomenon properly.
+
+Held-out robust accuracy is measured under PGD-10 on 1,024 images while every headline
+figure uses PGD-20 at ten restarts on the full test set, so the selection signal is weaker
+than the reported metric. This makes the choice of epoch 26 cheaper to compute and slightly
+noisier than a selection run at full strength would be.
 
 The natural model's C&W row fixes the penalty rather than searching over it, so it reports
 an upper bound on minimum distortion rather than the minimum itself.
+
+The naturally trained model's own attacked rows live in
+[`experiments/results/robustness_table.csv`](experiments/results/robustness_table.csv) and
+are not regenerated from per-sample caches, so they carry neither confidence intervals nor
+an explicit averaging population.
 
 AutoAttack (Croce and Hein, ICML 2020) is the standard for any robustness claim, and a
 hand-rolled PGD number is not a substitute. Nothing here has been evaluated against it, and
