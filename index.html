@@ -346,6 +346,63 @@
     .exp-header { flex-direction: column; gap: 2px; }
     .contact-links { gap: 14px; }
   }
+
+  /* Blog menu */
+  .blog-menu { position: relative; }
+
+  .blog-menu-trigger {
+    display: inline-flex; align-items: center; gap: 6px;
+    appearance: none; font-family: 'Inter', sans-serif;
+  }
+  .blog-menu-trigger .chevron { font-size: 10px; transition: transform 0.15s; }
+  .blog-menu-trigger[aria-expanded="true"] .chevron { transform: rotate(180deg); }
+
+  .blog-menu-dropdown {
+    position: absolute; top: calc(100% + 8px); left: 0; min-width: 190px;
+    background: var(--bg-card); border: 0.5px solid var(--faint-2); border-radius: 8px;
+    padding: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); z-index: 50;
+  }
+  html[data-theme="dark"] .blog-menu-dropdown,
+  html[data-theme="dark"] .blog-submenu { box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+
+  .blog-menu-item { position: relative; }
+  .blog-menu-row {
+    width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    background: none; border: none; text-align: left; padding: 9px 12px; border-radius: 5px;
+    font-family: 'Inter', sans-serif; font-size: 0.875rem; color: var(--text); cursor: pointer;
+    appearance: none;
+  }
+  .blog-menu-row:hover, .blog-menu-row[aria-expanded="true"] { background: var(--accent-dim); color: var(--accent); }
+  .blog-menu-row .arrow { font-size: 10px; color: var(--text-dim); }
+  .blog-menu-row[aria-expanded="true"] .arrow { color: var(--accent); }
+
+  .blog-submenu {
+    position: absolute; top: 0; left: calc(100% + 8px); min-width: 230px;
+    background: var(--bg-card); border: 0.5px solid var(--faint-2); border-radius: 8px;
+    padding: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); z-index: 60;
+  }
+  .blog-submenu a, .blog-submenu-soon {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+    padding: 9px 12px; border-radius: 5px; font-size: 0.875rem; text-decoration: none; border-bottom: none;
+  }
+  .blog-submenu a { color: var(--text); }
+  .blog-submenu a:hover { background: var(--accent-dim); color: var(--accent); }
+  .blog-submenu-soon { color: var(--text-dim); cursor: default; }
+  .blog-submenu-soon .tag {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.625rem; color: var(--text-dim);
+    background: var(--faint-2); border-radius: 3px; padding: 2px 6px; white-space: nowrap;
+  }
+
+  [hidden] { display: none !important; }
+
+  @media (max-width: 600px) {
+    .blog-menu { flex: 1 1 100%; }
+    .blog-menu-dropdown { position: static; box-shadow: none; margin-top: 10px; width: 100%; }
+    .blog-submenu {
+      position: static; box-shadow: none; border: none; border-left: 2px solid var(--faint);
+      border-radius: 0; margin: 2px 0 2px 10px; padding: 2px 0 2px 10px;
+    }
+  }
 </style>
 </head>
 <body>
@@ -381,6 +438,36 @@
       <a href="https://drive.google.com/file/d/1m6VyJAisBA-x7I-onwcQRO-suNODKSkW/view?usp=sharing" class="btn-primary" target="_blank" rel="noopener">Download CV</a>
       <a href="https://github.com/AdiMendelowitz" class="btn-ghost" target="_blank" rel="noopener">GitHub</a>
       <a href="https://linkedin.com/in/adimendelowitz" class="btn-ghost" target="_blank" rel="noopener">LinkedIn</a>
+      <div class="blog-menu">
+        <button class="btn-ghost blog-menu-trigger" id="blog-menu-trigger" type="button" aria-haspopup="true" aria-expanded="false">
+          Blog <span class="chevron">&#9662;</span>
+        </button>
+        <div class="blog-menu-dropdown" id="blog-menu-dropdown" role="menu" hidden>
+          <div class="blog-menu-item">
+            <button class="blog-menu-row" type="button" aria-haspopup="true" aria-expanded="false" data-submenu="skills-submenu">
+              <span>Skills</span><span class="arrow">&#9656;</span>
+            </button>
+            <div class="blog-submenu" id="skills-submenu" role="menu" hidden>
+              <a href="https://blog.adimendelowitz.dev/skills/intro.html" role="menuitem" target="_blank" rel="noopener">Intro</a>
+              <a href="https://blog.adimendelowitz.dev/skills/critique.html" role="menuitem" target="_blank" rel="noopener">Critique</a>
+              <a href="https://blog.adimendelowitz.dev/skills/handoff.html" role="menuitem" target="_blank" rel="noopener">Handoff</a>
+              <span class="blog-submenu-soon" aria-disabled="true">Retrospective <span class="tag">soon</span></span>
+              <span class="blog-submenu-soon" aria-disabled="true">Token-Aware <span class="tag">soon</span></span>
+              <span class="blog-submenu-soon" aria-disabled="true">KB-Search <span class="tag">soon</span></span>
+            </div>
+          </div>
+          <!-- Lego Launch Dynamics: once its posts are live under adis-blog/lego/, uncomment this
+               block and add its links, matching the "Skills" item above.
+          <div class="blog-menu-item">
+            <button class="blog-menu-row" type="button" aria-haspopup="true" aria-expanded="false" data-submenu="lego-submenu">
+              <span>Lego Launch Dynamics</span><span class="arrow">&#9656;</span>
+            </button>
+            <div class="blog-submenu" id="lego-submenu" role="menu" hidden>
+            </div>
+          </div>
+          -->
+        </div>
+      </div>
     </div>
   </section>
 
@@ -576,7 +663,58 @@
       }
       try { localStorage.setItem('fontsize', next); } catch (e) { /* storage unavailable */ }
     });
+
+    // Blog nested dropdown menu
+    var blogMenu = document.querySelector('.blog-menu');
+    var trigger = document.getElementById('blog-menu-trigger');
+    var dropdown = document.getElementById('blog-menu-dropdown');
+
+    function closeSubmenus() {
+      dropdown.querySelectorAll('.blog-submenu').forEach(function (sm) {
+        sm.hidden = true;
+      });
+      dropdown.querySelectorAll('.blog-menu-row').forEach(function (row) {
+        row.setAttribute('aria-expanded', 'false');
+      });
+    }
+
+    function closeMenu() {
+      dropdown.hidden = true;
+      trigger.setAttribute('aria-expanded', 'false');
+      closeSubmenus();
+    }
+
+    function openMenu() {
+      dropdown.hidden = false;
+      trigger.setAttribute('aria-expanded', 'true');
+    }
+
+    trigger.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (dropdown.hidden) { openMenu(); } else { closeMenu(); }
+    });
+
+    dropdown.querySelectorAll('.blog-menu-row').forEach(function (row) {
+      row.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var submenu = document.getElementById(row.getAttribute('data-submenu'));
+        var isOpen = row.getAttribute('aria-expanded') === 'true';
+        closeSubmenus();
+        if (!isOpen) {
+          submenu.hidden = false;
+          row.setAttribute('aria-expanded', 'true');
+        }
+      });
+    });
+
+    document.addEventListener('click', function (e) {
+      if (blogMenu && !blogMenu.contains(e.target)) { closeMenu(); }
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { closeMenu(); }
+    });
   });
 </script>
 </body>
-</html>
+</html>
