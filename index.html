@@ -3,7 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Adi Mendelowitz · Data Scientist · Applied ML</title>
+<title>Adi Mendelowitz · Senior Data Scientist · ML Researcher</title>
+<meta name="description" content="Adi Mendelowitz, Senior Data Scientist and ML researcher. Sole-author paper accepted at Transactions on Machine Learning Research (2026); six years in production ML across energy and clinical AI.">
+<meta property="og:title" content="Adi Mendelowitz · Senior Data Scientist · ML Researcher">
+<meta property="og:description" content="Sole-author paper accepted at TMLR (2026). Six years in production ML across energy and clinical AI systems.">
+<meta property="og:type" content="website">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
 <script>
@@ -163,6 +167,12 @@
     font-family: 'Newsreader', serif;
     font-size: 1.0625rem;
     font-style: italic;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+
+  .hero-location {
+    font-size: 0.8125rem;
     color: var(--text-dim);
     margin-bottom: 28px;
   }
@@ -346,8 +356,9 @@
 
   .hero-rule    { animation: fadeUp 0.4s ease both; }
   .hero h1      { animation: fadeUp 0.4s 0.08s ease both; }
-  .hero-sub     { animation: fadeUp 0.4s 0.16s ease both; }
-  .hero-bio     { animation: fadeUp 0.4s 0.24s ease both; }
+  .hero-sub      { animation: fadeUp 0.4s 0.16s ease both; }
+  .hero-location { animation: fadeUp 0.4s 0.20s ease both; }
+  .hero-bio      { animation: fadeUp 0.4s 0.26s ease both; }
   .hero-actions { animation: fadeUp 0.4s 0.32s ease both; }
 
   @media (max-width: 600px) {
@@ -438,7 +449,8 @@
   <section class="hero" id="top">
     <div class="hero-rule"></div>
     <h1>Adi Mendelowitz</h1>
-    <p class="hero-sub">Data Scientist · Applied Machine Learning</p>
+    <p class="hero-sub">Senior Data Scientist · ML Researcher</p>
+    <p class="hero-location">Tel Aviv, Israel &middot; open to relocating to the EU or UK &middot; English C1 (IELTS 8.0)</p>
     <div class="hero-bio">
       <p>Data scientist with six years of applied machine learning in production, across medical AI and energy systems. At GE Healthcare I directed the design of clinical speech and text pipelines, including intent-domain tagging automation. At SolarEdge I led fleet data: time series forecasting, survival modelling, anomaly detection, and root cause attribution across millions of devices.</p>
       <p>The work has always pulled toward the research end. These days that means building deep learning architectures from scratch (ResNet, ViT, Mask R-CNN, YOLOv8, SimCLR, and the transformer forecasters PatchTST, iTransformer, and TimeMixer) and benchmarking them against published results. Most recently: long-horizon forecasting on the ETTh1 benchmark, lesion segmentation on ISIC 2018 medical imaging data, and knowledge distillation cutting parameters 65.6x with an 11x inference speedup. The forecasting work grew into a sole-author paper on channel dependence in PatchTST, accepted at Transactions on Machine Learning Research (2026).</p>
@@ -593,7 +605,6 @@
         <li>Built multilingual translation pipelines for thousands of recorded customer-support conversations; validated output quality with domain experts.</li>
         <li>Led failure and survival analysis across device fleets; improved preemptive failure detection by 25% and reduced maintenance costs by 20%.</li>
         <li>Represented fleet data on a thrice-weekly cross-departmental working group resolving the most severe inverter malfunctions across 3 models with millions of deployed units each; drove root cause analysis, severity assessment, and staged rollout testing from thousands to hundreds of thousands of live devices before fleet-wide rollout.</li>
-        <li>Automated warranty cost projection, cutting processing time 90% and costs 15%.</li>
         <li>Built the telemetry pipelines monitoring millions of inverters and battery units at 24-hour latency, feeding the anomaly detection and root cause attribution run over noisy, correlated multivariate sensor signals.</li>
         <li>Flagged critical software bugs from log and telemetry analysis, with 98% of flagged issues confirmed as real defects.</li>
         <li>Built a standardised benchmark database covering product performance and end-of-life metrics, streamlining cross-team analysis, reliability assessments, and maintenance planning.</li>
