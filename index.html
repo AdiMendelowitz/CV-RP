@@ -238,6 +238,16 @@
 
   .metrics { display: flex; flex-wrap: wrap; gap: 6px; }
 
+  .research-card.publication { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 300px); gap: 18px; align-items: start; }
+  .research-card.publication .pub-venue { font-size: 0.8125rem; font-weight: 600; color: var(--accent); margin-bottom: 3px; font-family: 'Inter', sans-serif; }
+  .research-card.publication figure { margin: 0; }
+  .research-card.publication img { width: 100%; height: auto; border-radius: 6px; border: 0.5px solid var(--faint-2); background: #fff; }
+  .research-card.publication figcaption { font-size: 0.72rem; color: var(--text-dim); margin-top: 5px; line-height: 1.4; }
+  .pub-links { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 10px 0; font-size: 0.8125rem; }
+  .pub-links a { color: var(--accent); text-decoration: none; border-bottom: 0.5px solid var(--accent-bdr); }
+  .pub-links a:hover { border-bottom-color: var(--accent); }
+  @media (max-width: 720px) { .research-card.publication { grid-template-columns: 1fr; } }
+
   .metric {
     font-size: 0.78125rem;
     font-weight: 500;
@@ -431,7 +441,7 @@
     <p class="hero-sub">Data Scientist · Applied Machine Learning</p>
     <div class="hero-bio">
       <p>Data scientist with six years of applied machine learning in production, across medical AI and energy systems. At GE Healthcare I directed the design of clinical speech and text pipelines with clustering-based workflow automation. At SolarEdge I led fleet data: time series forecasting, survival modelling, anomaly detection, and root cause attribution across millions of devices.</p>
-      <p>The work has always pulled toward the research end. These days that means building deep learning architectures from scratch (ResNet, ViT, Mask R-CNN, YOLOv8, SimCLR, and the transformer forecasters PatchTST, iTransformer, and TimeMixer) and benchmarking them against published results. Most recently: long-horizon forecasting on the ETTh1 benchmark, lesion segmentation on ISIC 2018 medical imaging data, and model compression down to 65x with measurable inference speedup.</p>
+      <p>The work has always pulled toward the research end. These days that means building deep learning architectures from scratch (ResNet, ViT, Mask R-CNN, YOLOv8, SimCLR, and the transformer forecasters PatchTST, iTransformer, and TimeMixer) and benchmarking them against published results. Most recently: long-horizon forecasting on the ETTh1 benchmark, lesion segmentation on ISIC 2018 medical imaging data, and model compression down to 65x with measurable inference speedup. The forecasting work grew into a sole-author paper on channel dependence in PatchTST, accepted at Transactions on Machine Learning Research (2026).</p>
       <p>Mathematics undergraduate. The code is on GitHub.</p>
     </div>
     <div class="hero-actions">
@@ -476,13 +486,38 @@
     <h2 class="section-title">Computer Vision, Time Series & Deep Learning</h2>
     <div class="research-grid">
 
+      <div class="research-card publication">
+        <div>
+          <div class="pub-venue">Publication · Transactions on Machine Learning Research, 2026 (accepted)</div>
+          <div class="research-card-title">Equal Accuracy, Unequal Cost: Channel Dependence in PatchTST under Controlled Coupling</div>
+          <div class="research-card-stack">Sole author · PyTorch · Kaggle T4 · time-series forecasting · Transformers · experimental design · reproducibility</div>
+          <div class="research-card-desc">Channel-independent and channel-dependent PatchTST are usually compared on observational benchmarks where correlation strength, dimensionality and temporal dynamics vary together. This paper isolates them one at a time with controlled synthetic generative processes (a factorial AR(1) grid, a leader-follower VAR(1) family with tunable lag-1 coupling, and a block-covariance family), with ETTh1 and ECL as real-data context. Across every tested cell the CD-CI accuracy difference stays inside a pre-specified 1% band, and a closed-form analysis of the generative model shows why: at the evaluation horizon no predictor, CI or CD, has any cross-channel signal left to exploit. Cost is the real difference. CD needs smaller batches and far more gradient steps, and at 321 variates a CD epoch costs 6.7 times a CI epoch. CI is the better default on accuracy per unit compute.</div>
+          <div class="pub-links">
+            <a href="https://openreview.net/forum?id=aiUZ2y8UNl" target="_blank" rel="noopener">OpenReview</a>
+            <a href="https://github.com/AdiMendelowitz/ci-cd-patchtst/blob/v1.0-tmlr/mendelowitz2026equalaccuracy.pdf" target="_blank" rel="noopener">Paper PDF</a>
+            <a href="https://github.com/AdiMendelowitz/ci-cd-patchtst/tree/v1.0-tmlr" target="_blank" rel="noopener">Code and data (MIT, tag v1.0-tmlr)</a>
+          </div>
+          <div class="metrics">
+            <span class="metric">CD-CI within 1% MSE, every cell</span>
+            <span class="metric">CD epoch 6.7x CI at 321 variates</span>
+            <span class="metric">639 training runs, 5 seeds per cell</span>
+            <span class="metric">Closed-form ceilings match to float64</span>
+            <span class="metric">3 reviewers, accepted as is</span>
+          </div>
+        </div>
+        <figure>
+          <img src="https://raw.githubusercontent.com/AdiMendelowitz/ci-cd-patchtst/v1.0-tmlr/paper/figures/compute_accuracy.png" alt="Forecast accuracy against gradient updates for channel-independent and channel-dependent PatchTST" loading="lazy">
+          <figcaption>Accuracy against gradient updates: CD reaches the same error as CI only after far more updates.</figcaption>
+        </figure>
+      </div>
+
       <div class="research-card">
         <div class="research-card-title">Time series forecasting with transformers</div>
         <div class="research-card-stack">PyTorch · ETTh1 · Kaggle T4</div>
         <div class="research-card-desc">PatchTST, iTransformer, and TimeMixer built from scratch and evaluated on ETTh1 across four horizons against a linear baseline, with a unit-test suite covering every model.</div>
         <div class="metrics">
           <span class="metric">3 architectures from scratch</span>
-          <span class="metric">PatchTST MSE 0.398 at H=96</span>
+          <span class="metric">PatchTST MSE 0.4599 at H=96 (5 seeds)</span>
           <span class="metric">4 horizons</span>
         </div>
       </div>
@@ -563,7 +598,7 @@
         <li>Directed delivery of a Python/Streamlit SQL interface, adopted across hardware, inverter, and finance teams so non-analyst managers could query fleet data without analyst support.</li>
         <li>Built a real-time thermal estimation system for inverter devices, cutting overheating incidents by 30%; reduced product failure rates by 60% through systematic root cause analysis.</li>
         <li>Delivered simulation-based competitor analysis informing $10M+ in strategic investment decisions.</li>
-        <li>Co-founded the SE Data Forum, fostering cross-company collaboration among 30+ data professionals.</li>
+        <li>Co-founded the SE Data Forum, building cross-company collaboration among 30+ data professionals.</li>
         <li>Mentored a cross-functional team of 4-5; established Agile practices and code quality standards.</li>
       </ul>
     </div>
