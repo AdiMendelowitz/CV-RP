@@ -491,17 +491,19 @@
           <div class="pub-venue">Publication · Transactions on Machine Learning Research, 2026 (accepted)</div>
           <div class="research-card-title">Equal Accuracy, Unequal Cost: Channel Dependence in PatchTST under Controlled Coupling</div>
           <div class="research-card-stack">Sole author · PyTorch · Kaggle T4 · time-series forecasting · Transformers · experimental design · reproducibility</div>
-          <div class="research-card-desc">Channel-independent and channel-dependent PatchTST are usually compared on observational benchmarks where correlation strength, dimensionality and temporal dynamics vary together. This paper isolates them one at a time with controlled synthetic generative processes (a factorial AR(1) grid, a leader-follower VAR(1) family with tunable lag-1 coupling, and a block-covariance family), with ETTh1 and ECL as real-data context. Across every tested cell the CD-CI accuracy difference stays inside a pre-specified 1% band, and a closed-form analysis of the generative model shows why: at the evaluation horizon no predictor, CI or CD, has any cross-channel signal left to exploit. Cost is the real difference. CD needs smaller batches and far more gradient steps, and at 321 variates a CD epoch costs 6.7 times a CI epoch. CI is the better default on accuracy per unit compute.</div>
+          <div class="research-card-desc">Channel-independent and channel-dependent PatchTST are usually compared on observational benchmarks where correlation strength, dimensionality and temporal dynamics vary together. This paper isolates them one at a time with controlled synthetic generative processes (a factorial AR(1) grid, a leader-follower VAR(1) family with tunable lag-1 coupling, and a block-covariance family), with ETTh1 and ECL as real-data context. Across every tested cell the CD-CI accuracy difference stays inside a pre-specified 1% band, and a closed-form analysis of the generative model shows why: at the evaluation horizon no predictor, CI or CD, has any cross-channel signal left to exploit. Cost is the real difference. CD needs smaller batches and far more gradient steps, and at 321 variates a CD epoch costs 6.7 times a CI epoch. CI is the better default on accuracy per unit compute. The repository ships a one-command reproduction: it checks every result file against a committed checksum, reruns the analysis, and regenerates every table and figure in under a minute on a CPU. Every version of the code, including the one the paper cites, is archived on Zenodo under a DOI.</div>
           <div class="pub-links">
             <a href="https://openreview.net/forum?id=aiUZ2y8UNl" target="_blank" rel="noopener">OpenReview</a>
             <a href="https://github.com/AdiMendelowitz/ci-cd-patchtst/blob/v1.0-tmlr/mendelowitz2026equalaccuracy.pdf" target="_blank" rel="noopener">Paper PDF</a>
-            <a href="https://github.com/AdiMendelowitz/ci-cd-patchtst/tree/v1.0-tmlr" target="_blank" rel="noopener">Code and data (MIT, tag v1.0-tmlr)</a>
+            <a href="https://github.com/AdiMendelowitz/ci-cd-patchtst" target="_blank" rel="noopener">Code and data (MIT)</a>
+            <a href="https://doi.org/10.5281/zenodo.22859870" target="_blank" rel="noopener">Zenodo DOI</a>
           </div>
           <div class="metrics">
             <span class="metric">CD-CI within 1% MSE, every cell</span>
             <span class="metric">CD epoch 6.7x CI at 321 variates</span>
             <span class="metric">639 training runs, 5 seeds per cell</span>
             <span class="metric">Closed-form ceilings match to float64</span>
+            <span class="metric">One-command, checksum-verified reproduction</span>
             <span class="metric">3 reviewers, accepted as is</span>
           </div>
         </div>
