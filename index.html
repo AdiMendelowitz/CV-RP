@@ -168,12 +168,6 @@
     font-size: 1.0625rem;
     font-style: italic;
     color: var(--text-dim);
-    margin-bottom: 6px;
-  }
-
-  .hero-location {
-    font-size: 0.8125rem;
-    color: var(--text-dim);
     margin-bottom: 28px;
   }
 
@@ -333,6 +327,7 @@
   .edu-note { font-size: 0.8125rem; color: var(--text-dim); margin-top: 4px; }
 
   .contact-links { display: flex; gap: 20px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+  .contact-note { font-size: 0.8125rem; color: var(--text-dim); margin-top: 10px; }
 
   .contact-link {
     font-size: 1rem;
@@ -356,9 +351,8 @@
 
   .hero-rule    { animation: fadeUp 0.4s ease both; }
   .hero h1      { animation: fadeUp 0.4s 0.08s ease both; }
-  .hero-sub      { animation: fadeUp 0.4s 0.16s ease both; }
-  .hero-location { animation: fadeUp 0.4s 0.20s ease both; }
-  .hero-bio      { animation: fadeUp 0.4s 0.26s ease both; }
+  .hero-sub     { animation: fadeUp 0.4s 0.16s ease both; }
+  .hero-bio     { animation: fadeUp 0.4s 0.24s ease both; }
   .hero-actions { animation: fadeUp 0.4s 0.32s ease both; }
 
   @media (max-width: 600px) {
@@ -450,7 +444,6 @@
     <div class="hero-rule"></div>
     <h1>Adi Mendelowitz</h1>
     <p class="hero-sub">Senior Data Scientist · ML Researcher</p>
-    <p class="hero-location">Tel Aviv, Israel &middot; open to relocating to the EU or UK &middot; English C1 (IELTS 8.0)</p>
     <div class="hero-bio">
       <p>Data scientist with six years of applied machine learning in production, across medical AI and energy systems. At GE Healthcare I directed the design of clinical speech and text pipelines, including intent-domain tagging automation. At SolarEdge I led fleet data: time series forecasting, survival modelling, anomaly detection, and root cause attribution across millions of devices.</p>
       <p>The work has always pulled toward the research end. These days that means building deep learning architectures from scratch (ResNet, ViT, Mask R-CNN, YOLOv8, SimCLR, and the transformer forecasters PatchTST, iTransformer, and TimeMixer) and benchmarking them against published results. Most recently: long-horizon forecasting on the ETTh1 benchmark, lesion segmentation on ISIC 2018 medical imaging data, and knowledge distillation cutting parameters 65.6x with an 11x inference speedup. The forecasting work grew into a sole-author paper on channel dependence in PatchTST, accepted at Transactions on Machine Learning Research (2026).</p>
@@ -662,6 +655,7 @@
       <a href="https://linkedin.com/in/adimendelowitz" class="contact-link" target="_blank" rel="noopener">LinkedIn</a>
       <a href="https://github.com/AdiMendelowitz/CV-RP" class="contact-link" target="_blank" rel="noopener">GitHub</a>
     </div>
+    <p class="contact-note">English C1 (IELTS 8.0)</p>
   </section>
 
 </div>
