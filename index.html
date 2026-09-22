@@ -445,7 +445,7 @@
     <h1>Adi Mendelowitz</h1>
     <p class="hero-sub">Senior Data Scientist · ML Researcher</p>
     <div class="hero-bio">
-      <p>Data scientist with six years of applied machine learning in production, across medical AI and energy systems. At GE Healthcare I directed the design of clinical speech and text pipelines, including intent-domain tagging automation. At SolarEdge I led fleet data: time series forecasting, survival modelling, anomaly detection, and root cause attribution across millions of devices.</p>
+      <p>Data scientist with six years of applied machine learning in production, across medical AI and energy systems. At GE Healthcare I directed the design of clinical speech and text pipelines, including intent-domain tagging automation. At SolarEdge I led fleet data: time series forecasting, survival modelling, Z-score-based anomaly detection, and Pearson-correlation root cause attribution across millions of devices.</p>
       <p>The work has always pulled toward the research end. These days that means building deep learning architectures from scratch (ResNet, ViT, Mask R-CNN, YOLOv8, SimCLR, and the transformer forecasters PatchTST, iTransformer, and TimeMixer) and benchmarking them against published results. Most recently: long-horizon forecasting on the ETTh1 benchmark, lesion segmentation on ISIC 2018 medical imaging data, and knowledge distillation cutting parameters 65.6x with an 11x inference speedup. The forecasting work grew into a sole-author paper on channel dependence in PatchTST, accepted at Transactions on Machine Learning Research (2026).</p>
       <p>B.Sc. Mathematics. The code is on GitHub.</p>
     </div>
@@ -595,10 +595,10 @@
       </div>
       <div class="exp-role">Senior Data Science Engineer · Fleet Data Team Lead · Data Scientist</div>
       <ul class="exp-bullets">
-        <li>Built multilingual translation pipelines for thousands of recorded customer-support conversations; validated output quality with domain experts.</li>
-        <li>Led failure and survival analysis across device fleets; improved preemptive failure detection by 25% and reduced maintenance costs by 20%.</li>
+        <li>Built multilingual translation pipelines for thousands of recorded customer-support conversations, using TF-IDF term-relevance scoring and hierarchical clustering to triage which terms needed translation and cut LLM call volume; validated output quality with domain experts.</li>
+        <li>Led failure and survival analysis across device fleets, including early-life (infant-mortality) and survival-rate reliability tracking; improved preemptive failure detection by 25% and reduced maintenance costs by 20%.</li>
         <li>Represented fleet data on a thrice-weekly cross-departmental working group resolving the most severe inverter malfunctions across 3 models with millions of deployed units each; drove root cause analysis, severity assessment, and staged rollout testing from thousands to hundreds of thousands of live devices before fleet-wide rollout.</li>
-        <li>Built the telemetry pipelines monitoring millions of inverters and battery units at 24-hour latency, feeding the anomaly detection and root cause attribution run over noisy, correlated multivariate sensor signals.</li>
+        <li>Built the telemetry pipelines monitoring millions of inverters and battery units at 24-hour latency, feeding Z-score-based anomaly detection and Pearson-correlation root cause attribution run over noisy, correlated multivariate sensor signals.</li>
         <li>Flagged critical software bugs from log and telemetry analysis, with 98% of flagged issues confirmed as real defects.</li>
         <li>Built a standardised benchmark database covering product performance and end-of-life metrics, streamlining cross-team analysis, reliability assessments, and maintenance planning.</li>
         <li>Directed delivery of a Python/Streamlit SQL interface, adopted across hardware, inverter, and finance teams so non-analyst managers could query fleet data without analyst support.</li>
