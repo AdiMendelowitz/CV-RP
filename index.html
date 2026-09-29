@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Adi Mendelowitz · Senior Data Scientist · ML Researcher</title>
-<meta name="description" content="Adi Mendelowitz, Senior Data Scientist and ML researcher. Sole-author paper accepted at Transactions on Machine Learning Research (2026); six years in production ML across energy and clinical AI.">
+<meta name="description" content="Adi Mendelowitz, Senior Data Scientist and ML researcher. Sole-author paper published in Transactions on Machine Learning Research (2026); six years in production ML across energy and clinical AI.">
 <meta property="og:title" content="Adi Mendelowitz · Senior Data Scientist · ML Researcher">
-<meta property="og:description" content="Sole-author paper accepted at TMLR (2026). Six years in production ML across energy and clinical AI systems.">
+<meta property="og:description" content="Sole-author paper published in TMLR (2026). Six years in production ML across energy and clinical AI systems.">
 <meta property="og:type" content="website">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
@@ -446,11 +446,11 @@
     <p class="hero-sub">Senior Data Scientist · ML Researcher</p>
     <div class="hero-bio">
       <p>Data scientist, six years in production machine learning across medical AI and energy systems. At GE Healthcare I directed the design of clinical speech and text pipelines, automating how thousands of recorded conversations got tagged by intent. At SolarEdge I ran fleet data for millions of deployed devices: forecasting, survival modelling, and tracing failures back to root cause through Z-score anomaly detection and Pearson correlation.</p>
-      <p>The work has always pulled toward the research end. These days that means building deep learning architectures from scratch: ResNet and ViT for vision, Mask R-CNN and YOLOv8 for detection and segmentation, SimCLR for self-supervision, and the transformer forecasters PatchTST, iTransformer and TimeMixer, each benchmarked against published results. Most recently: long-horizon forecasting on ETTh1, lesion segmentation on ISIC 2018 medical imaging, and knowledge distillation cutting parameters 65.6x with an 11x inference speedup. The forecasting thread became a sole-author paper on channel dependence in PatchTST, accepted at Transactions on Machine Learning Research (2026).</p>
+      <p>The work has always pulled toward the research end. These days that means building deep learning architectures from scratch: ResNet and ViT for vision, Mask R-CNN and YOLOv8 for detection and segmentation, SimCLR for self-supervision, and the transformer forecasters PatchTST, iTransformer and TimeMixer, each benchmarked against published results. Most recently: long-horizon forecasting on ETTh1, lesion segmentation on ISIC 2018 medical imaging, and knowledge distillation cutting parameters 65.6x with an 11x inference speedup. The forecasting thread became a sole-author paper on channel dependence in PatchTST, published in Transactions on Machine Learning Research (2026).</p>
       <p>B.Sc. Mathematics. The code is on GitHub.</p>
     </div>
     <div class="hero-actions">
-      <a href="https://drive.google.com/file/d/1uNsC2t-X0AoS45Z688gsKXkMk3Q9mphr/view?usp=sharing" class="btn-primary" target="_blank" rel="noopener">Download CV</a>
+      <a href="https://drive.google.com/file/d/13KPferf0hFrgQw5CLlS_QbRVmNe6ce2W/view?usp=sharing" class="btn-primary" target="_blank" rel="noopener">Download CV</a>
       <a href="https://github.com/AdiMendelowitz/CV-RP" class="btn-ghost" target="_blank" rel="noopener">GitHub</a>
       <a href="https://linkedin.com/in/adimendelowitz" class="btn-ghost" target="_blank" rel="noopener">LinkedIn</a>
       <div class="blog-menu">
@@ -501,7 +501,7 @@
 
       <div class="research-card publication">
         <div>
-          <div class="pub-venue">Publication · Transactions on Machine Learning Research, 2026 (accepted)</div>
+          <div class="pub-venue">Publication · Transactions on Machine Learning Research, 2026 (published)</div>
           <div class="research-card-title">Equal Accuracy, Unequal Cost: Channel Dependence in PatchTST under Controlled Coupling</div>
           <div class="research-card-stack">Sole author · PyTorch · Kaggle T4 · time-series forecasting · Transformers · experimental design · reproducibility</div>
           <div class="research-card-desc">Channel-independent and channel-dependent PatchTST are usually compared on observational benchmarks where correlation strength, dimensionality and temporal dynamics vary together. This paper isolates them one at a time with controlled synthetic generative processes (a factorial AR(1) grid, a leader-follower VAR(1) family with tunable lag-1 coupling, and a block-covariance family), with ETTh1 and ECL as real-data context. Across every tested cell the CD-CI accuracy difference stays inside a pre-specified 1% band, and a closed-form analysis of the generative model shows why: at the evaluation horizon no predictor, CI or CD, has any cross-channel signal left to exploit. Cost is the real difference. CD needs smaller batches and far more gradient steps, and at 321 variates a CD epoch costs 6.7 times a CI epoch. CI is the better default on accuracy per unit compute. The repository ships a one-command reproduction: it checks every result file against a committed checksum, reruns the analysis, and regenerates every table and figure in under a minute on a CPU. The release the paper cites, v1.0-tmlr, is archived on Zenodo under its own DOI.</div>
