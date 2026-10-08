@@ -764,7 +764,7 @@ initialisation, not the training configuration. K-fold cross-validation at the
 lesion level would be required for a reliable comparison between configurations.
 
 **Focal loss provides no benefit on this dataset.** Run 6 (focal, gamma=2.0)
-achieved 0.7376 vs Run 5's 0.7441 on weighted CE -- a 0.65pp decline. The val
+achieved 0.7376 vs Run 5's 0.7457 on weighted CE -- a 0.81pp decline. The val
 balanced accuracy curves are nearly indistinguishable from epoch 12 onward,
 confirming that the performance ceiling is set by overfitting and class
 similarity rather than hard-example difficulty.
@@ -820,8 +820,8 @@ assessed quantitatively against HAM10000 ground-truth labels.
 | Classification failures given detection | 15 / 50 (30.0%) |
 | Full pipeline success | 35 / 50 (70.0%) |
 | Pipeline balanced accuracy | 0.5219 |
-| Standalone classifier balanced accuracy (Run 5) | 0.7441 |
-| Gap | -0.2222 |
+| Standalone classifier balanced accuracy (Run 5) | 0.7457 |
+| Gap | -0.2238 |
 
 ![Pipeline outputs](outputs/pipeline/pipeline_outputs.png)
 

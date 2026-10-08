@@ -96,7 +96,7 @@ image ID ranges; segmentation quality is assessed qualitatively.
 | Classification failures given detection | 15 / 50 (30.0%) |
 | Full pipeline success | 35 / 50 (70.0%) |
 | Pipeline balanced accuracy | 0.5219 |
-| Standalone classifier balanced accuracy (Run 5) | 0.7441 |
+| Standalone classifier balanced accuracy (Run 5) | 0.7457 |
 
 The 22pp gap between pipeline and standalone classification accuracy reflects
 the distribution shift introduced by crop-based classification: EfficientNet-B0
