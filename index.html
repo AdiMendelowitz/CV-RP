@@ -388,6 +388,15 @@
     appearance: none;
   }
   .blog-menu-row:hover, .blog-menu-row[aria-expanded="true"] { background: var(--accent-dim); color: var(--accent); }
+  .blog-menu-link {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 9px 12px; border-radius: 5px; font-size: 0.875rem; color: var(--text);
+    text-decoration: none; border-bottom: none;
+  }
+  .blog-menu-link:hover { background: var(--accent-dim); color: var(--accent); }
+  .blog-menu-link .arrow { font-size: 12px; color: var(--text-dim); }
+  .blog-menu-link:hover .arrow { color: var(--accent); }
+  .blog-menu-divider { height: 0; border-top: 0.5px solid var(--faint-2); margin: 6px 4px; }
   .blog-menu-row .arrow { font-size: 10px; color: var(--text-dim); }
   .blog-menu-row[aria-expanded="true"] .arrow { color: var(--accent); }
 
@@ -458,6 +467,10 @@
           Blog <span class="chevron">&#9662;</span>
         </button>
         <div class="blog-menu-dropdown" id="blog-menu-dropdown" role="menu" hidden>
+          <a class="blog-menu-link" href="https://blog.adimendelowitz.dev/" role="menuitem" target="_blank" rel="noopener">
+            <span>All posts</span><span class="arrow">&#8599;</span>
+          </a>
+          <div class="blog-menu-divider" role="separator"></div>
           <div class="blog-menu-item">
             <button class="blog-menu-row" type="button" aria-haspopup="true" aria-expanded="false" data-submenu="skills-submenu">
               <span>Skills</span><span class="arrow">&#9656;</span>
